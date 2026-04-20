@@ -1,0 +1,717 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--wh:#FCFCFC;--cy2:#e6f8f6;--gr2:#f4f4f2;--am2:#fffbe0;font-family:'Helvetica Neue',Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:0 0 40px}
+.topbar{background:var(--az);display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+.topbar-logo{font-size:20px;font-weight:900;color:var(--am);letter-spacing:1px}
+.topbar-title{font-size:11px;font-weight:700;color:var(--wh);letter-spacing:1.5px;text-transform:uppercase;text-align:right;line-height:1.4}
+.nav{background:var(--am);display:flex;flex-wrap:wrap;border-bottom:3px solid var(--az)}
+.nav-btn{background:none;border:none;padding:10px 16px;font-size:11px;font-weight:700;color:var(--az);cursor:pointer;letter-spacing:1px;text-transform:uppercase;border-bottom:3px solid transparent;margin-bottom:-3px;transition:background .15s;white-space:nowrap}
+.nav-btn.on{background:var(--az);color:var(--am);border-bottom-color:var(--az)}
+.nav-btn:hover:not(.on){background:rgba(21,50,68,.15)}
+.pane{display:none;padding:28px 24px}
+.pane.on{display:block}
+.sec-head{background:var(--az);color:var(--wh);padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;margin-top:24px}
+.sec-head:first-child{margin-top:0}
+.sub-head{background:var(--cy);color:var(--az);padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.8px;margin-bottom:12px;margin-top:20px}
+.sub-head:first-child{margin-top:0}
+.alert{background:var(--am2);border-left:4px solid var(--am);padding:10px 14px;margin:12px 0;font-size:12px;color:var(--az);display:flex;gap:10px;align-items:flex-start}
+.alert strong{flex-shrink:0;font-size:11px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
+th{background:var(--az);color:var(--wh);padding:8px 10px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.3px}
+td{padding:7px 10px;border-bottom:1px solid #ddd;vertical-align:top;line-height:1.5}
+tr:nth-child(even) td{background:var(--gr2)}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.b-asc{background:var(--cy);color:var(--az)}
+.b-base{background:var(--az);color:var(--wh)}
+.b-cod{background:#e0e0de;color:var(--gr)}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.cols4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.col-label{background:var(--cy);color:var(--az);text-align:center;font-size:11px;font-weight:700;padding:6px;letter-spacing:1px;text-transform:uppercase}
+.def-block{border:1px solid #ddd;margin-bottom:12px;overflow:hidden}
+.def-head{background:var(--az);color:var(--wh);padding:8px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.def-head:hover{background:#1e4560}
+.def-head .arr{transition:transform .2s;font-size:10px;color:var(--cy)}
+.def-head.open .arr{transform:rotate(90deg)}
+.def-body{background:var(--cy2);padding:12px 14px;font-size:12px;line-height:1.65;display:none}
+.def-body.open{display:block}
+.step-flow{display:flex;flex-wrap:wrap;margin:16px 0}
+.step-box{background:var(--az);color:var(--wh);padding:9px 12px;font-size:11px;font-weight:700;text-align:center;flex:1;min-width:70px;border-right:2px solid var(--am)}
+.step-box:last-child{border-right:none}
+.step-n{display:block;color:var(--am);font-size:9px;font-weight:700;margin-bottom:2px}
+.prop-tabs{display:flex;margin-top:20px}
+.prop-tab{background:var(--gr2);border:1px solid #ddd;border-bottom:none;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;color:var(--gr);letter-spacing:.5px}
+.prop-tab.on{background:var(--az);color:var(--am);border-color:var(--az)}
+.prop-body{border:1px solid #ddd;padding:16px;margin-bottom:20px}
+p.desc{font-size:12px;line-height:1.65;margin-bottom:12px;color:var(--gr)}
+
+/* Escalafon — nivel 1 (área principal) */
+.esc-area{margin-bottom:8px}
+.esc-area-title{background:var(--az);color:var(--am);padding:8px 14px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
+.esc-area-title:hover{background:#1e4560}
+.esc-area-body{display:none;padding:12px 0 4px}
+.esc-area-body.open{display:block}
+.esc-area-title .arr{color:var(--cy);transition:transform .2s;font-size:10px}
+.esc-area-title.open .arr{transform:rotate(90deg)}
+
+/* Escalafon — nivel 2 (sub-área dentro de Curricular) */
+.esc-sub{margin-bottom:6px}
+.esc-sub-title{background:#1e4560;color:var(--cy);padding:7px 14px 7px 24px;font-size:11px;font-weight:700;letter-spacing:.8px;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
+.esc-sub-title:hover{background:#25536e}
+.esc-sub-title .arr{transition:transform .2s;font-size:10px;color:var(--am)}
+.esc-sub-title.open .arr{transform:rotate(90deg)}
+.esc-sub-body{display:none;padding:14px 0 4px}
+.esc-sub-body.open{display:block}
+</style>
+
+<div class="wrap">
+<div class="topbar">
+  <div class="topbar-logo">BA</div>
+  <div class="topbar-title">Acto Público · Designaciones Docentes<br><span style="color:var(--cy);font-weight:400">Dirección de Carrera Docente · GCBA</span></div>
+</div>
+<div class="nav">
+  <button class="nav-btn on" onclick="tab(this,'t1')">Orden por área</button>
+  <button class="nav-btn" onclick="tab(this,'t2')">Reglas</button>
+  <button class="nav-btn" onclick="tab(this,'t3')">Ascenso</button>
+  <button class="nav-btn" onclick="tab(this,'t4')">Escalafones</button>
+</div>
+
+<!-- ═══ TAB 1 ═══ -->
+<div id="t1" class="pane on">
+  <div class="sec-head">Orden de designación por área</div>
+  <p class="desc">Cada área sigue un orden de prioridades específico. Las proporciones (4 a 1, 2 a 1, 50/50) varían según el nivel.</p>
+  <table>
+    <tr><th>Área</th><th>Orden de prioridades</th></tr>
+    <tr><td><strong>Inicial y Primaria</strong> (Normales)</td><td>1. Disponibles · 2. Reubicación · 3. Prioridad 60 días · 4. <span class="badge b-asc">4 a 1</span> · 5. Idóneos · 6. ART 65L · 7. Penalizados</td></tr>
+    <tr><td><strong>Especial</strong></td><td>1. Disponibles · 2. Reubicación · 3. <span class="badge b-asc">4 a 1</span> · 4. Idóneos · 5. ART 65L · 6. Penalizados</td></tr>
+    <tr><td><strong>Servicios Profesionales</strong></td><td>1. Disponibles · 2. Reubicación · 3. Prioridad 30 días · 4. <span class="badge b-asc">4 a 1</span> · 5. Idóneos · 6. ART 65L · 7. Penalizados</td></tr>
+    <tr><td><strong>Curricular</strong> (Normales)</td><td>1. Disponibles · 2. Reubicación · 3. Prioridad 32 hs · 4. <span class="badge b-asc">2 a 1</span> · 5. Idóneos · 6. ART 65L · 7. Penalizados</td></tr>
+    <tr><td><strong>Adultos Primaria</strong></td><td>1. Disponibles · 2. Reubicación · 3. <span class="badge b-asc">4 a 1</span> · 4. Idóneos · 5. ART 65L · 6. Penalizados</td></tr>
+    <tr><td><strong>Técnica</strong></td><td>1. Disponibles · 2. Reubicación · 3. <span class="badge b-base">50/50</span> · 4. Idóneos · 5. ART 65L · 6. Penalizados</td></tr>
+    <tr><td><strong>Media</strong></td><td>1. Disponibles · 2. Reubicación · 3. <span class="badge b-base">50/50</span> · 4. Idóneos · 5. ART 65L · 6. Penalizados</td></tr>
+    <tr><td><strong>Artística</strong></td><td>1. Disponibles · 2. Reubicación · 3. <span class="badge b-base">50/50</span> · 4. Idóneos · 5. ART 65L · 6. Penalizados</td></tr>
+  </table>
+  <div class="sec-head">Flujo general de designación</div>
+  <div class="step-flow">
+    <div class="step-box"><span class="step-n">1°</span>Disponibles</div>
+    <div class="step-box"><span class="step-n">2°</span>Reubicación</div>
+    <div class="step-box"><span class="step-n">3°</span>Prioridades</div>
+    <div class="step-box"><span class="step-n">4°</span>Proporción</div>
+    <div class="step-box"><span class="step-n">5°</span>Idóneos</div>
+    <div class="step-box"><span class="step-n">6°</span>ART 65L</div>
+    <div class="step-box"><span class="step-n">7°</span>Penalizados</div>
+  </div>
+  <div class="alert"><strong>NOTA:</strong> Técnica, Media y Artística no tienen instancia de Prioridades y utilizan proporción 50/50 en lugar de 4 a 1.</div>
+</div>
+
+<!-- ═══ TAB 2 ═══ -->
+<div id="t2" class="pane">
+  <div class="sec-head">Reglas de designación</div>
+  <p class="desc">Hacé clic en cada concepto para ver su definición y detalle.</p>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Disponibles · Artículo 22 <span class="arr">▶</span></div><div class="def-body">Estado transitorio en que se encuentra un docente titular cuando su cargo u horas cátedra son suprimidos por razones ajenas a su conducta. Durante este período, el docente goza de la más alta prioridad para ser designado en un acto público.</div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Reubicación · (por Resolución) <span class="arr">▶</span></div><div class="def-body">Similar a la situación de Disponibles. Aplica cuando el cargo o las horas interinas se vieron afectadas por una causa ajena a la conducta del docente. El período de reubicación es más breve que el de disponibilidad.</div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Prioridades — 60 días / 30 días / 32 horas <span class="arr">▶</span></div><div class="def-body">
+    <p style="margin-bottom:10px">Los docentes con cargo titular tienen prioridad sobre ciertas vacantes según el área:</p>
+    <table><tr><th>Área</th><th>Condición de prioridad</th></tr>
+      <tr><td>Inicial y Primaria</td><td>Vacantes de duración mayor a 60 días</td></tr>
+      <tr><td>Servicios Profesionales</td><td>Vacantes de duración mayor a 30 días</td></tr>
+      <tr><td>Curricular</td><td>Vacantes de 32 horas</td></tr>
+    </table>
+    <div class="alert"><strong>IMPORTANTE:</strong> Este requerimiento debe marcarse en FTW al solicitar la cobertura. De no hacerlo, la prioridad no se verá reflejada en el Acto Público.</div>
+  </div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Criterios de ordenamiento (todos los listados) <span class="arr">▶</span></div><div class="def-body">
+    <table><tr><th>Criterio</th><th>Descripción</th></tr>
+      <tr><td><strong>TB &gt;</strong></td><td>Mayor calidad en el Título Base (orden descendente)</td></tr>
+      <tr><td><strong>Puntaje &gt;</strong></td><td>Mayor puntaje total (orden descendente)</td></tr>
+      <tr><td><strong>Mérito &lt;</strong></td><td>Menor número de mérito (orden ascendente)</td></tr>
+    </table>
+    <div class="alert"><strong>NOTA:</strong> El área Técnica no aplica el criterio TB&gt;.</div>
+  </div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Proporciones: 4 a 1 · 2 a 1 · 50/50 <span class="arr">▶</span></div><div class="def-body">
+    <div class="prop-tabs">
+      <div class="prop-tab on" onclick="ptab(this,'p41')">4 a 1</div>
+      <div class="prop-tab" onclick="ptab(this,'p21')">2 a 1</div>
+      <div class="prop-tab" onclick="ptab(this,'p50')">50/50</div>
+    </div>
+    <div id="p41" class="prop-body"><p class="desc">Comienza designando docentes <strong>sin cargo</strong>, luego con cargo con prioridad por escuela, y finalmente con cargo sin prioridad.</p>
+      <table><tr><th>Instancia</th><th>Listado utilizado</th></tr>
+        <tr><td><strong>1° Sin cargo</strong></td><td>INT SUP — Sin Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+        <tr><td><strong>2° Con cargo</strong> (c/ prioridad escuela)</td><td>INT SUP — Con Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;<br>Recientemente Titularizado · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+        <tr><td><strong>3° Con cargo</strong> (sin prioridad escuela)</td><td>INT SUP — Con Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;<br>Recientemente Titularizado · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+      </table>
+    </div>
+    <div id="p21" class="prop-body" style="display:none"><p class="desc">Mismo esquema que el 4 a 1: comienza con docentes <strong>sin cargo</strong>, luego con cargo con prioridad de escuela y, finalmente, con cargo sin prioridad.</p></div>
+    <div id="p50" class="prop-body" style="display:none"><p class="desc">A diferencia del 4 a 1, el 50/50 comienza con los docentes <strong>con cargo</strong>.</p>
+      <table><tr><th>Instancia</th><th>Listado utilizado</th></tr>
+        <tr><td><strong>1° Con cargo</strong> (c/ prioridad escuela)</td><td>INT SUP — Con Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;<br>Recientemente Titularizado · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+        <tr><td><strong>2° Con cargo</strong> (sin prioridad escuela)</td><td>INT SUP — Con Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;<br>Recientemente Titularizado · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+        <tr><td><strong>3° Sin cargo</strong></td><td>INT SUP — Sin Cargo · TB &gt; · Puntaje &gt; · Mérito &lt;</td></tr>
+      </table>
+    </div>
+  </div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">ART 65L <span class="arr">▶</span></div><div class="def-body">
+    <p style="margin-bottom:10px">Una vez finalizado el barrido por todas las instancias anteriores, se controlan las inscripciones validadas y las evaluadas al momento del acto, para cubrir las vacantes remanentes.</p>
+    <table><tr><th>Listado</th><th>Criterio de orden</th></tr>
+      <tr><td>Listado ART 65L</td><td>TB &gt; · Mérito &gt; (según orden de validación)</td></tr>
+      <tr><td>Postulación ART 65L</td><td>Mérito &gt; (según orden de validación)</td></tr>
+    </table>
+  </div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Penalizados <span class="arr">▶</span></div><div class="def-body">Los docentes penalizados participan al final del orden de designación, una vez agotadas todas las instancias previas.</div></div>
+</div>
+
+<!-- ═══ TAB 3 ═══ -->
+<div id="t3" class="pane">
+  <div class="sec-head">Designaciones de ascenso — interinatos y suplencias</div>
+  <p class="desc">Para cubrir cargos de ascenso se usan dos tipos de listados: <strong>Titulares</strong> y <strong>Complementarios de Titulares</strong>. Solo pueden postularse docentes dentro del escalafón del cargo publicado.</p>
+  <div class="sub-head">Criterios de designación (en orden)</div>
+  <table>
+    <tr><th>#</th><th>Criterio</th><th>Descripción</th></tr>
+    <tr><td>1</td><td><strong>Listado</strong></td><td>Se usa primero el listado de Titulares del cargo inmediato anterior. Sin postulantes, se continúa con el Complementario de Titulares.</td></tr>
+    <tr><td>2</td><td><strong>Cargo</strong></td><td>Prioridad para postulantes del cargo inmediato anterior. Sin candidatos, se avanza al siguiente cargo dentro del escalafón.</td></tr>
+    <tr><td>3</td><td><strong>Curso de Ascenso (CA)</strong></td><td>Prioridad para docentes que acrediten el Curso de Ascenso correspondiente al cargo al que se postulan.</td></tr>
+    <tr><td>4</td><td><strong>ART 27</strong></td><td>Prioridad para docentes con la antigüedad requerida (el requisito debe figurar como cumplido: SI).</td></tr>
+    <tr><td>5</td><td><strong>Título Base (TB)</strong></td><td>Prioridad TB 9, luego TB 6, y así sucesivamente. No aplica en el área Técnica.</td></tr>
+    <tr><td>6</td><td><strong>Puntaje Total y Mérito</strong></td><td>Desempate final: mayor Puntaje Total (Puntaje &gt;) y, ante igualdad, menor número de Mérito (Mérito &lt;).</td></tr>
+  </table>
+  <div class="sub-head">Ejemplo de barrido — Cargo: Supervisor de Inicial</div>
+  <table>
+    <tr><th>N°</th><th>Listado</th><th>Cargo</th><th>CA</th><th>Art. 27</th><th>TB</th><th>Orden</th></tr>
+    <tr><td>1</td><td>Titulares</td><td>Supervisor Adjunto</td><td>Sí</td><td>Sí</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>2</td><td>Complementario</td><td>Supervisor Adjunto</td><td>Sí</td><td>Sí</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>3</td><td>Titulares</td><td>Supervisor Adjunto</td><td>Sí</td><td>No</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>4</td><td>Complementario</td><td>Supervisor Adjunto</td><td>Sí</td><td>No</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>5</td><td>Titulares</td><td>Supervisor Adjunto</td><td>No</td><td>Sí</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>6</td><td>Complementario</td><td>Supervisor Adjunto</td><td>No</td><td>Sí</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>7</td><td>Titulares</td><td>Supervisor Adjunto</td><td>No</td><td>No</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+    <tr><td>8</td><td>Complementario</td><td>Supervisor Adjunto</td><td>No</td><td>No</td><td>9</td><td>Ptje. &gt; / Mérito &lt;</td></tr>
+  </table>
+  <p style="font-size:11px;color:#888;margin-bottom:20px">CA = Curso de Ascenso · Art. 27 = Requisito de antigüedad · TB = Título Base · Ptje. = Puntaje Total</p>
+  <div class="sub-head">Particularidades por área</div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Educación Especial <span class="arr">▶</span></div><div class="def-body">Los docentes pueden ascender a otras especialidades siempre que permanezcan dentro del mismo escalafón y se haya validado que cuentan con las incumbencias correspondientes.</div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Adultos Primaria <span class="arr">▶</span></div><div class="def-body"><p style="margin-bottom:8px">Los docentes de Ciclo y Materias Especiales comparten el escalafón hasta Director. A partir de allí se separan: los de Ciclo y Centros avanzan hacia Supervisor Escolar; los de Materias Especiales, hacia Supervisor de Materias Especiales.</p><p style="margin-bottom:8px">La <strong>Ley 3722</strong> establece que solo pueden ascender docentes con título de PROFESOR. Se debe identificar por qué rama ascendió el docente para determinar a qué cargo puede postularse.</p><p><strong>Escuela Manuel Belgrano:</strong> única con Turno Tarde y Turno Noche. Los docentes en cargos paralelos pueden postularse por mayor carga presupuestaria y tendrán prioridad.</p></div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Curricular <span class="arr">▶</span></div><div class="def-body">Escalafón A y B son independientes y no pueden cruzarse. Los docentes del Escalafón B recién pueden postularse a Supervisor Adjunto al alcanzar el cargo de Director.</div></div>
+  <div class="def-block"><div class="def-head" onclick="tog(this)">Media · Técnica · Artística · Normales - Supervisor de Educacion Fisica <span class="arr">▶</span></div><div class="def-body">Se confecciona un listado conjunto con todos los titulares de Educación Física de estas áreas. Se identifican los cargos de ascenso con incumbencias de Ed. Física. El proceso se realiza fuera del cronograma habitual, se eleva dentro de Media y reemplaza el listado de titulares para el acto público.</div></div>
+</div>
+
+<!-- ═══ TAB 4 ═══ -->
+<div id="t4" class="pane">
+  <div class="sec-head">Escalafones de ascenso</div>
+  <p class="desc">Hacé clic en cada área para desplegar su escalafón. <span class="badge b-asc">ASCENSO</span> = cargo de ascenso &nbsp;·&nbsp; <span class="badge b-base">BASE</span> = cargo base &nbsp;·&nbsp; <span class="badge b-cod">CÓD.BASE</span> = código base curricular</p>
+
+  <!-- Inicial y Primaria -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Inicial y Primaria <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols2">
+        <div><div class="col-label">Inicial</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Especialista</td></tr>
+            <tr><td>6</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Maestro de Sección</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Primaria</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Adjunto</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Especialista</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>MACTE</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>7</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Maestro de Grado</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CURRICULAR (contenedor con 5 sub-áreas) -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Curricular <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+
+      <!-- Educación Musical -->
+      <div class="esc-sub">
+        <div class="esc-sub-title" onclick="stog(this)">Educación Musical <span class="arr">▶</span></div>
+        <div class="esc-sub-body">
+          <div class="cols2">
+            <div><div class="col-label">Escalafón A</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Coordinador de Ed. Musical (153)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Ed. Musical (123)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto de Ed. Musical (146)</td></tr>
+                <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director de Escuela de Música (2212)</td></tr>
+                <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Ed. Musical (1023)</td></tr>
+              </table>
+            </div>
+            <div><div class="col-label">Escalafón B</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director de Escuela de Música (2212)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Coro y Orquesta Athos Palma (492)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Secretario de Ed. Musical (339)</td></tr>
+                <tr><td>4</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Violín/Viola (215), Inst. Autóctonos (1036), Percusión (1038), Rítmica (1039), Clarinete (1070), Violonchello (1071), Saxofón (1073), Oboe (1074), Teclas (1075), Bandoneón (1076), Metales (1077), Contrabajo (1078), Fagot (1079), Lenguaje Musical (1090), Euritmia (1091), Canto Coral (1092), Flauta Traversa (1093), Guitarra (1095), Danzas Folklóricas (1096), Piano (1097), Flauta Dulce (1098), Conjunto Cámara (1099), Historia de la Música (11009)</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Educación Plástica -->
+      <div class="esc-sub">
+        <div class="esc-sub-title" onclick="stog(this)">Educación Plástica <span class="arr">▶</span></div>
+        <div class="esc-sub-body">
+          <div class="cols2">
+            <div><div class="col-label">Escalafón A</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Coordinador de Ed. Plástica</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Ed. Plástica (121)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto de Ed. Plástica (148)</td></tr>
+                <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Ed. Plástica (391)</td></tr>
+                <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Ed. Plástica (1021)</td></tr>
+              </table>
+            </div>
+            <div><div class="col-label">Escalafón B</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Ed. Plástica (391)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Secretario de Ed. Plástica (541)</td></tr>
+                <tr><td>3</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Expresión Plástica (1045), Grabado (1046), Escultura (1047), Juegos Dramáticos (1048), Cerámica (1150), Títeres y Máscaras (1155)</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Educación Tecnológica -->
+      <div class="esc-sub">
+        <div class="esc-sub-title" onclick="stog(this)">Educación Tecnológica <span class="arr">▶</span></div>
+        <div class="esc-sub-body">
+          <table style="max-width:480px"><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Coordinador de Ed. Tecnológica (152)</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Ed. Tecnológica (122)</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto de Ed. Tecnológica (144)</td></tr>
+            <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Ed. Tecnológica (1022)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Idioma Extranjero -->
+      <div class="esc-sub">
+        <div class="esc-sub-title" onclick="stog(this)">Idioma Extranjero <span class="arr">▶</span></div>
+        <div class="esc-sub-body">
+          <div class="cols2">
+            <div><div class="col-label">Escalafón A</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Idioma Extranjero (125)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto de Idioma Extranjero (145)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Idioma (395)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Inglés (1025)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Francés (1026)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Italiano (1027)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Portugués (2028)</td></tr>
+              </table>
+            </div>
+            <div><div class="col-label">Escalafón B</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Idioma (395)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Secretario CEC de Idioma (356)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Inglés (1065)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Francés (1066)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Italiano (1067)</td></tr>
+                <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Portugués (1068)</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Educación Física -->
+      <div class="esc-sub">
+        <div class="esc-sub-title" onclick="stog(this)">Educación Física <span class="arr">▶</span></div>
+        <div class="esc-sub-body">
+          <div class="cols2">
+            <div><div class="col-label">Escalafón A</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Coordinador de Ed. Física (154)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Ed. Física (124)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto de Ed. Física (147)</td></tr>
+                <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Natación (394)</td></tr>
+                <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Ed. Física (1024)</td></tr>
+              </table>
+            </div>
+            <div><div class="col-label">Escalafón B</div>
+              <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo (Cód.)</th></tr>
+                <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director CEC de Natación (394)</td></tr>
+                <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector CEC de Natación (359)</td></tr>
+                <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Secretario CEC de Natación (358)</td></tr>
+                <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Natación (1124)</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Educación Especial -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Educación Especial <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="sub-head">Escalafón A — Nivel Primario / Inicial</div>
+      <div class="cols2">
+        <div><div class="col-label">Hosp. Dom. / General</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Hosp. Dom.</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto Hosp. Dom.</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Hosp. Dom.</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Hosp. Dom.</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Sección / At. Temprana</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Hosp. Dom.</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Hosp. Dom.</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Sección / At. Temprana</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="col-label">Nivel Medio</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Coordinador de Media</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Profesor de Nivel Medio</td></tr>
+          </table>
+          <div class="col-label" style="margin-top:12px">Asistentes Celadores (ACDM)</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Coordinador General ACDM</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Coordinador Zonal ACDM</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>ACDM</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="sub-head">Escalafón B</div>
+      <div class="cols3">
+        <div><div class="col-label">Motores</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Motores</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Motores</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Motores</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Motores</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">EII</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar EII</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director EII</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector EII</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario EII</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Centes</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Centes</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Centes</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Centes</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Sección</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Centes</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Sección</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="sub-head">Escalafón C</div>
+      <div class="cols3">
+        <div><div class="col-label">Auditivos</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Auditivos</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Auditivos</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Auditivos</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Auditivos</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Auditivos</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Mentales</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Mentales</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Mentales</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Mentales</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Mentales</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Mentales</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Visuales</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Visuales</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Visuales</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Visuales</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Visuales</td></tr>
+            <tr><td>6</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Visuales</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="cols2">
+        <div><div class="col-label">Severos Trastornos</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Severos Trastornos</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Severos Trastornos</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Severos Trastornos</td></tr>
+            <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Severos Trastornos</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Gabinete Materno Infantil</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Severos Trastornos</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector Severos Trastornos</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario Severos Trastornos</td></tr>
+            <tr><td>4</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Grado Severos Trastornos</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Técnica -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Técnica <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols2">
+        <div><div class="col-label">Supervisor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar Técnica</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto Técnica</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Rector</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicerrector</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Regente Cultura</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Regente Técnico</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Regente</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe General de Enseñanza Práctica</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente Cultura</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente Técnico</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Jefe de Enseñanza Práctica / Jefe de Sección</td></tr>
+            <tr><td>7</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+            <tr><td>7</td><td><span class="badge b-base">BASE</span></td><td>Maestro Ayudante de Clases Prácticas</td></tr>
+            <tr><td>7</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Enseñanza Práctica</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="col-label">Preceptor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Preceptores</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Sub Jefe de Preceptores</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Preceptores</td></tr>
+          </table>
+          <div class="col-label" style="margin-top:12px">Secretario</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Prosecretario</td></tr>
+          </table>
+          <div class="col-label" style="margin-top:12px">Jefe de Laboratorio</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Laboratorio</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Trabajos Prácticos</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Ayudante de Trabajos Prácticos (ATTP)</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="sub-head">Sub-escalafones por función de Regente / Jefe General</div>
+      <div class="cols4">
+        <div><div class="col-label">Regente</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Regente de Cultura</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente Cultura</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Regente Técnico</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente Técnico</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Jefe Gral. Ens. Práctica</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe Gral. de Enseñanza Práctica</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Maestro Jefe de Ens. Práctica / Jefe de Sección</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>MAEP / MEP</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Media <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols3">
+        <div><div class="col-label">Supervisor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Preceptor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Preceptores</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Sub Jefe de Preceptores</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Preceptores</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Secretario</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Prosecretario</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Artística -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Artística <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols2" style="margin-bottom:20px">
+        <div><div class="col-label">Supervisor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Regente</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Taller de Cerámica</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente</td></tr>
+            <tr><td>7</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="col-label">Preceptor</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Preceptores</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Sub Jefe de Preceptores</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Preceptores</td></tr>
+          </table>
+          <div class="col-label" style="margin-top:12px">Secretario</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Prosecretario</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="cols2">
+        <div><div class="col-label">Jefe de Taller Cerámica</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Taller Cerámica</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Contramaestre</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Taller de Cerámica</td></tr>
+            <tr><td>3</td><td><span class="badge b-base">BASE</span></td><td>Prof. Modelado Cerámico / Moldería Cerámica / Alfarería</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Jefe de Taller Artes Visuales</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Jefe de Taller Cerámica</td></tr>
+            <tr><td>2</td><td><span class="badge b-base">BASE</span></td><td>Prof. Taller de Dibujo / Pintura / Escultura / Grabado</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adultos Primaria -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Adultos Primaria <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols2">
+        <div><div class="col-label">Supervisor Escolar</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto (ascendido por cód. 1080/1081)</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director (ascendido por cód. 1080/1081)</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector (ascendido por cód. 1080/1081)</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Maestro de Ciclo / Centros</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Supervisor Materias Especiales</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor de Materias Especiales</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto (ascendido por mat. especial)</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director (ascendido por mat. especial)</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector (ascendido por mat. especial)</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Maestros de Materias Especiales</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Normales / Superior -->
+  <div class="esc-area">
+    <div class="esc-area-title" onclick="etog(this)">Normales / Superior <span class="arr">▶</span></div>
+    <div class="esc-area-body">
+      <div class="cols3">
+        <div><div class="col-label">Supervisor Media</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>5</td><td><span class="badge b-base">BASE</span></td><td>Profesor</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Supervisor Inicial</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Vicedirector</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Especialista</td></tr>
+            <tr><td>6</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Maestro de Sección</td></tr>
+          </table>
+        </div>
+        <div><div class="col-label">Supervisor Primaria</div>
+          <table><tr><th>Prior.</th><th>Tipo</th><th>Cargo</th></tr>
+            <tr><td>1</td><td><span class="badge b-asc">ASCENSO</span></td><td>Director Adjunto</td></tr>
+            <tr><td>2</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Escolar</td></tr>
+            <tr><td>3</td><td><span class="badge b-asc">ASCENSO</span></td><td>Supervisor Adjunto</td></tr>
+            <tr><td>4</td><td><span class="badge b-asc">ASCENSO</span></td><td>Regente</td></tr>
+            <tr><td>5</td><td><span class="badge b-asc">ASCENSO</span></td><td>Subregente</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Especialista</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>MACTE</td></tr>
+            <tr><td>6</td><td><span class="badge b-asc">ASCENSO</span></td><td>Secretario</td></tr>
+            <tr><td>7</td><td><span class="badge b-cod">CÓD.BASE</span></td><td>Maestro de Grado</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function tab(btn,id){document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));btn.classList.add('on');document.getElementById(id).classList.add('on')}
+function tog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
+function etog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
+function stog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
+function ptab(btn,id){btn.parentElement.querySelectorAll('.prop-tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['p41','p21','p50'].forEach(i=>{var el=document.getElementById(i);if(el)el.style.display=i===id?'block':'none'})}
+</script>
