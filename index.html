@@ -1,73 +1,315 @@
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--wh:#FCFCFC;--cy2:#e6f8f6;--gr2:#f4f4f2;--am2:#fffbe0;font-family:'Helvetica Neue',Arial,sans-serif}
-.wrap{max-width:900px;margin:0 auto;padding:0 0 40px}
-.topbar{background:var(--az);display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
-.topbar-logo{font-size:20px;font-weight:900;color:var(--am);letter-spacing:1px}
-.topbar-title{font-size:11px;font-weight:700;color:var(--wh);letter-spacing:1.5px;text-transform:uppercase;text-align:right;line-height:1.4}
-.nav{background:var(--am);display:flex;flex-wrap:wrap;border-bottom:3px solid var(--az)}
-.nav-btn{background:none;border:none;padding:10px 16px;font-size:11px;font-weight:700;color:var(--az);cursor:pointer;letter-spacing:1px;text-transform:uppercase;border-bottom:3px solid transparent;margin-bottom:-3px;transition:background .15s;white-space:nowrap}
-.nav-btn.on{background:var(--az);color:var(--am);border-bottom-color:var(--az)}
-.nav-btn:hover:not(.on){background:rgba(21,50,68,.15)}
-.pane{display:none;padding:28px 24px}
+:root{
+  --az:#153244;
+  --az-hover:#1a3d54;
+  --am:#FFCC00;
+  --am-light:#fff8cc;
+  --cy:#8DE2D6;
+  --cy-light:#e8f9f7;
+  --cy-mid:#c5f0eb;
+  --gr:#3C3C3B;
+  --gr-light:#6b6b6a;
+  --wh:#FCFCFC;
+  --bg:#f0f2f4;
+  --surface:#ffffff;
+  --border:#e2e6ea;
+  --border-strong:#c8cdd3;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+}
+
+body{background:var(--bg);color:var(--gr)}
+
+.wrap{max-width:940px;margin:0 auto;padding:0 0 56px}
+
+/* ── Topbar ─────────────────────────────────── */
+.topbar{
+  background:var(--az);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 28px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+}
+.topbar-logo{
+  display:flex;align-items:center;
+  opacity:.95;
+  transition:opacity .2s;
+}
+.topbar-logo:hover{opacity:1}
+.topbar-title{
+  font-size:11px;font-weight:600;color:rgba(255,255,255,.85);
+  letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.6;
+}
+.topbar-title span{color:var(--cy);font-weight:400;letter-spacing:.5px}
+
+/* ── Nav ─────────────────────────────────────── */
+.nav{
+  background:var(--az);
+  display:flex;flex-wrap:wrap;
+  padding:0 12px;
+  gap:4px;
+  border-bottom:3px solid var(--am);
+}
+.nav-btn{
+  background:none;border:none;
+  padding:12px 18px;
+  font-family:inherit;font-size:11px;font-weight:600;
+  color:rgba(255,255,255,.6);
+  cursor:pointer;letter-spacing:.8px;text-transform:uppercase;
+  border-bottom:3px solid transparent;margin-bottom:-3px;
+  transition:color .15s,border-color .15s;
+  white-space:nowrap;border-radius:4px 4px 0 0;
+}
+.nav-btn.on{
+  color:var(--am);
+  border-bottom-color:var(--am);
+  background:rgba(255,204,0,.08);
+}
+.nav-btn:hover:not(.on){color:#fff;background:rgba(255,255,255,.06)}
+
+/* ── Pane ─────────────────────────────────────── */
+.pane{display:none;padding:32px 28px;background:var(--bg)}
 .pane.on{display:block}
-.sec-head{background:var(--az);color:var(--wh);padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;margin-top:24px}
+
+/* ── Section heads ───────────────────────────── */
+.sec-head{
+  background:var(--az);color:var(--wh);
+  padding:10px 16px;
+  font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  margin-bottom:20px;margin-top:32px;
+  border-radius:6px;
+  border-left:4px solid var(--am);
+}
 .sec-head:first-child{margin-top:0}
-.sub-head{background:var(--cy);color:var(--az);padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.8px;margin-bottom:12px;margin-top:20px}
+
+.sub-head{
+  background:var(--cy-mid);color:var(--az);
+  padding:8px 16px;
+  font-size:11px;font-weight:700;letter-spacing:.8px;
+  margin-bottom:14px;margin-top:24px;
+  border-radius:4px;
+  border-left:3px solid var(--cy);
+}
 .sub-head:first-child{margin-top:0}
-.alert{background:var(--am2);border-left:4px solid var(--am);padding:10px 14px;margin:12px 0;font-size:12px;color:var(--az);display:flex;gap:10px;align-items:flex-start}
-.alert strong{flex-shrink:0;font-size:11px;font-weight:700}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
-th{background:var(--az);color:var(--wh);padding:8px 10px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.3px}
-td{padding:7px 10px;border-bottom:1px solid #ddd;vertical-align:top;line-height:1.5}
-tr:nth-child(even) td{background:var(--gr2)}
-.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
-.b-asc{background:var(--cy);color:var(--az)}
-.b-base{background:var(--az);color:var(--wh)}
-.b-cod{background:#e0e0de;color:var(--gr)}
+
+/* ── Alert ───────────────────────────────────── */
+.alert{
+  background:var(--am-light);
+  border-left:4px solid var(--am);
+  padding:12px 16px;margin:16px 0;
+  font-size:12px;color:#5a4800;
+  display:flex;gap:12px;align-items:flex-start;
+  border-radius:0 6px 6px 0;
+}
+.alert strong{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.5px;
+  background:var(--am);color:var(--az);padding:2px 8px;border-radius:3px;margin-top:1px}
+
+/* ── Tables ──────────────────────────────────── */
+table{
+  width:100%;border-collapse:separate;border-spacing:0;
+  font-size:12px;margin-bottom:16px;
+  border-radius:8px;overflow:hidden;
+  box-shadow:var(--shadow);
+  background:var(--surface);
+}
+th{
+  background:var(--az);color:var(--wh);
+  padding:10px 12px;text-align:left;
+  font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+}
+th:first-child{border-radius:0}
+td{
+  padding:8px 12px;
+  border-bottom:1px solid var(--border);
+  vertical-align:top;line-height:1.55;color:var(--gr);
+}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:#f7f9fb}
+tr:hover td{background:#f0f4f8;transition:background .1s}
+
+/* ── Badges ──────────────────────────────────── */
+.badge{
+  display:inline-block;padding:3px 8px;
+  border-radius:4px;font-size:10px;font-weight:700;
+  letter-spacing:.4px;white-space:nowrap;
+}
+.b-asc{background:var(--cy-light);color:#0a4a42;border:1px solid var(--cy)}
+.b-base{background:#eef1f4;color:var(--az);border:1px solid var(--border-strong)}
+.b-cod{background:#f4f3f1;color:#666;border:1px solid #ddd}
+
+/* ── Grid ────────────────────────────────────── */
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
 .cols4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px}
-.col-label{background:var(--cy);color:var(--az);text-align:center;font-size:11px;font-weight:700;padding:6px;letter-spacing:1px;text-transform:uppercase}
-.def-block{border:1px solid #ddd;margin-bottom:12px;overflow:hidden}
-.def-head{background:var(--az);color:var(--wh);padding:8px 14px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
-.def-head:hover{background:#1e4560}
-.def-head .arr{transition:transform .2s;font-size:10px;color:var(--cy)}
-.def-head.open .arr{transform:rotate(90deg)}
-.def-body{background:var(--cy2);padding:12px 14px;font-size:12px;line-height:1.65;display:none}
+
+/* ── Col label ───────────────────────────────── */
+.col-label{
+  background:var(--az);color:var(--cy);
+  text-align:center;font-size:10px;font-weight:700;
+  padding:7px 8px;letter-spacing:1.2px;text-transform:uppercase;
+  border-radius:6px 6px 0 0;
+}
+
+/* ── Def blocks (acordeones) ─────────────────── */
+.def-block{
+  background:var(--surface);
+  border:1px solid var(--border);
+  margin-bottom:8px;
+  border-radius:8px;overflow:hidden;
+  box-shadow:var(--shadow);
+  transition:box-shadow .2s;
+}
+.def-block:hover{box-shadow:var(--shadow-md)}
+
+.def-head{
+  background:var(--surface);color:var(--az);
+  padding:13px 16px;
+  font-size:13px;font-weight:600;
+  display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;user-select:none;
+  transition:background .15s;
+  border-left:4px solid var(--az);
+}
+.def-head:hover{background:#f4f7fa}
+.def-head.open{
+  background:#f0f6fa;
+  border-left-color:var(--cy);
+}
+.def-head .arr{
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  font-size:11px;color:var(--az);opacity:.5;
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  background:var(--border);border-radius:50%;flex-shrink:0;
+}
+.def-head.open .arr{transform:rotate(90deg);background:var(--cy);color:var(--az);opacity:1}
+
+.def-body{
+  background:#f8fbfc;
+  padding:16px;font-size:12.5px;line-height:1.7;
+  display:none;
+  border-top:1px solid var(--border);
+  color:var(--gr);
+}
 .def-body.open{display:block}
-.step-flow{display:flex;flex-wrap:wrap;margin:16px 0}
-.step-box{background:var(--az);color:var(--wh);padding:9px 12px;font-size:11px;font-weight:700;text-align:center;flex:1;min-width:70px;border-right:2px solid var(--am)}
+.def-body table{box-shadow:none;border:1px solid var(--border)}
+
+/* ── Step flow ───────────────────────────────── */
+.step-flow{
+  display:flex;flex-wrap:wrap;margin:16px 0;
+  background:var(--surface);border-radius:8px;overflow:hidden;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+}
+.step-box{
+  background:var(--az);color:var(--wh);
+  padding:12px 14px;font-size:11px;font-weight:600;
+  text-align:center;flex:1;min-width:80px;
+  border-right:2px solid rgba(255,204,0,.4);
+  transition:background .15s;
+}
 .step-box:last-child{border-right:none}
-.step-n{display:block;color:var(--am);font-size:9px;font-weight:700;margin-bottom:2px}
-.prop-tabs{display:flex;margin-top:20px}
-.prop-tab{background:var(--gr2);border:1px solid #ddd;border-bottom:none;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;color:var(--gr);letter-spacing:.5px}
-.prop-tab.on{background:var(--az);color:var(--am);border-color:var(--az)}
-.prop-body{border:1px solid #ddd;padding:16px;margin-bottom:20px}
-p.desc{font-size:12px;line-height:1.65;margin-bottom:12px;color:var(--gr)}
+.step-box:hover{background:var(--az-hover)}
+.step-n{
+  display:block;color:var(--am);
+  font-size:9px;font-weight:700;margin-bottom:4px;
+  letter-spacing:.5px;
+}
 
-/* Escalafon — nivel 1 (área principal) */
-.esc-area{margin-bottom:8px}
-.esc-area-title{background:var(--az);color:var(--am);padding:8px 14px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
-.esc-area-title:hover{background:#1e4560}
-.esc-area-body{display:none;padding:12px 0 4px}
+/* ── Prop tabs ───────────────────────────────── */
+.prop-tabs{
+  display:flex;margin-top:20px;
+  border-bottom:2px solid var(--border);
+  gap:4px;
+}
+.prop-tab{
+  background:none;border:none;border-bottom:2px solid transparent;
+  padding:8px 18px;margin-bottom:-2px;
+  font-family:inherit;font-size:11px;font-weight:600;
+  cursor:pointer;color:var(--gr-light);letter-spacing:.5px;
+  transition:color .15s,border-color .15s;border-radius:4px 4px 0 0;
+}
+.prop-tab:hover{color:var(--az);background:#f0f4f8}
+.prop-tab.on{color:var(--az);border-bottom-color:var(--az);background:#f0f6fa}
+
+.prop-body{
+  background:var(--surface);
+  border:1px solid var(--border);border-top:none;
+  padding:18px;margin-bottom:20px;
+  border-radius:0 0 6px 6px;
+}
+
+/* ── Desc paragraph ─────────────────────────── */
+p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
+
+/* ── Escalafon nivel 1 ───────────────────────── */
+.esc-area{
+  margin-bottom:6px;
+  border-radius:8px;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.esc-area-title{
+  background:var(--az);color:var(--am);
+  padding:12px 16px;
+  font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  cursor:pointer;user-select:none;
+  display:flex;justify-content:space-between;align-items:center;
+  transition:background .15s;
+}
+.esc-area-title:hover{background:var(--az-hover)}
+.esc-area-title.open{background:#1d4a68;border-bottom:2px solid var(--am)}
+.esc-area-body{
+  display:none;
+  padding:16px;
+  background:var(--bg);
+  border:1px solid var(--border);border-top:none;
+  border-radius:0 0 8px 8px;
+}
 .esc-area-body.open{display:block}
-.esc-area-title .arr{color:var(--cy);transition:transform .2s;font-size:10px}
-.esc-area-title.open .arr{transform:rotate(90deg)}
+.esc-area-title .arr{
+  color:rgba(255,204,0,.6);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  font-size:11px;
+  background:rgba(255,255,255,.1);
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;flex-shrink:0;
+}
+.esc-area-title.open .arr{transform:rotate(90deg);color:var(--am);background:rgba(255,204,0,.15)}
 
-/* Escalafon — nivel 2 (sub-área dentro de Curricular) */
-.esc-sub{margin-bottom:6px}
-.esc-sub-title{background:#1e4560;color:var(--cy);padding:7px 14px 7px 24px;font-size:11px;font-weight:700;letter-spacing:.8px;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
-.esc-sub-title:hover{background:#25536e}
-.esc-sub-title .arr{transition:transform .2s;font-size:10px;color:var(--am)}
-.esc-sub-title.open .arr{transform:rotate(90deg)}
+/* ── Escalafon nivel 2 (Curricular sub) ──────── */
+.esc-sub{
+  margin-bottom:4px;
+  border-radius:6px;overflow:hidden;
+  border:1px solid rgba(141,226,214,.3);
+}
+.esc-sub-title{
+  background:#1a3d54;color:var(--cy);
+  padding:10px 16px 10px 26px;
+  font-size:11px;font-weight:600;letter-spacing:.6px;
+  cursor:pointer;user-select:none;
+  display:flex;justify-content:space-between;align-items:center;
+  transition:background .15s;
+}
+.esc-sub-title:hover{background:#1e4a65}
+.esc-sub-title.open{background:#1e4a65;border-bottom:1px solid rgba(141,226,214,.4)}
+.esc-sub-title .arr{
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  font-size:10px;color:rgba(141,226,214,.6);
+  background:rgba(141,226,214,.1);
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;flex-shrink:0;
+}
+.esc-sub-title.open .arr{transform:rotate(90deg);color:var(--cy);background:rgba(141,226,214,.2)}
 .esc-sub-body{display:none;padding:14px 0 4px}
 .esc-sub-body.open{display:block}
 </style>
 
+
 <div class="wrap">
 <div class="topbar">
-  <div class="topbar-logo">BA</div>
+  <div class="topbar-logo"><svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_25033_2861)"><path d="M73.6406 31.6806L59.3778 4.12091C58.1475 1.67445 55.627 0 52.7012 0H52.6941C49.7717 0 47.2477 1.67445 46.0175 4.12091L35.9778 23.5199C34.8568 21.5246 33.0695 19.9595 30.9121 19.1134C33.3198 17.372 34.8885 14.5342 34.8885 11.3334C34.8885 7.6214 32.7805 4.40998 29.6995 2.8166C26.9851 1.38891 23.8865 0.581651 20.601 0.581651H5.58386C2.49581 0.581651 0 3.07746 0 6.15846V34.1059C0 37.1869 2.49581 39.6827 5.58386 39.6827H21.8243C24.9546 39.6827 27.9334 39.0341 30.6372 37.8778L31.6665 37.3808C31.7229 37.3526 31.7793 37.3244 31.8357 37.2962C32.8122 38.9142 34.5783 40.0035 36.6123 40.0035C38.872 40.0035 40.8178 38.664 41.6956 36.7286C42.1327 35.7064 43.1198 34.9837 44.2831 34.9273H61.1087C62.2755 34.9837 63.259 35.7064 63.6961 36.7286C64.5704 38.664 66.5198 40.0035 68.7794 40.0035C71.8639 40.0035 74.3598 37.5007 74.3598 34.4302C74.3598 33.4291 74.1024 32.4914 73.6371 31.6841" fill="#FFFFFF"/></g><defs><clipPath id="clip0_25033_2861"><rect width="74.3633" height="40" fill="white"/></clipPath></defs></svg></div>
   <div class="topbar-title">Acto Público · Designaciones Docentes<br><span style="color:var(--cy);font-weight:400">Dirección de Carrera Docente · GCBA</span></div>
 </div>
 <div class="nav">
@@ -713,3 +955,4 @@ function etog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.to
 function stog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
 function ptab(btn,id){btn.parentElement.querySelectorAll('.prop-tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['p41','p21','p50'].forEach(i=>{var el=document.getElementById(i);if(el)el.style.display=i===id?'block':'none'})}
 </script>
+
