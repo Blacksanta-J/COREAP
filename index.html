@@ -1,5 +1,5 @@
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -19,18 +19,18 @@
   --border-strong:#c8cdd3;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
   --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
-  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+  font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
 }
 
 body{background:var(--bg);color:var(--gr)}
 
-.wrap{max-width:940px;margin:0 auto;padding:0 0 56px}
+.wrap{max-width:1380px;margin:0 auto;padding:0}
 
 /* ── Topbar ─────────────────────────────────── */
 .topbar{
   background:var(--az);
   display:flex;align-items:center;justify-content:space-between;
-  padding:18px 28px;
+  padding:16px 40px;
   box-shadow:0 2px 8px rgba(0,0,0,.18);
 }
 .topbar-logo{
@@ -40,58 +40,93 @@ body{background:var(--bg);color:var(--gr)}
 }
 .topbar-logo:hover{opacity:1}
 .topbar-title{
-  font-size:11px;font-weight:600;color:rgba(255,255,255,.85);
-  letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.6;
+  font-size:12px;font-weight:600;color:rgba(255,255,255,.85);
+  letter-spacing:.8px;text-transform:uppercase;text-align:right;line-height:1.7;
+  font-family:'Source Sans 3',sans-serif;
 }
-.topbar-title span{color:var(--cy);font-weight:400;letter-spacing:.5px}
+.topbar-title span{color:var(--cy);font-weight:300;letter-spacing:.3px}
 
-/* ── Nav ─────────────────────────────────────── */
+/* ── Layout body ─────────────────────────────── */
+.body-layout{
+  display:flex;
+  align-items:flex-start;
+}
+
+/* ── Sidebar Nav ─────────────────────────────── */
 .nav{
   background:var(--az);
-  display:flex;flex-wrap:wrap;
-  padding:0 12px;
-  gap:4px;
-  border-bottom:3px solid var(--am);
+  display:flex;flex-direction:column;
+  width:220px;flex-shrink:0;
+  padding:24px 0 32px;
+  min-height:calc(100vh - 72px);
+  position:sticky;top:0;
+  border-right:3px solid var(--am);
+  gap:2px;
+}
+.nav-section-label{
+  font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  color:rgba(255,255,255,.3);padding:18px 20px 8px;
+  font-family:'Source Sans 3',sans-serif;
 }
 .nav-btn{
   background:none;border:none;
-  padding:12px 18px;
-  font-family:inherit;font-size:11px;font-weight:600;
+  padding:12px 20px;
+  font-family:'Source Sans 3',inherit;font-size:12px;font-weight:600;
   color:rgba(255,255,255,.6);
-  cursor:pointer;letter-spacing:.8px;text-transform:uppercase;
-  border-bottom:3px solid transparent;margin-bottom:-3px;
-  transition:color .15s,border-color .15s;
-  white-space:nowrap;border-radius:4px 4px 0 0;
+  cursor:pointer;letter-spacing:.3px;text-transform:uppercase;
+  border-left:3px solid transparent;
+  transition:color .15s,border-color .15s,background .15s;
+  white-space:nowrap;text-align:left;width:100%;
+  display:flex;align-items:center;gap:10px;
 }
-.nav-btn.on{
-  color:var(--am);
-  border-bottom-color:var(--am);
-  background:rgba(255,204,0,.08);
-}
+.nav-btn .nav-icon{font-size:14px;opacity:.6;flex-shrink:0;transition:opacity .15s}
+.nav-btn.on{color:var(--am);border-left-color:var(--am);background:rgba(255,204,0,.08)}
+.nav-btn.on .nav-icon{opacity:1}
 .nav-btn:hover:not(.on){color:#fff;background:rgba(255,255,255,.06)}
+.nav-btn:hover:not(.on) .nav-icon{opacity:.9}
+
+.nav-divider{height:1px;background:rgba(255,255,255,.08);margin:12px 16px}
+
+/* Botón Estatuto — destacado */
+.nav-btn-estatuto{
+  margin:16px 12px 0;padding:12px 16px;
+  background:var(--am);color:var(--az);
+  border:none;border-radius:6px;
+  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;
+  cursor:pointer;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  text-decoration:none;
+  transition:background .15s,transform .1s,box-shadow .15s;
+  box-shadow:0 2px 8px rgba(255,204,0,.3);line-height:1.4;
+}
+.nav-btn-estatuto:hover{background:#ffe033;transform:translateY(-1px);box-shadow:0 4px 14px rgba(255,204,0,.4)}
+.nav-btn-estatuto .btn-icon{font-size:16px}
 
 /* ── Pane ─────────────────────────────────────── */
-.pane{display:none;padding:32px 28px;background:var(--bg)}
+.pane{display:none;padding:36px 40px;background:var(--bg);flex:1;min-width:0}
 .pane.on{display:block}
 
 /* ── Section heads ───────────────────────────── */
 .sec-head{
   background:var(--az);color:var(--wh);
-  padding:10px 16px;
-  font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
-  margin-bottom:20px;margin-top:32px;
+  padding:11px 18px;
+  font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+  margin-bottom:22px;margin-top:36px;
   border-radius:6px;
   border-left:4px solid var(--am);
+  font-family:'Source Sans 3',sans-serif;
 }
 .sec-head:first-child{margin-top:0}
 
 .sub-head{
   background:var(--cy-mid);color:var(--az);
-  padding:8px 16px;
-  font-size:11px;font-weight:700;letter-spacing:.8px;
-  margin-bottom:14px;margin-top:24px;
+  padding:9px 18px;
+  font-size:11px;font-weight:700;letter-spacing:.6px;
+  margin-bottom:14px;margin-top:28px;
   border-radius:4px;
   border-left:3px solid var(--cy);
+  font-family:'Source Sans 3',sans-serif;
 }
 .sub-head:first-child{margin-top:0}
 
@@ -99,43 +134,40 @@ body{background:var(--bg);color:var(--gr)}
 .alert{
   background:var(--am-light);
   border-left:4px solid var(--am);
-  padding:12px 16px;margin:16px 0;
-  font-size:12px;color:#5a4800;
+  padding:13px 18px;margin:18px 0;
+  font-size:13px;color:#5a4800;
   display:flex;gap:12px;align-items:flex-start;
   border-radius:0 6px 6px 0;
 }
-.alert strong{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.5px;
-  background:var(--am);color:var(--az);padding:2px 8px;border-radius:3px;margin-top:1px}
+.alert strong{flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:.4px;
+  background:var(--am);color:var(--az);padding:2px 10px;border-radius:3px;margin-top:2px}
 
 /* ── Tables ──────────────────────────────────── */
 table{
   width:100%;border-collapse:separate;border-spacing:0;
-  font-size:12px;margin-bottom:16px;
+  font-size:13px;margin-bottom:16px;
   border-radius:8px;overflow:hidden;
   box-shadow:var(--shadow);
   background:var(--surface);
 }
 th{
   background:var(--az);color:var(--wh);
-  padding:10px 12px;text-align:left;
-  font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  padding:11px 14px;text-align:left;
+  font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  font-family:'Source Sans 3',sans-serif;
 }
 th:first-child{border-radius:0}
 td{
-  padding:8px 12px;
+  padding:9px 14px;
   border-bottom:1px solid var(--border);
-  vertical-align:top;line-height:1.55;color:var(--gr);
+  vertical-align:top;line-height:1.6;color:var(--gr);
+  font-size:13px;
 }
 tr:last-child td{border-bottom:none}
 tr:nth-child(even) td{background:#f7f9fb}
 tr:hover td{background:#f0f4f8;transition:background .1s}
 
 /* ── Badges ──────────────────────────────────── */
-.badge{
-  display:inline-block;padding:3px 8px;
-  border-radius:4px;font-size:10px;font-weight:700;
-  letter-spacing:.4px;white-space:nowrap;
-}
 .b-asc{background:var(--cy-light);color:#0a4a42;border:1px solid var(--cy)}
 .b-base{background:#eef1f4;color:var(--az);border:1px solid var(--border-strong)}
 .b-cod{background:#f4f3f1;color:#666;border:1px solid #ddd}
@@ -148,9 +180,10 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 /* ── Col label ───────────────────────────────── */
 .col-label{
   background:var(--az);color:var(--cy);
-  text-align:center;font-size:10px;font-weight:700;
-  padding:7px 8px;letter-spacing:1.2px;text-transform:uppercase;
+  text-align:center;font-size:11px;font-weight:700;
+  padding:8px 10px;letter-spacing:.8px;text-transform:uppercase;
   border-radius:6px 6px 0 0;
+  font-family:'Source Sans 3',sans-serif;
 }
 
 /* ── Def blocks (acordeones) ─────────────────── */
@@ -166,12 +199,13 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 
 .def-head{
   background:var(--surface);color:var(--az);
-  padding:13px 16px;
-  font-size:13px;font-weight:600;
+  padding:14px 18px;
+  font-size:14px;font-weight:600;
   display:flex;justify-content:space-between;align-items:center;
   cursor:pointer;user-select:none;
   transition:background .15s;
   border-left:4px solid var(--az);
+  font-family:'Source Sans 3',sans-serif;
 }
 .def-head:hover{background:#f4f7fa}
 .def-head.open{
@@ -188,7 +222,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 
 .def-body{
   background:#f8fbfc;
-  padding:16px;font-size:12.5px;line-height:1.7;
+  padding:18px;font-size:13.5px;line-height:1.75;
   display:none;
   border-top:1px solid var(--border);
   color:var(--gr);
@@ -205,10 +239,12 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 }
 .step-box{
   background:var(--az);color:var(--wh);
-  padding:12px 14px;font-size:11px;font-weight:600;
+  padding:14px 16px;font-size:12px;font-weight:600;
   text-align:center;flex:1;min-width:80px;
   border-right:2px solid rgba(255,204,0,.4);
   transition:background .15s;
+  font-family:'Source Sans 3',sans-serif;
+  letter-spacing:.3px;
 }
 .step-box:last-child{border-right:none}
 .step-box:hover{background:var(--az-hover)}
@@ -226,9 +262,9 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 }
 .prop-tab{
   background:none;border:none;border-bottom:2px solid transparent;
-  padding:8px 18px;margin-bottom:-2px;
-  font-family:inherit;font-size:11px;font-weight:600;
-  cursor:pointer;color:var(--gr-light);letter-spacing:.5px;
+  padding:9px 20px;margin-bottom:-2px;
+  font-family:'Source Sans 3',inherit;font-size:12px;font-weight:600;
+  cursor:pointer;color:var(--gr-light);letter-spacing:.3px;
   transition:color .15s,border-color .15s;border-radius:4px 4px 0 0;
 }
 .prop-tab:hover{color:var(--az);background:#f0f4f8}
@@ -242,7 +278,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 }
 
 /* ── Desc paragraph ─────────────────────────── */
-p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
+p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);font-family:'Source Sans 3',sans-serif;font-weight:400}
 
 /* ── Escalafon nivel 1 ───────────────────────── */
 .esc-area{
@@ -252,11 +288,12 @@ p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
 }
 .esc-area-title{
   background:var(--az);color:var(--am);
-  padding:12px 16px;
-  font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  padding:14px 18px;
+  font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
   cursor:pointer;user-select:none;
   display:flex;justify-content:space-between;align-items:center;
   transition:background .15s;
+  font-family:'Source Sans 3',sans-serif;
 }
 .esc-area-title:hover{background:var(--az-hover)}
 .esc-area-title.open{background:#1d4a68;border-bottom:2px solid var(--am)}
@@ -278,7 +315,51 @@ p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
 }
 .esc-area-title.open .arr{transform:rotate(90deg);color:var(--am);background:rgba(255,204,0,.15)}
 
-/* ── Escalafon nivel 2 (Curricular sub) ──────── */
+/* ── Badge sizes ─────────────────────────────── */
+.badge{
+  display:inline-block;padding:3px 9px;
+  border-radius:4px;font-size:11px;font-weight:700;
+  letter-spacing:.3px;white-space:nowrap;
+  font-family:'Source Sans 3',sans-serif;
+}
+
+/* ── Footer strip ────────────────────────────── */
+.gcba-footer{
+  background:var(--az);
+  border-top:3px solid var(--am);
+  padding:18px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:rgba(255,255,255,.5);
+  font-family:'Source Sans 3',sans-serif;
+}
+.gcba-footer a{color:rgba(141,226,214,.7);text-decoration:none}
+.gcba-footer a:hover{color:var(--cy)}
+
+/* ── Responsive ──────────────────────────────── */
+@media(max-width:900px){
+  .wrap{max-width:100%}
+  .body-layout{flex-direction:column}
+  .nav{
+    width:100%;min-height:auto;flex-direction:row;flex-wrap:wrap;
+    padding:8px 12px;position:static;
+    border-right:none;border-bottom:3px solid var(--am);
+    gap:0;
+  }
+  .nav-section-label{display:none}
+  .nav-divider{display:none}
+  .nav-btn{
+    width:auto;padding:10px 14px;border-left:none;
+    border-bottom:3px solid transparent;
+    font-size:11px;
+  }
+  .nav-btn.on{border-left:none;border-bottom-color:var(--am)}
+  .nav-btn-estatuto{margin:8px 6px;padding:8px 14px;font-size:10px}
+  .topbar{padding:14px 20px}
+  .pane{padding:24px 20px}
+  .gcba-footer{padding:16px 20px;flex-direction:column;gap:8px;text-align:center}
+  .cols2,.cols3,.cols4{grid-template-columns:1fr}
+}
+
 .esc-sub{
   margin-bottom:4px;
   border-radius:6px;overflow:hidden;
@@ -286,11 +367,12 @@ p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
 }
 .esc-sub-title{
   background:#1a3d54;color:var(--cy);
-  padding:10px 16px 10px 26px;
-  font-size:11px;font-weight:600;letter-spacing:.6px;
+  padding:11px 18px 11px 28px;
+  font-size:12px;font-weight:600;letter-spacing:.4px;
   cursor:pointer;user-select:none;
   display:flex;justify-content:space-between;align-items:center;
   transition:background .15s;
+  font-family:'Source Sans 3',sans-serif;
 }
 .esc-sub-title:hover{background:#1e4a65}
 .esc-sub-title.open{background:#1e4a65;border-bottom:1px solid rgba(141,226,214,.4)}
@@ -312,11 +394,18 @@ p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
   <div class="topbar-logo"><svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_25033_2861)"><path d="M73.6406 31.6806L59.3778 4.12091C58.1475 1.67445 55.627 0 52.7012 0H52.6941C49.7717 0 47.2477 1.67445 46.0175 4.12091L35.9778 23.5199C34.8568 21.5246 33.0695 19.9595 30.9121 19.1134C33.3198 17.372 34.8885 14.5342 34.8885 11.3334C34.8885 7.6214 32.7805 4.40998 29.6995 2.8166C26.9851 1.38891 23.8865 0.581651 20.601 0.581651H5.58386C2.49581 0.581651 0 3.07746 0 6.15846V34.1059C0 37.1869 2.49581 39.6827 5.58386 39.6827H21.8243C24.9546 39.6827 27.9334 39.0341 30.6372 37.8778L31.6665 37.3808C31.7229 37.3526 31.7793 37.3244 31.8357 37.2962C32.8122 38.9142 34.5783 40.0035 36.6123 40.0035C38.872 40.0035 40.8178 38.664 41.6956 36.7286C42.1327 35.7064 43.1198 34.9837 44.2831 34.9273H61.1087C62.2755 34.9837 63.259 35.7064 63.6961 36.7286C64.5704 38.664 66.5198 40.0035 68.7794 40.0035C71.8639 40.0035 74.3598 37.5007 74.3598 34.4302C74.3598 33.4291 74.1024 32.4914 73.6371 31.6841" fill="#FFFFFF"/></g><defs><clipPath id="clip0_25033_2861"><rect width="74.3633" height="40" fill="white"/></clipPath></defs></svg></div>
   <div class="topbar-title">Acto Público · Designaciones Docentes<br><span style="color:var(--cy);font-weight:400">Dirección de Carrera Docente · GCBA</span></div>
 </div>
+<div class="body-layout">
 <div class="nav">
-  <button class="nav-btn on" onclick="tab(this,'t1')">Orden por área</button>
-  <button class="nav-btn" onclick="tab(this,'t2')">Reglas</button>
-  <button class="nav-btn" onclick="tab(this,'t3')">Ascenso</button>
-  <button class="nav-btn" onclick="tab(this,'t4')">Escalafones</button>
+  <div class="nav-section-label">Manual</div>
+  <button class="nav-btn on" onclick="tab(this,'t1')"><span class="nav-icon">📋</span>Orden por área</button>
+  <button class="nav-btn" onclick="tab(this,'t2')"><span class="nav-icon">📖</span>Reglas</button>
+  <button class="nav-btn" onclick="tab(this,'t3')"><span class="nav-icon">⬆️</span>Ascenso</button>
+  <button class="nav-btn" onclick="tab(this,'t4')"><span class="nav-icon">🏫</span>Escalafones</button>
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Consulta</div>
+  <a class="nav-btn-estatuto" href="https://notebooklm.google.com/notebook/ca0a14ee-512b-4db6-a2e2-9f803cac6bb6" target="_blank">
+    <span class="btn-icon">⚖️</span>Consultar Estatuto Docente
+  </a>
 </div>
 
 <!-- ═══ TAB 1 ═══ -->
@@ -945,7 +1034,13 @@ p.desc{font-size:13px;line-height:1.7;margin-bottom:16px;color:var(--gr-light)}
     </div>
   </div>
 
-</div>
+</div><!-- /body-layout -->
+</div><!-- /wrap -->
+
+<div class="gcba-footer">
+  <span>Dirección de Carrera Docente · GCBA</span>
+  <span>Acto Público · Designaciones Docentes</span>
+  <a href="https://clasificaciondocente.buenosaires.gob.ar" target="_blank">clasificaciondocente.buenosaires.gob.ar</a>
 </div>
 
 <script>
@@ -955,4 +1050,3 @@ function etog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.to
 function stog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
 function ptab(btn,id){btn.parentElement.querySelectorAll('.prop-tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['p41','p21','p50'].forEach(i=>{var el=document.getElementById(i);if(el)el.style.display=i===id?'block':'none'})}
 </script>
-
