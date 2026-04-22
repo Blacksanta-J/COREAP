@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estatus de Tareas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: rgba(255,255,255,0.08);
+    --pending: #f97316;
+    --pending-glow: rgba(249,115,22,0.25);
+    --inprogress: #38bdf8;
+    --inprogress-glow: rgba(56,189,248,0.25);
+    --done: #4ade80;
+    --done-glow: rgba(74,222,128,0.25);
+    --clasi: #a78bfa;
+    --datos: #fb7185;
+    --apel: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+    animation: float 8s ease-in-out infinite;
+  }
+  .orb1 { width: 400px; height: 400px; background: rgba(167,139,250,0.08); top: -100px; left: -100px; }
+  .orb2 { width: 300px; height: 300px; background: rgba(56,189,248,0.06); bottom: 0; right: 0; animation-delay: -4s; }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(20px, -20px); }
+  }
+
+  /* HEADER */
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 32px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header-left p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .stats {
+    display: flex;
+    gap: 24px;
+  }
+
+  .stat {
+    text-align: right;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards;
+  }
+
+  .stat:nth-child(1) { animation-delay: 0.2s; }
+  .stat:nth-child(2) { animation-delay: 0.3s; }
+  .stat:nth-child(3) { animation-delay: 0.4s; }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 3px;
+  }
+
+  .stat-num.orange { color: var(--pending); }
+  .stat-num.blue { color: var(--inprogress); }
+  .stat-num.green { color: var(--done); }
+
+  /* COLUMN HEADERS */
+  .board {
+    position: relative;
+    z-index: 10;
+    padding: 24px 40px 40px;
+  }
+
+  .col-headers {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding-left: 0;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeDown 0.5s ease forwards;
+  }
+
+  .col-header:nth-child(2) { animation-delay: 0.1s; }
+  .col-header:nth-child(3) { animation-delay: 0.2s; }
+  .col-header:nth-child(4) { animation-delay: 0.3s; }
+
+  .col-header.pending { background: rgba(249,115,22,0.12); color: var(--pending); border: 1px solid rgba(249,115,22,0.2); }
+  .col-header.inprogress { background: rgba(56,189,248,0.12); color: var(--inprogress); border: 1px solid rgba(56,189,248,0.2); }
+  .col-header.done { background: rgba(74,222,128,0.12); color: var(--done); border: 1px solid rgba(74,222,128,0.2); }
+
+  .col-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .pending .col-dot { background: var(--pending); box-shadow: 0 0 6px var(--pending); }
+  .inprogress .col-dot { background: var(--inprogress); box-shadow: 0 0 6px var(--inprogress); animation-delay: -1s; }
+  .done .col-dot { background: var(--done); box-shadow: 0 0 6px var(--done); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  /* GROUP ROWS */
+  .group-row {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards;
+  }
+
+  .group-row:nth-child(1) { animation-delay: 0.3s; }
+  .group-row:nth-child(2) { animation-delay: 0.45s; }
+  .group-row:nth-child(3) { animation-delay: 0.6s; }
+
+  /* GROUP LABEL */
+  .group-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .group-label::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .group-row.clasi .group-label::before { background: var(--clasi); }
+  .group-row.datos .group-label::before { background: var(--datos); }
+  .group-row.apel .group-label::before { background: var(--apel); }
+
+  .group-label-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+
+  .group-row.clasi .group-label-text { color: var(--clasi); }
+  .group-row.datos .group-label-text { color: var(--datos); }
+  .group-row.apel .group-label-text { color: var(--apel); }
+
+  .group-count {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  /* CARD COLUMNS */
+  .col-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.15);
+  }
+
+  /* Glow on hover per column */
+  .col-cards.pending .card:hover { box-shadow: 0 8px 24px var(--pending-glow); border-color: rgba(249,115,22,0.3); }
+  .col-cards.inprogress .card:hover { box-shadow: 0 8px 24px var(--inprogress-glow); border-color: rgba(56,189,248,0.3); }
+  .col-cards.done .card:hover { box-shadow: 0 8px 24px var(--done-glow); border-color: rgba(74,222,128,0.3); }
+
+  /* Shimmer on load */
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    animation: shimmer 2.5s ease infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    50%, 100% { left: 150%; }
+  }
+
+  .card-tag {
+    display: inline-block;
+    font-family: 'Syne', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .clasi .card-tag { background: rgba(167,139,250,0.15); color: var(--clasi); }
+  .datos .card-tag { background: rgba(251,113,133,0.15); color: var(--datos); }
+  .apel .card-tag { background: rgba(251,191,36,0.15); color: var(--apel); }
+
+  .card-text {
+    font-size: 12.5px;
+    font-weight: 400;
+    color: #cbd5e1;
+    line-height: 1.4;
+  }
+
+  /* Status dot on card left */
+  .card-status-bar {
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 2px;
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+
+  .pending .card-status-bar { background: var(--pending); }
+  .inprogress .card-status-bar { background: var(--inprogress); }
+  .done .card-status-bar { background: var(--done); }
+
+  /* Empty cell */
+  .col-cards.empty-cell {
+    justify-content: center;
+    align-items: center;
+  }
+
+  .empty-msg {
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.4;
+    text-align: center;
+    padding: 20px;
+    border: 1px dashed rgba(255,255,255,0.06);
+    border-radius: 12px;
+    width: 100%;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* FOOTER */
+  .footer {
+    position: relative;
+    z-index: 10;
+    padding: 16px 40px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-left {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .progress-bar-outer {
+    width: 180px;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-inner {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--inprogress), var(--done));
+    animation: growBar 1.2s cubic-bezier(0.4,0,0.2,1) 0.8s both;
+  }
+
+  @keyframes growBar {
+    from { width: 0; }
+    to { width: var(--progress-pct); }
+  }
+
+  .progress-pct-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--done);
+  }
+
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>ESTATUS DE TAREAS</h1>
+    <p>Gerencia Operativa · Clasificación y Disciplina Docente</p>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num orange">5</div>
+      <div class="stat-label">Pendientes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num blue">5</div>
+      <div class="stat-label">En proceso</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num green">6</div>
+      <div class="stat-label">Resueltos</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div class="board">
+
+  <!-- Column headers -->
+  <div class="col-headers">
+    <div></div>
+    <div class="col-header pending"><span class="col-dot"></span>Pendiente</div>
+    <div class="col-header inprogress"><span class="col-dot"></span>En Proceso</div>
+    <div class="col-header done"><span class="col-dot"></span>Resuelto</div>
+  </div>
+
+  <!-- CLASI -->
+  <div class="group-row clasi">
+    <div class="group-label">
+      <span class="group-label-text">CLASI</span>
+      <span class="group-count">6 tareas · Clasificación</span>
+    </div>
+
+    <div class="col-cards pending">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Sincronización de incumbencias</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Títulos omitidos</div>
+      </div>
+    </div>
+
+    <div class="col-cards inprogress">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Correcciones inscripción periodo vigente</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Nuevo sistema de clasificación</div>
+      </div>
+    </div>
+
+    <div class="col-cards done">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Títulos de anexo vigente en PROD</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">CLASI</div>
+        <div class="card-text">Cargos nuevos en PROD</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATOS -->
+  <div class="group-row datos">
+    <div class="group-label">
+      <span class="group-label-text">DATOS</span>
+      <span class="group-count">4 tareas · Gestión de datos</span>
+    </div>
+
+    <div class="col-cards pending">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">DATOS</div>
+        <div class="card-text">Pedido de Lucia Armilio</div>
+      </div>
+    </div>
+
+    <div class="col-cards inprogress">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">DATOS</div>
+        <div class="card-text">Carga masiva de legajos pedido 104</div>
+      </div>
+    </div>
+
+    <div class="col-cards done">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">DATOS</div>
+        <div class="card-text">Pedido de Magalí Brotier</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">DATOS</div>
+        <div class="card-text">Listado en excel de títulos pedido 104</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APEL -->
+  <div class="group-row apel">
+    <div class="group-label">
+      <span class="group-label-text">APEL</span>
+      <span class="group-count">5 tareas · Apelaciones</span>
+    </div>
+
+    <div class="col-cards pending">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">APEL</div>
+        <div class="card-text">Modulo Control de vacantes FT</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">APEL</div>
+        <div class="card-text">Modulo Carga de Lógicas</div>
+      </div>
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">APEL</div>
+        <div class="card-text">Modificación / Actualización del CAE</div>
+      </div>
+    </div>
+
+    <div class="col-cards inprogress">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">APEL</div>
+        <div class="card-text">DISPONIBLES</div>
+      </div>
+    </div>
+
+    <div class="col-cards done">
+      <div class="card">
+        <div class="card-status-bar"></div>
+        <div class="card-tag">APEL</div>
+        <div class="card-text">Eliminar los Penalizados INT SUP</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-left">16 tareas en total · 3 áreas</div>
+  <div class="progress-wrap">
+    <div class="progress-label">Completado</div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" style="--progress-pct: 37.5%"></div>
+    </div>
+    <div class="progress-pct-label">37%</div>
+  </div>
+</div>
+
+</body>
+</html>
