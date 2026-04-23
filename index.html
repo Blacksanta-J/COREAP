@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Inicio</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#153244;
+  --az-hover:#1a3d54;
+  --am:#FFCC00;
+  --am-light:#fff8cc;
+  --cy:#8DE2D6;
+  --cy-light:#e8f9f7;
+  --cy-mid:#c5f0eb;
+  --gr:#3C3C3B;
+  --gr-light:#6b6b6a;
+  --wh:#FCFCFC;
+  --bg:#f0f2f4;
+  --surface:#ffffff;
+  --border:#e2e6ea;
+  --border-strong:#c8cdd3;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  --shadow-lg:0 10px 30px rgba(21,50,68,.12),0 4px 10px rgba(21,50,68,.06);
+  font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
+}
+
+body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── Page shell (sticky footer layout) ─────────── */
+.page-shell{
+  max-width:1380px;width:100%;margin:0 auto;padding:0;
+  display:flex;flex-direction:column;flex:1;
+}
+
+/* ── Topbar ─────────────────────────────────── */
+.portal-topbar{
+  background:var(--az);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 40px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+}
+.topbar-logo{display:flex;align-items:center;opacity:.95;transition:opacity .2s}
+.topbar-logo:hover{opacity:1}
+.portal-title{
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
+  letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
+  font-family:'Source Sans 3',sans-serif;
+}
+.portal-title span{display:block;color:var(--cy);font-weight:400;letter-spacing:.4px}
+
+/* ── Main (content wrapper) ─────────────────── */
+.index-main{
+  flex:1;
+  padding:56px 40px 48px;
+  display:flex;flex-direction:column;gap:40px;
+}
+
+/* ── Hero ────────────────────────────────────── */
+.hero{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:5px solid var(--am);
+  border-radius:12px;
+  padding:38px 40px;
+  box-shadow:var(--shadow-md);
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";position:absolute;top:-40px;right:-40px;
+  width:220px;height:220px;
+  background:radial-gradient(circle,rgba(141,226,214,.28),transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  display:inline-block;
+  background:var(--cy-light);color:#0a4a42;
+  border:1px solid var(--cy);
+  padding:4px 12px;border-radius:20px;
+  font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  margin-bottom:14px;
+}
+.hero h1{
+  font-family:'Source Serif 4',Georgia,serif;
+  font-size:42px;font-weight:600;color:var(--az);
+  line-height:1.15;letter-spacing:-.5px;margin-bottom:12px;
+}
+.hero h1 em{
+  font-style:normal;color:var(--am);
+  background:linear-gradient(180deg,transparent 60%,rgba(255,204,0,.25) 60%);
+  padding:0 4px;
+}
+.hero-lead{
+  font-size:16px;color:var(--gr-light);
+  line-height:1.65;max-width:680px;
+}
+.hero-meta{
+  margin-top:20px;padding-top:18px;
+  border-top:1px solid var(--border);
+  display:flex;gap:28px;flex-wrap:wrap;
+  font-size:12px;color:var(--gr-light);letter-spacing:.3px;
+}
+.hero-meta strong{color:var(--az);font-weight:700}
+
+/* ── Section label ──────────────────────────── */
+.section-label{
+  display:flex;align-items:center;gap:14px;
+  font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  color:var(--az);
+  margin-bottom:4px;
+}
+.section-label::before{
+  content:"";width:28px;height:2px;background:var(--am);
+}
+
+/* ── Cards grid ─────────────────────────────── */
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+.section-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:26px 26px 22px;
+  text-decoration:none;
+  color:var(--gr);
+  display:flex;flex-direction:column;
+  box-shadow:var(--shadow);
+  transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s,border-color .25s;
+  position:relative;
+  overflow:hidden;
+  min-height:260px;
+}
+.section-card::after{
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--am);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.section-card:hover{
+  transform:translateY(-4px);
+  box-shadow:var(--shadow-lg);
+  border-color:var(--border-strong);
+}
+.section-card:hover::after{transform:scaleX(1)}
+.card-icon{
+  width:52px;height:52px;
+  background:var(--cy-light);
+  border:1px solid var(--cy);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin-bottom:16px;
+  transition:background .2s,transform .25s;
+}
+.section-card:hover .card-icon{
+  background:var(--cy-mid);
+  transform:rotate(-4deg) scale(1.05);
+}
+.card-title{
+  font-family:'Source Serif 4',Georgia,serif;
+  font-size:22px;font-weight:600;color:var(--az);
+  margin-bottom:8px;line-height:1.2;
+}
+.card-desc{
+  font-size:13.5px;color:var(--gr-light);line-height:1.6;
+  flex:1;margin-bottom:16px;
+}
+.card-tags{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;
+}
+.card-tag{
+  font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  background:#eef1f4;color:var(--az);
+  border:1px solid var(--border-strong);
+  padding:3px 9px;border-radius:4px;
+}
+.card-cta{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:14px;
+  border-top:1px solid var(--border);
+  font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--az);
+}
+.card-arrow{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--az);color:var(--am);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;
+  transition:transform .25s,background .2s;
+}
+.section-card:hover .card-arrow{
+  transform:translateX(4px);
+  background:var(--am);color:var(--az);
+}
+
+/* ── Estatuto banner ────────────────────────── */
+.estatuto-banner{
+  background:linear-gradient(135deg,var(--az) 0%,#1a3d54 100%);
+  border-radius:12px;
+  padding:28px 32px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  box-shadow:var(--shadow-md);
+  border:1px solid rgba(255,255,255,.08);
+  position:relative;overflow:hidden;
+}
+.estatuto-banner::before{
+  content:"";position:absolute;bottom:-60px;left:-40px;
+  width:180px;height:180px;
+  background:radial-gradient(circle,rgba(255,204,0,.15),transparent 70%);
+  pointer-events:none;
+}
+.estatuto-text{flex:1;min-width:0;position:relative}
+.estatuto-text h3{
+  color:var(--am);font-size:12px;font-weight:700;letter-spacing:1.4px;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.estatuto-text p{
+  color:#fff;font-size:15px;line-height:1.5;
+  font-family:'Source Serif 4',Georgia,serif;font-weight:400;
+}
+.estatuto-btn{
+  background:var(--am);color:var(--az);
+  padding:14px 22px;border-radius:8px;
+  font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  text-decoration:none;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 4px 12px rgba(255,204,0,.3);
+  transition:transform .2s,box-shadow .2s,background .15s;
+  white-space:nowrap;flex-shrink:0;
+}
+.estatuto-btn:hover{
+  background:#ffe033;transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(255,204,0,.4);
+}
+.estatuto-btn .btn-icon{font-size:16px}
+
+/* ── Footer ─────────────────────────────────── */
+.portal-footer{
+  background:var(--az);
+  border-top:3px solid var(--am);
+  padding:16px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:rgba(255,255,255,.5);
+  font-family:'Source Sans 3',sans-serif;
+}
+.footer-brand{display:flex;align-items:center;gap:12px}
+.footer-brand-text{display:flex;flex-direction:column;gap:2px}
+.footer-brand-name{
+  font-size:16px;font-weight:700;color:var(--am);
+  letter-spacing:1px;line-height:1.1;
+}
+.footer-brand-sub{
+  font-size:10px;color:rgba(255,255,255,.45);
+  letter-spacing:.4px;text-transform:uppercase;
+}
+
+/* ── Responsive ─────────────────────────────── */
+@media(max-width:960px){
+  .cards-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .index-main{padding:32px 20px 32px;gap:28px}
+  .portal-topbar,.portal-footer{padding:16px 20px}
+  .hero{padding:28px 22px}
+  .hero h1{font-size:30px}
+  .hero-lead{font-size:14.5px}
+  .cards-grid{grid-template-columns:1fr}
+  .estatuto-banner{flex-direction:column;align-items:flex-start;padding:22px 22px}
+  .estatuto-btn{width:100%;justify-content:center}
+  .portal-footer{flex-direction:column;gap:8px;text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="page-shell">
+
+  <div class="portal-topbar">
+    <div class="topbar-logo">
+      <svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0)"><path d="M73.6406 31.6806L59.3778 4.12091C58.1475 1.67445 55.627 0 52.7012 0H52.6941C49.7717 0 47.2477 1.67445 46.0175 4.12091L35.9778 23.5199C34.8568 21.5246 33.0695 19.9595 30.9121 19.1134C33.3198 17.372 34.8885 14.5342 34.8885 11.3334C34.8885 7.6214 32.7805 4.40998 29.6995 2.8166C26.9851 1.38891 23.8865 0.581651 20.601 0.581651H5.58386C2.49581 0.581651 0 3.07746 0 6.15846V34.1059C0 37.1869 2.49581 39.6827 5.58386 39.6827H21.8243C24.9546 39.6827 27.9334 39.0341 30.6372 37.8778L31.6665 37.3808C31.7229 37.3526 31.7793 37.3244 31.8357 37.2962C32.8122 38.9142 34.5783 40.0035 36.6123 40.0035C38.872 40.0035 40.8178 38.664 41.6956 36.7286C42.1327 35.7064 43.1198 34.9837 44.2831 34.9273H61.1087C62.2755 34.9837 63.259 35.7064 63.6961 36.7286C64.5704 38.664 66.5198 40.0035 68.7794 40.0035C71.8639 40.0035 74.3598 37.5007 74.3598 34.4302C74.3598 33.4291 74.1024 32.4914 73.6371 31.6841" fill="#FFFFFF"/></g><defs><clipPath id="clip0"><rect width="74.3633" height="40" fill="white"/></clipPath></defs></svg>
+    </div>
+    <div class="portal-title">PORTAL COREAP<span>Dirección de Carrera Docente · GCBA</span></div>
+  </div>
+
+  <main class="index-main">
+
+    <!-- Hero -->
+    <section class="hero">
+      <span class="hero-eyebrow">Portal de consulta</span>
+      <h1>Bienvenido al <em>Portal COREAP</em></h1>
+      <p class="hero-lead">Centro de referencia operativa para la gestión de la carrera docente del Gobierno de la Ciudad de Buenos Aires. Manuales, reglas, prioridades, escalafones y seguimiento integrados en un único entorno de consulta.</p>
+      <div class="hero-meta">
+        <span><strong>3</strong> módulos operativos</span>
+        <span><strong>GCBA</strong> · Dirección de Carrera Docente</span>
+        <span>Acceso directo al <strong>Estatuto</strong></span>
+      </div>
+    </section>
+
+    <!-- Grid de módulos -->
+    <div>
+      <div class="section-label">Módulos del portal</div>
+    </div>
+
+    <section class="cards-grid">
+
+      <!-- Acto Público -->
+      <a class="section-card" href="actopublico_final.html">
+        <div class="card-icon">📋</div>
+        <h2 class="card-title">Acto Público</h2>
+        <p class="card-desc">Manual operativo con las reglas de designación docente: orden por área, prioridades, proporciones (4 a 1, 2 a 1, 50/50), criterios de ordenamiento, ascenso y escalafones integrados por nivel y modalidad.</p>
+        <div class="card-tags">
+          <span class="card-tag">Reglas</span>
+          <span class="card-tag">Prioridades</span>
+          <span class="card-tag">Escalafones</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+
+      <!-- Seguimiento -->
+      <a class="section-card" href="seguimiento_final.html">
+        <div class="card-icon">📊</div>
+        <h2 class="card-title">Seguimiento</h2>
+        <p class="card-desc">Panel de seguimiento de expedientes, trámites y estados del área. Permite consultar el avance, situación y actualizaciones de los procesos vinculados a la carrera docente.</p>
+        <div class="card-tags">
+          <span class="card-tag">Expedientes</span>
+          <span class="card-tag">Estados</span>
+          <span class="card-tag">Monitoreo</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+
+      <!-- Clasificación -->
+      <a class="section-card" href="clasificacion_final.html">
+        <div class="card-icon">🗂️</div>
+        <h2 class="card-title">Clasificación</h2>
+        <p class="card-desc">Información sobre clasificación docente: puntajes, título base, mérito, antigüedad y criterios aplicados en la construcción de los listados oficiales utilizados en el Acto Público.</p>
+        <div class="card-tags">
+          <span class="card-tag">Puntajes</span>
+          <span class="card-tag">Listados</span>
+          <span class="card-tag">Mérito</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+
+    </section>
+
+    <!-- Estatuto -->
+    <section class="estatuto-banner">
+      <div class="estatuto-text">
+        <h3>Consulta normativa</h3>
+        <p>Accedé al Estatuto Docente completo en un entorno de consulta asistida por IA.</p>
+      </div>
+      <a class="estatuto-btn" href="https://notebooklm.google.com/notebook/ca0a14ee-512b-4db6-a2e2-9f803cac6bb6" target="_blank" rel="noopener">
+        <span class="btn-icon">⚖️</span>
+        <span>Consultar Estatuto Docente</span>
+      </a>
+    </section>
+
+  </main>
+
+  <div class="portal-footer">
+    <span>Dirección de Carrera Docente · GCBA</span>
+    <div class="footer-brand">
+      <div class="footer-brand-text">
+        <span class="footer-brand-name">J&amp;J CO.</span>
+        <span class="footer-brand-sub">Desarrollo a cargo de J&amp;J CO.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
