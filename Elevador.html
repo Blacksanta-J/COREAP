@@ -81,16 +81,21 @@
                     return;
                 }
 
+                // --- VALIDACIÓN DE ÁREA Y BASE/ASCENSO ---
                 let areaValor = String(jsonData[0]['AREA'] || "").trim().toLowerCase();
                 let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 let baseValor = String(jsonData[0]['BASE/ASCENSO'] || "").trim().toLowerCase();
 
-                if (areaNormalizada !== "educacion inicial" || baseValor !== "base") {
+                let isInicial = areaNormalizada === "educacion inicial";
+                let isPrimaria = areaNormalizada === "educacion primaria";
+
+                if ((!isInicial && !isPrimaria) || baseValor !== "base") {
                     statusDiv.className = "error";
                     statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                     return; 
                 }
 
+                // --- CÁLCULO DE FECHAS ---
                 const now = new Date();
                 const currentYear = now.getFullYear();
                 const currentMonth = now.getMonth();
@@ -99,22 +104,34 @@
                 const dateHasta = getExcelDate(currentYear, 11, 31); 
                 const dateActual = getExcelDate(currentYear, currentMonth, currentDay);
                 
+                // --- CÁLCULO DE HORA DE PUBLICACIÓN SEGÚN EL ÁREA ---
                 const currentHour = now.getHours();
                 const currentMinute = now.getMinutes();
-                let horaPublicacionStr = "13:00";
-                if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
-                    horaPublicacionStr = "09:30";
+                let horaPublicacionStr = "";
+
+                if (isPrimaria) {
+                    if (currentHour < 8) {
+                        horaPublicacionStr = "08:00";
+                    } else {
+                        horaPublicacionStr = "12:00";
+                    }
+                } else {
+                    if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
+                        horaPublicacionStr = "09:30";
+                    } else {
+                        horaPublicacionStr = "13:00";
+                    }
                 }
 
+                // Procesamos las filas y filtramos las que deben eliminarse
                 const processedData = jsonData.map(row => {
                     let newRow = {};
                     
                     // Columna en blanco inicial a propósito
                     newRow['TEMP_VACIA'] = ""; 
                     
-                    // --- FILTRO: Copiar descartando las columnas vacías del original ---
+                    // Copiar descartando columnas vacías del original
                     Object.keys(row).forEach(key => {
-                        // Si la columna original no tiene nombre (o SheetJS la llama __EMPTY), la ignoramos.
                         if (!key.startsWith("__EMPTY") && key.trim() !== "") {
                             newRow[key] = row[key];
                         }
@@ -125,6 +142,21 @@
                     if (turno.toLowerCase() === 'doble') {
                         turno = 'COMPLETO';
                         newRow['TURNO'] = turno;
+                    }
+                    
+                    let turnoLower = turno.toLowerCase();
+                    let isMananaOrCompleto = (turnoLower === "mañana" || turnoLower === "manana" || turnoLower === "completo");
+                    let isTarde = (turnoLower === "tarde");
+
+                    // --- NUEVA REGLA: ELIMINACIÓN DE VACANTES EN PRIMARIA ---
+                    if (isPrimaria) {
+                        if (currentHour < 8) {
+                            // Procesado antes de las 8:00 am -> Se elimina Turno Tarde
+                            if (isTarde) return null;
+                        } else {
+                            // Procesado a las 8:00 am o después -> Se eliminan Turno Mañana y Completo
+                            if (isMananaOrCompleto) return null;
+                        }
                     }
 
                     // 2 y 3. Cant. Horas y Horario
@@ -150,7 +182,6 @@
                                      ? 'Novedad Mayor 60 dias hábiles' 
                                      : 'Novedad Mayor 60 dias habiles';
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
-                    let turnoLower = turno.toLowerCase();
                     let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
 
                     if (turnoLower === 'completo' && sitRev.includes('INTERINO')) {
@@ -176,31 +207,48 @@
                         }
                     }
 
-                    // 8. FECHAS (Números de serie sin horas)
+                    // 8. FECHAS RECURRENTES
                     newRow['FECHA HASTA'] = dateHasta;
                     newRow['FECHA PUBLICACION'] = dateActual;
                     newRow['FECHA APERTURA'] = dateActual;
 
-                    // 9. HORAS 
-                    let fracPublicacion = (horaPublicacionStr === "09:30") ? ((9 * 60 + 30) / 1440) : ((13 * 60) / 1440);
+                    // 9. HORA PUBLICACION (Fracciones puras para Excel)
+                    let fracPublicacion = 0;
+                    if (horaPublicacionStr === "08:00") fracPublicacion = (8 * 60) / 1440;
+                    else if (horaPublicacionStr === "09:30") fracPublicacion = (9 * 60 + 30) / 1440;
+                    else if (horaPublicacionStr === "12:00") fracPublicacion = (12 * 60) / 1440;
+                    else if (horaPublicacionStr === "13:00") fracPublicacion = (13 * 60) / 1440;
+                    
                     newRow['HORA PUBLICACION'] = fracPublicacion;
 
+                    // --- HORA APERTURA: Lógica diferenciada por Área ---
                     let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
-                    let isMananaOrCompleto = (turnoLower === "mañana" || turnoLower === "manana" || turnoLower === "completo");
-                    let isTarde = (turnoLower === "tarde");
                     let haFrac = "";
 
-                    if (horaPublicacionStr === "09:30") {
-                        if (isMananaOrCompleto && cargo === "1010") haFrac = (11 * 60) / 1440;
-                        else if (isMananaOrCompleto && cargo === "1018") haFrac = (11 * 60 + 15) / 1440;
-                        else if (isTarde && cargo === "1010") haFrac = (11 * 60 + 30) / 1440;
-                        else if (isTarde && cargo === "1018") haFrac = (11 * 60 + 45) / 1440;
-                    } else if (horaPublicacionStr === "13:00") {
-                        if (isMananaOrCompleto && cargo === "1010") haFrac = (15 * 60) / 1440;
-                        else if (isMananaOrCompleto && cargo === "1018") haFrac = (15 * 60 + 15) / 1440;
-                        else if (isTarde && cargo === "1010") haFrac = (15 * 60 + 30) / 1440;
-                        else if (isTarde && cargo === "1018") haFrac = (15 * 60 + 45) / 1440;
+                    if (isPrimaria) {
+                        // Reglas Educación Primaria
+                        if (horaPublicacionStr === "08:00") {
+                            if (isMananaOrCompleto && cargo === "1020") haFrac = (9 * 60 + 30) / 1440;      // 09:30
+                            else if (isMananaOrCompleto && cargo === "1028") haFrac = (9 * 60 + 45) / 1440; // 09:45
+                        } else if (horaPublicacionStr === "12:00") {
+                            if (isTarde && cargo === "1020") haFrac = (13 * 60) / 1440;                     // 13:00
+                            else if (isTarde && cargo === "1028") haFrac = (13 * 60 + 15) / 1440;           // 13:15
+                        }
+                    } else {
+                        // Reglas Educación Inicial
+                        if (horaPublicacionStr === "09:30") {
+                            if (isMananaOrCompleto && cargo === "1010") haFrac = (11 * 60) / 1440;
+                            else if (isMananaOrCompleto && cargo === "1018") haFrac = (11 * 60 + 15) / 1440;
+                            else if (isTarde && cargo === "1010") haFrac = (11 * 60 + 30) / 1440;
+                            else if (isTarde && cargo === "1018") haFrac = (11 * 60 + 45) / 1440;
+                        } else if (horaPublicacionStr === "13:00") {
+                            if (isMananaOrCompleto && cargo === "1010") haFrac = (15 * 60) / 1440;
+                            else if (isMananaOrCompleto && cargo === "1018") haFrac = (15 * 60 + 15) / 1440;
+                            else if (isTarde && cargo === "1010") haFrac = (15 * 60 + 30) / 1440;
+                            else if (isTarde && cargo === "1018") haFrac = (15 * 60 + 45) / 1440;
+                        }
                     }
+
                     if (haFrac !== "") {
                         newRow['HORA APERTURA'] = haFrac;
                     }
@@ -213,12 +261,18 @@
                     }
 
                     return newRow;
-                });
+                }).filter(row => row !== null); // <-- AQUI SE ELIMINAN LAS FILAS DESCARTADAS
+
+                if (processedData.length === 0) {
+                    statusDiv.className = "error";
+                    statusDiv.innerText = "El archivo fue procesado, pero todas las vacantes fueron eliminadas según las reglas de turno.";
+                    return;
+                }
 
                 const newWorksheet = XLSX.utils.json_to_sheet(processedData);
                 const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
                 
-                // Borrar el texto temporal para evitar el __EMPTY en la columna agregada a propósito
+                // Borrar el texto temporal para evitar el __EMPTY
                 for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
                     let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
                     if (cell && cell.v === 'TEMP_VACIA') {
@@ -226,7 +280,6 @@
                     }
                 }
 
-                // Encontrar qué letra es cada columna
                 let headers = {};
                 for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
                     let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
@@ -238,7 +291,7 @@
                 const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
                 const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
 
-                // Forzar Formato Estricto de Celdas
+                // Forzar Formato Estricto
                 for (let R = 1; R <= rangeObj.e.r; ++R) {
                     dateCols.forEach(col => {
                         let C = headers[col];
