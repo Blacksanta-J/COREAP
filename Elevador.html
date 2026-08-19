@@ -26,7 +26,10 @@
             text-align: center;
         }
         h2 { margin-top: 0; color: #1f2937; }
-        input[type="file"] { margin: 20px 0; display: block; width: 100%; }
+        .label-text {
+            text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: #4b5563;
+        }
+        input[type="file"] { margin: 10px 0 20px 0; display: block; width: 100%; }
         button {
             background-color: #2563eb; color: white; border: none; padding: 12px 20px;
             font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%;
@@ -41,8 +44,14 @@
 
 <div class="container">
     <h2>Procesador de Archivos de Trabajo</h2>
-    <p>Selecciona tu archivo base para aplicar las reglas automáticas.</p>
+    <p>Selecciona tus archivos para aplicar las reglas automáticas.</p>
+    
+    <label class="label-text">1. Archivo Base (Datos)</label>
     <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
+
+    <label class="label-text">2. Tabla de Equivalencias (Espejado Curricular.xlsx)</label>
+    <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
+
     <button onclick="procesarArchivo()">Procesar y Descargar</button>
     <div id="status"></div>
 </div>
@@ -53,283 +62,326 @@
         return (utc / 86400000) + 25569;
     }
 
-    function procesarArchivo() {
+    function readFileAsync(file) {
+        return new Promise((resolve, reject) => {
+            let reader = new FileReader();
+            reader.onload = e => resolve(new Uint8Array(e.target.result));
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function procesarArchivo() {
         const fileInput = document.getElementById('fileInput');
+        const fileEquivalencias = document.getElementById('fileEquivalencias');
         const statusDiv = document.getElementById('status');
         
-        if (!fileInput.files.length) {
-            statusDiv.innerText = "Por favor, selecciona un archivo primero.";
+        if (!fileInput.files.length || !fileEquivalencias.files.length) {
+            statusDiv.innerText = "Por favor, selecciona ambos archivos antes de procesar.";
             statusDiv.className = "error";
             return;
         }
 
-        const file = fileInput.files[0];
-        const reader = new FileReader();
+        try {
+            statusDiv.className = "";
+            statusDiv.innerText = "Procesando...";
 
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+            const dataBase = await readFileAsync(fileInput.files[0]);
+            const dataEq = await readFileAsync(fileEquivalencias.files[0]);
+
+            const wbBase = XLSX.read(dataBase, {type: 'array', cellStyles: true});
+            const wbEq = XLSX.read(dataEq, {type: 'array'});
+            
+            // --- 1. PROCESAR TABLA DE EQUIVALENCIAS ---
+            let eqSheetName = wbEq.SheetNames[0];
+            let eqData = XLSX.utils.sheet_to_json(wbEq.Sheets[eqSheetName], { header: 1 });
+            let mapOldToNew = {};
+            let validNewCodes = new Set();
+            
+            for(let i = 1; i < eqData.length; i++) {
+                let row = eqData[i];
+                if(row && row.length >= 2) {
+                    let oldC = String(row[0] || "").trim();
+                    let newC = String(row[1] || "").trim();
+                    if(oldC) mapOldToNew[oldC] = newC;
+                    if(newC) validNewCodes.add(newC);
+                }
+            }
+
+            // --- 2. AGRUPAR HOJAS Y FILTRAR VACANTES ROJAS ---
+            let jsonData = [];
+            wbBase.SheetNames.forEach(sheetName => {
+                const worksheet = wbBase.Sheets[sheetName];
+                let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
+                let range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
                 
-                let jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                if (range) {
+                    for(let R = range.s.r + 1; R <= range.e.r; ++R) {
+                        let isRed = false;
+                        for(let C = range.s.c; C <= range.e.c; ++C) {
+                            let cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
+                            if(cell && cell.s && cell.s.fill && cell.s.fill.fgColor) {
+                                let color = cell.s.fill.fgColor.rgb || "";
+                                if(color.toUpperCase().includes("FF0000")) {
+                                    isRed = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        let rowIdx = R - range.s.r - 1;
+                        if(sheetData[rowIdx] && !isRed) {
+                            let hasData = Object.values(sheetData[rowIdx]).some(v => String(v).trim() !== "");
+                            if (hasData) jsonData.push(sheetData[rowIdx]);
+                        }
+                    }
+                }
+            });
 
-                if (jsonData.length === 0) {
-                    statusDiv.className = "error";
-                    statusDiv.innerText = "El archivo está vacío.";
-                    return;
+            if (jsonData.length === 0) {
+                statusDiv.className = "error";
+                statusDiv.innerText = "El archivo está vacío o todas las filas fueron eliminadas.";
+                return;
+            }
+
+            // --- VALIDACIÓN DE ÁREA Y BASE ---
+            let areaValor = String(jsonData[0]['AREA'] || "").trim().toLowerCase();
+            let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            let baseValor = String(jsonData[0]['BASE/ASCENSO'] || "").trim().toLowerCase();
+
+            let isInicial = areaNormalizada === "educacion inicial";
+            let isPrimaria = areaNormalizada === "educacion primaria";
+            let isCurricular = areaNormalizada === "curricular";
+
+            if ((!isInicial && !isPrimaria && !isCurricular) || baseValor !== "base") {
+                statusDiv.className = "error";
+                statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
+                return; 
+            }
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+            const currentHour = now.getHours();
+            
+            const dateHasta = getExcelDate(currentYear, 11, 31); 
+            const dateActual = getExcelDate(currentYear, currentMonth, currentDay);
+
+            let processedData = jsonData.map(row => {
+                let newRow = {};
+                
+                newRow['TEMP_VACIA'] = ""; 
+                
+                Object.keys(row).forEach(key => {
+                    if (!key.startsWith("__EMPTY") && key.trim() !== "") {
+                        newRow[key] = row[key];
+                    }
+                });
+                
+                // --- REGLA NUEVA: VACIAR COLUMNAS EN CURRICULAR ---
+                if (isCurricular) {
+                    const columnasABorrar = [
+                        "codigo de asignatura", 
+                        "descripcion de asignatura", 
+                        "codigo de especialidad", 
+                        "descripcion de especialidad"
+                    ];
+                    
+                    Object.keys(newRow).forEach(key => {
+                        if (columnasABorrar.includes(key.trim().toLowerCase())) {
+                            newRow[key] = ""; // Vacia la celda manteniendo la columna
+                        }
+                    });
                 }
 
-                // --- VALIDACIÓN DE ÁREA Y BASE/ASCENSO ---
-                let areaValor = String(jsonData[0]['AREA'] || "").trim().toLowerCase();
-                let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                let baseValor = String(jsonData[0]['BASE/ASCENSO'] || "").trim().toLowerCase();
-
-                let isInicial = areaNormalizada === "educacion inicial";
-                let isPrimaria = areaNormalizada === "educacion primaria";
-
-                if ((!isInicial && !isPrimaria) || baseValor !== "base") {
-                    statusDiv.className = "error";
-                    statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
-                    return; 
+                // --- 3. REEMPLAZO Y CONTROL DE CÓDIGOS DE CARGO (FORMATO NÚMERO) ---
+                let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
+                let nuevoCargo = mapOldToNew[cargo] || cargo;
+                
+                // Convertimos el cargo a número para que quede con formato número en Excel
+                let numericCargo = Number(nuevoCargo);
+                newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
+                
+                // Controlar usando el código como texto
+                if (!validNewCodes.has(String(nuevoCargo))) {
+                    newRow['TEMP_VACIA'] = "CONTROLAR";
                 }
 
-                // --- CÁLCULO DE FECHAS ---
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonth = now.getMonth();
-                const currentDay = now.getDate();
+                let turno = newRow['TURNO'] ? String(newRow['TURNO']).trim() : "";
+                if (turno.toLowerCase() === 'doble') {
+                    turno = 'COMPLETO';
+                    newRow['TURNO'] = turno;
+                }
                 
-                const dateHasta = getExcelDate(currentYear, 11, 31); 
-                const dateActual = getExcelDate(currentYear, currentMonth, currentDay);
-                
-                // --- CÁLCULO DE HORA DE PUBLICACIÓN SEGÚN EL ÁREA ---
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                let horaPublicacionStr = "";
+                let turnoLower = turno.toLowerCase();
+                let isMananaOrCompleto = (turnoLower === "mañana" || turnoLower === "manana" || turnoLower === "completo");
+                let isTarde = (turnoLower === "tarde");
 
                 if (isPrimaria) {
-                    if (currentHour < 8) {
-                        horaPublicacionStr = "08:00";
-                    } else {
-                        horaPublicacionStr = "12:00";
-                    }
-                } else {
-                    if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
-                        horaPublicacionStr = "09:30";
-                    } else {
-                        horaPublicacionStr = "13:00";
-                    }
+                    if (String(nuevoCargo) !== "1020" && String(nuevoCargo) !== "1028") return null;
+                    if (currentHour < 8 && isTarde) return null;
+                    if (currentHour >= 8 && isMananaOrCompleto) return null;
                 }
 
-                // Procesamos las filas y filtramos las que deben eliminarse
-                const processedData = jsonData.map(row => {
-                    let newRow = {};
-                    
-                    // Columna en blanco inicial a propósito
-                    newRow['TEMP_VACIA'] = ""; 
-                    
-                    // Copiar descartando columnas vacías del original
-                    Object.keys(row).forEach(key => {
-                        if (!key.startsWith("__EMPTY") && key.trim() !== "") {
-                            newRow[key] = row[key];
-                        }
-                    });
-                    
-                    // 1. TURNO
-                    let turno = newRow['TURNO'] ? String(newRow['TURNO']).trim() : "";
-                    if (turno.toLowerCase() === 'doble') {
-                        turno = 'COMPLETO';
-                        newRow['TURNO'] = turno;
-                    }
-                    
-                    let turnoLower = turno.toLowerCase();
-                    let isMananaOrCompleto = (turnoLower === "mañana" || turnoLower === "manana" || turnoLower === "completo");
-                    let isTarde = (turnoLower === "tarde");
-
-                    // --- NUEVA REGLA: ELIMINACIÓN DE VACANTES EN PRIMARIA ---
-                    if (isPrimaria) {
-                        if (currentHour < 8) {
-                            // Procesado antes de las 8:00 am -> Se elimina Turno Tarde
-                            if (isTarde) return null;
-                        } else {
-                            // Procesado a las 8:00 am o después -> Se eliminan Turno Mañana y Completo
-                            if (isMananaOrCompleto) return null;
-                        }
-                    }
-
-                    // 2 y 3. Cant. Horas y Horario
+                // --- 4. CANT. HORAS ---
+                let cantHoras = newRow['Cant. Horas'];
+                if (!cantHoras || String(cantHoras).trim() === "") {
                     newRow['Cant. Horas'] = "1";
-                    if (!newRow['HORARIO A CUMPLIR'] || String(newRow['HORARIO A CUMPLIR']).trim() === "") {
-                        newRow['HORARIO A CUMPLIR'] = ".";
-                    }
-
-                    // 4. DOCENTE
-                    let colDocente = newRow.hasOwnProperty('DOCENTE') ? 'DOCENTE' : 'Docente';
-                    if (!newRow[colDocente] || String(newRow[colDocente]).trim() === "") {
-                        newRow[colDocente] = ".";
-                    }
-
-                    // Motivo de la vacante
-                    let colMotivo = newRow.hasOwnProperty('Motivo de la Vacante') ? 'Motivo de la Vacante' : 'Motivo de la vacante';
-                    if (!newRow[colMotivo] || String(newRow[colMotivo]).trim() === "") {
-                        newRow[colMotivo] = ".";
-                    }
-
-                    // 5 y 6. Novedad
-                    let colNovedad = newRow.hasOwnProperty('Novedad Mayor 60 dias hábiles') 
-                                     ? 'Novedad Mayor 60 dias hábiles' 
-                                     : 'Novedad Mayor 60 dias habiles';
-                    let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
-                    let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
-
-                    if (turnoLower === 'completo' && sitRev.includes('INTERINO')) {
-                        newRow[colNovedad] = "1";
-                    } else if (turnoLower === 'mañana' || turnoLower === 'manana' || turnoLower === 'tarde') {
-                        newRow[colNovedad] = "2";
-                    } else if (novedad === "1") {
-                        newRow[colNovedad] = "1";
+                } else {
+                    let numero = parseFloat(String(cantHoras).replace(',', '.'));
+                    if (!isNaN(numero)) {
+                        newRow['Cant. Horas'] = String(Math.floor(numero)); 
                     } else {
-                        newRow[colNovedad] = "2";
-                    }
-
-                    // 7. FECHA DESDE
-                    let fDesde = newRow['FECHA DESDE'];
-                    if (typeof fDesde === 'string' && fDesde.trim() !== '') {
-                        let parts = fDesde.split(/[-/]/);
-                        if (parts.length === 3) {
-                            let d = parseInt(parts[0], 10);
-                            let m = parseInt(parts[1], 10) - 1;
-                            let y = parseInt(parts[2], 10);
-                            if (y < 100) y += 2000;
-                            newRow['FECHA DESDE'] = getExcelDate(y, m, d);
-                        }
-                    }
-
-                    // 8. FECHAS RECURRENTES
-                    newRow['FECHA HASTA'] = dateHasta;
-                    newRow['FECHA PUBLICACION'] = dateActual;
-                    newRow['FECHA APERTURA'] = dateActual;
-
-                    // 9. HORA PUBLICACION (Fracciones puras para Excel)
-                    let fracPublicacion = 0;
-                    if (horaPublicacionStr === "08:00") fracPublicacion = (8 * 60) / 1440;
-                    else if (horaPublicacionStr === "09:30") fracPublicacion = (9 * 60 + 30) / 1440;
-                    else if (horaPublicacionStr === "12:00") fracPublicacion = (12 * 60) / 1440;
-                    else if (horaPublicacionStr === "13:00") fracPublicacion = (13 * 60) / 1440;
-                    
-                    newRow['HORA PUBLICACION'] = fracPublicacion;
-
-                    // --- HORA APERTURA: Lógica diferenciada por Área ---
-                    let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
-                    let haFrac = "";
-
-                    if (isPrimaria) {
-                        // Reglas Educación Primaria
-                        if (horaPublicacionStr === "08:00") {
-                            if (isMananaOrCompleto && cargo === "1020") haFrac = (9 * 60 + 30) / 1440;      // 09:30
-                            else if (isMananaOrCompleto && cargo === "1028") haFrac = (9 * 60 + 45) / 1440; // 09:45
-                        } else if (horaPublicacionStr === "12:00") {
-                            if (isTarde && cargo === "1020") haFrac = (13 * 60) / 1440;                     // 13:00
-                            else if (isTarde && cargo === "1028") haFrac = (13 * 60 + 15) / 1440;           // 13:15
-                        }
-                    } else {
-                        // Reglas Educación Inicial
-                        if (horaPublicacionStr === "09:30") {
-                            if (isMananaOrCompleto && cargo === "1010") haFrac = (11 * 60) / 1440;
-                            else if (isMananaOrCompleto && cargo === "1018") haFrac = (11 * 60 + 15) / 1440;
-                            else if (isTarde && cargo === "1010") haFrac = (11 * 60 + 30) / 1440;
-                            else if (isTarde && cargo === "1018") haFrac = (11 * 60 + 45) / 1440;
-                        } else if (horaPublicacionStr === "13:00") {
-                            if (isMananaOrCompleto && cargo === "1010") haFrac = (15 * 60) / 1440;
-                            else if (isMananaOrCompleto && cargo === "1018") haFrac = (15 * 60 + 15) / 1440;
-                            else if (isTarde && cargo === "1010") haFrac = (15 * 60 + 30) / 1440;
-                            else if (isTarde && cargo === "1018") haFrac = (15 * 60 + 45) / 1440;
-                        }
-                    }
-
-                    if (haFrac !== "") {
-                        newRow['HORA APERTURA'] = haFrac;
-                    }
-
-                    // Observaciones
-                    let colObs = newRow.hasOwnProperty('Observación') ? 'Observación' : 'observaciones';
-                    let obs = newRow[colObs] ? String(newRow[colObs]).trim() : "";
-                    if (/^\d+$/.test(obs)) {
-                        newRow[colObs] = obs + ".";
-                    }
-
-                    return newRow;
-                }).filter(row => row !== null); // <-- AQUI SE ELIMINAN LAS FILAS DESCARTADAS
-
-                if (processedData.length === 0) {
-                    statusDiv.className = "error";
-                    statusDiv.innerText = "El archivo fue procesado, pero todas las vacantes fueron eliminadas según las reglas de turno.";
-                    return;
-                }
-
-                const newWorksheet = XLSX.utils.json_to_sheet(processedData);
-                const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
-                
-                // Borrar el texto temporal para evitar el __EMPTY
-                for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
-                    let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
-                    if (cell && cell.v === 'TEMP_VACIA') {
-                        cell.v = ''; 
+                        newRow['Cant. Horas'] = "1";
                     }
                 }
 
-                let headers = {};
-                for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
-                    let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
-                    if (cell && typeof cell.v === 'string' && cell.v !== '') {
-                        headers[cell.v] = C;
+                if (!newRow['HORARIO A CUMPLIR'] || String(newRow['HORARIO A CUMPLIR']).trim() === "") {
+                    newRow['HORARIO A CUMPLIR'] = ".";
+                }
+
+                let colDocente = newRow.hasOwnProperty('DOCENTE') ? 'DOCENTE' : 'Docente';
+                if (!newRow[colDocente] || String(newRow[colDocente]).trim() === "") {
+                    newRow[colDocente] = ".";
+                }
+
+                let colMotivo = newRow.hasOwnProperty('Motivo de la Vacante') ? 'Motivo de la Vacante' : 'Motivo de la vacante';
+                if (!newRow[colMotivo] || String(newRow[colMotivo]).trim() === "") {
+                    newRow[colMotivo] = ".";
+                }
+
+                // --- 5. NOVEDAD MAYOR A 60 DIAS ---
+                let colNovedad = newRow.hasOwnProperty('Novedad Mayor 60 dias hábiles') 
+                                 ? 'Novedad Mayor 60 dias hábiles' 
+                                 : 'Novedad Mayor 60 dias habiles';
+                                 
+                if (String(newRow['Cant. Horas']) === "32") {
+                    newRow[colNovedad] = "1";
+                } else {
+                    newRow[colNovedad] = "2";
+                }
+
+                let fDesde = newRow['FECHA DESDE'];
+                if (typeof fDesde === 'string' && fDesde.trim() !== '') {
+                    let parts = fDesde.split(/[-/]/);
+                    if (parts.length === 3) {
+                        let d = parseInt(parts[0], 10);
+                        let m = parseInt(parts[1], 10) - 1;
+                        let y = parseInt(parts[2], 10);
+                        if (y < 100) y += 2000;
+                        newRow['FECHA DESDE'] = getExcelDate(y, m, d);
                     }
                 }
 
-                const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
-                const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
+                newRow['FECHA HASTA'] = dateHasta;
+                newRow['FECHA PUBLICACION'] = dateActual;
+                newRow['FECHA APERTURA'] = dateActual;
 
-                // Forzar Formato Estricto
-                for (let R = 1; R <= rangeObj.e.r; ++R) {
-                    dateCols.forEach(col => {
-                        let C = headers[col];
-                        if (C !== undefined) {
-                            let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                            if (cell && typeof cell.v === 'number') {
-                                cell.t = 'n'; 
-                                cell.z = 'dd/mm/yyyy'; 
-                            }
-                        }
-                    });
-                    timeCols.forEach(col => {
-                        let C = headers[col];
-                        if (C !== undefined) {
-                            let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                            if (cell && typeof cell.v === 'number') {
-                                cell.t = 'n'; 
-                                cell.z = 'hh:mm'; 
-                            }
-                        }
-                    });
+                // --- 6. HORA PUBLICACION A 10:00 ---
+                newRow['HORA PUBLICACION'] = (10 * 60) / 1440;
+
+                let colObs = newRow.hasOwnProperty('Observación') ? 'Observación' : 'observaciones';
+                let obs = newRow[colObs] ? String(newRow[colObs]).trim() : "";
+                if (/^\d+$/.test(obs)) {
+                    newRow[colObs] = obs + ".";
                 }
 
-                const newWorkbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Datos Procesados");
-                XLSX.writeFile(newWorkbook, "Archivo_Modificado.xlsx");
+                return newRow;
+            }).filter(row => row !== null);
 
-                statusDiv.className = "";
-                statusDiv.innerText = "¡Archivo procesado y descargado con éxito!";
-                
-            } catch (error) {
-                console.error(error);
+            if (processedData.length === 0) {
                 statusDiv.className = "error";
-                statusDiv.innerText = "Ocurrió un error al procesar el archivo. Revisa la consola para más detalles.";
+                statusDiv.innerText = "El archivo fue procesado, pero todas las vacantes fueron eliminadas según las reglas establecidas.";
+                return;
             }
-        };
 
-        reader.readAsArrayBuffer(file);
+            // --- 7. ORDENAR POR CÓDIGO DE CARGO MAYOR A MENOR ---
+            processedData.sort((a, b) => {
+                let codeA = String(a['CODIGO CARGO'] || "");
+                let codeB = String(b['CODIGO CARGO'] || "");
+                
+                let numA = parseInt(codeA, 10);
+                let numB = parseInt(codeB, 10);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    if (numA !== numB) return numB - numA; 
+                }
+                
+                if (codeA > codeB) return -1;
+                if (codeA < codeB) return 1;
+                return 0;
+            });
+
+            // --- 8. ASIGNAR HORA DE APERTURA ---
+            let currentHoraApertura = 18 * 60; 
+            let lastCode = null;
+
+            processedData.forEach(row => {
+                let code = String(row['CODIGO CARGO']);
+                if (lastCode !== null && code !== lastCode) {
+                    currentHoraApertura += 10; 
+                }
+                row['HORA APERTURA'] = currentHoraApertura / 1440;
+                lastCode = code;
+            });
+
+            const newWorksheet = XLSX.utils.json_to_sheet(processedData);
+            const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
+            
+            for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
+                let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
+                if (cell && cell.v === 'TEMP_VACIA') {
+                    cell.v = ''; 
+                }
+            }
+
+            let headers = {};
+            for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
+                let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
+                if (cell && typeof cell.v === 'string' && cell.v !== '') {
+                    headers[cell.v] = C;
+                }
+            }
+
+            const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
+            const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
+
+            for (let R = 1; R <= rangeObj.e.r; ++R) {
+                dateCols.forEach(col => {
+                    let C = headers[col];
+                    if (C !== undefined) {
+                        let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
+                        if (cell && typeof cell.v === 'number') {
+                            cell.t = 'n'; 
+                            cell.z = 'dd/mm/yyyy'; 
+                        }
+                    }
+                });
+                timeCols.forEach(col => {
+                    let C = headers[col];
+                    if (C !== undefined) {
+                        let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
+                        if (cell && typeof cell.v === 'number') {
+                            cell.t = 'n'; 
+                            cell.z = 'hh:mm'; 
+                        }
+                    }
+                });
+            }
+
+            const newWorkbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Datos Procesados");
+            XLSX.writeFile(newWorkbook, "Archivo_Modificado.xlsx");
+
+            statusDiv.className = "";
+            statusDiv.innerText = "¡Archivo procesado y descargado con éxito!";
+            
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = "error";
+            statusDiv.innerText = "Ocurrió un error al procesar el archivo. Revisa la consola para más detalles.";
+        }
     }
 </script>
 
