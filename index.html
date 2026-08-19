@@ -121,7 +121,8 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 /* ── Cards grid ─────────────────────────────── */
 .cards-grid{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  /* Actualizado a 4 columnas para incluir el nuevo box "Elevador" */
+  grid-template-columns:repeat(4,1fr);
   gap:20px;
 }
 .section-card{
@@ -295,7 +296,8 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
       <h1>Bienvenido al <em>Portal COREAP</em></h1>
       <p class="hero-lead">Centro de referencia operativa para la gestión de la carrera docente del Gobierno de la Ciudad de Buenos Aires. Manuales, reglas, prioridades, escalafones y seguimiento integrados en un único entorno de consulta.</p>
       <div class="hero-meta">
-        <span><strong>3</strong> módulos operativos</span>
+        <!-- Contador actualizado de 3 a 4 módulos -->
+        <span><strong>4</strong> módulos operativos</span>
         <span><strong>GCBA</strong> · Dirección de Carrera Docente</span>
         <span>Acceso directo al <strong>Estatuto</strong></span>
       </div>
@@ -349,6 +351,22 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
           <span class="card-tag">Puntajes</span>
           <span class="card-tag">Listados</span>
           <span class="card-tag">Mérito</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+      
+      <!-- Elevador (NUEVO BOX) -->
+      <a class="section-card" href="Elevador.html">
+        <div class="card-icon">🛗</div>
+        <h2 class="card-title">Elevador</h2>
+        <p class="card-desc">Módulo para la derivación, gestión y elevación de trámites, expedientes o documentación referida a la carrera docente para su correspondiente resolución jerárquica.</p>
+        <div class="card-tags">
+          <span class="card-tag">Elevación</span>
+          <span class="card-tag">Gestión</span>
+          <span class="card-tag">Trámites</span>
         </div>
         <div class="card-cta">
           <span>Abrir módulo</span>
