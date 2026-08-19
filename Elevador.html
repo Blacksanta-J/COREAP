@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procesador de Vacantes</title>
-    <!-- Librería SheetJS para manipular CSV/XLSX en el navegador -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
@@ -49,6 +48,11 @@
 </div>
 
 <script>
+    function getExcelDate(year, month, day) {
+        const utc = Date.UTC(year, month, day);
+        return (utc / 86400000) + 25569;
+    }
+
     function procesarArchivo() {
         const fileInput = document.getElementById('fileInput');
         const statusDiv = document.getElementById('status');
@@ -77,7 +81,6 @@
                     return;
                 }
 
-                // --- VALIDACIÓN DE ÁREA Y BASE/ASCENSO ---
                 let areaValor = String(jsonData[0]['AREA'] || "").trim().toLowerCase();
                 let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 let baseValor = String(jsonData[0]['BASE/ASCENSO'] || "").trim().toLowerCase();
@@ -88,18 +91,16 @@
                     return; 
                 }
 
-                // Calcular fechas y horas dinámicas actuales
                 const now = new Date();
                 const currentYear = now.getFullYear();
                 const currentMonth = now.getMonth();
                 const currentDay = now.getDate();
+                
+                const dateHasta = getExcelDate(currentYear, 11, 31); 
+                const dateActual = getExcelDate(currentYear, currentMonth, currentDay);
+                
                 const currentHour = now.getHours();
                 const currentMinute = now.getMinutes();
-
-                // Formatos de tiempo puros (UTC para evitar desfases horarios en Excel)
-                const dateHasta = new Date(Date.UTC(currentYear, 11, 31)); // 31 Dic
-                const dateActual = new Date(Date.UTC(currentYear, currentMonth, currentDay));
-                
                 let horaPublicacionStr = "13:00";
                 if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
                     horaPublicacionStr = "09:30";
@@ -107,39 +108,47 @@
 
                 const processedData = jsonData.map(row => {
                     let newRow = {};
-                    newRow[' '] = ""; 
-                    Object.assign(newRow, row);
                     
-                    // --- 1. TURNO ---
+                    // Columna en blanco inicial a propósito
+                    newRow['TEMP_VACIA'] = ""; 
+                    
+                    // --- FILTRO: Copiar descartando las columnas vacías del original ---
+                    Object.keys(row).forEach(key => {
+                        // Si la columna original no tiene nombre (o SheetJS la llama __EMPTY), la ignoramos.
+                        if (!key.startsWith("__EMPTY") && key.trim() !== "") {
+                            newRow[key] = row[key];
+                        }
+                    });
+                    
+                    // 1. TURNO
                     let turno = newRow['TURNO'] ? String(newRow['TURNO']).trim() : "";
                     if (turno.toLowerCase() === 'doble') {
                         turno = 'COMPLETO';
                         newRow['TURNO'] = turno;
                     }
 
-                    // --- 2 y 3. Cant. Horas y Horario ---
+                    // 2 y 3. Cant. Horas y Horario
                     newRow['Cant. Horas'] = "1";
                     if (!newRow['HORARIO A CUMPLIR'] || String(newRow['HORARIO A CUMPLIR']).trim() === "") {
                         newRow['HORARIO A CUMPLIR'] = ".";
                     }
 
-                    // --- 4. DOCENTE ---
+                    // 4. DOCENTE
                     let colDocente = newRow.hasOwnProperty('DOCENTE') ? 'DOCENTE' : 'Docente';
                     if (!newRow[colDocente] || String(newRow[colDocente]).trim() === "") {
                         newRow[colDocente] = ".";
                     }
 
-                    // --- Motivo de la vacante ---
+                    // Motivo de la vacante
                     let colMotivo = newRow.hasOwnProperty('Motivo de la Vacante') ? 'Motivo de la Vacante' : 'Motivo de la vacante';
                     if (!newRow[colMotivo] || String(newRow[colMotivo]).trim() === "") {
                         newRow[colMotivo] = ".";
                     }
 
-                    // --- 5 y 6. Novedad Mayor 60 dias habiles ---
+                    // 5 y 6. Novedad
                     let colNovedad = newRow.hasOwnProperty('Novedad Mayor 60 dias hábiles') 
                                      ? 'Novedad Mayor 60 dias hábiles' 
                                      : 'Novedad Mayor 60 dias habiles';
-                    
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
                     let turnoLower = turno.toLowerCase();
                     let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
@@ -154,7 +163,7 @@
                         newRow[colNovedad] = "2";
                     }
 
-                    // --- 7. FECHA DESDE (Forzar conversión a objeto Fecha si viene como texto) ---
+                    // 7. FECHA DESDE
                     let fDesde = newRow['FECHA DESDE'];
                     if (typeof fDesde === 'string' && fDesde.trim() !== '') {
                         let parts = fDesde.split(/[-/]/);
@@ -163,16 +172,16 @@
                             let m = parseInt(parts[1], 10) - 1;
                             let y = parseInt(parts[2], 10);
                             if (y < 100) y += 2000;
-                            newRow['FECHA DESDE'] = new Date(Date.UTC(y, m, d));
+                            newRow['FECHA DESDE'] = getExcelDate(y, m, d);
                         }
                     }
 
-                    // --- 8. FECHAS (Asignar Objetos Reales) ---
+                    // 8. FECHAS (Números de serie sin horas)
                     newRow['FECHA HASTA'] = dateHasta;
                     newRow['FECHA PUBLICACION'] = dateActual;
                     newRow['FECHA APERTURA'] = dateActual;
 
-                    // --- 9. HORAS (Excel las lee como fracción de un día de 24hs) ---
+                    // 9. HORAS 
                     let fracPublicacion = (horaPublicacionStr === "09:30") ? ((9 * 60 + 30) / 1440) : ((13 * 60) / 1440);
                     newRow['HORA PUBLICACION'] = fracPublicacion;
 
@@ -196,7 +205,7 @@
                         newRow['HORA APERTURA'] = haFrac;
                     }
 
-                    // --- Observaciones ---
+                    // Observaciones
                     let colObs = newRow.hasOwnProperty('Observación') ? 'Observación' : 'observaciones';
                     let obs = newRow[colObs] ? String(newRow[colObs]).trim() : "";
                     if (/^\d+$/.test(obs)) {
@@ -206,36 +215,49 @@
                     return newRow;
                 });
 
-                // Crear hoja reconociendo explícitamente los objetos fecha
-                const newWorksheet = XLSX.utils.json_to_sheet(processedData, { cellDates: true });
-                
-                // --- APLICACIÓN ESTRICTA DE FORMATOS PARA EXCEL ---
-                const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
-                const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
-                
+                const newWorksheet = XLSX.utils.json_to_sheet(processedData);
                 const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
-                let headers = {};
                 
-                // Mapear dónde está cada columna
+                // Borrar el texto temporal para evitar el __EMPTY en la columna agregada a propósito
                 for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
                     let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
-                    if (cell && cell.v) headers[cell.v] = C;
+                    if (cell && cell.v === 'TEMP_VACIA') {
+                        cell.v = ''; 
+                    }
                 }
 
-                // Recorrer todas las celdas e inyectar el formato
+                // Encontrar qué letra es cada columna
+                let headers = {};
+                for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
+                    let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
+                    if (cell && typeof cell.v === 'string' && cell.v !== '') {
+                        headers[cell.v] = C;
+                    }
+                }
+
+                const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
+                const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
+
+                // Forzar Formato Estricto de Celdas
                 for (let R = 1; R <= rangeObj.e.r; ++R) {
                     dateCols.forEach(col => {
                         let C = headers[col];
                         if (C !== undefined) {
                             let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                            if (cell) cell.z = 'dd/mm/yy'; // Formato Excel Fecha
+                            if (cell && typeof cell.v === 'number') {
+                                cell.t = 'n'; 
+                                cell.z = 'dd/mm/yyyy'; 
+                            }
                         }
                     });
                     timeCols.forEach(col => {
                         let C = headers[col];
                         if (C !== undefined) {
                             let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                            if (cell) cell.z = 'hh:mm'; // Formato Excel Hora
+                            if (cell && typeof cell.v === 'number') {
+                                cell.t = 'n'; 
+                                cell.z = 'hh:mm'; 
+                            }
                         }
                     });
                 }
