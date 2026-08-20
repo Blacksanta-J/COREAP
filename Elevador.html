@@ -59,17 +59,17 @@
         }
         .modal h3 { margin: 0 0 8px 0; color: #1f2937; }
         .modal p { margin: 0 0 16px 0; color: #4b5563; font-size: 14px; }
-        .modal select, .modal input[type="file"] { margin: 0 0 16px 0; }
+        .modal select, .modal input[type="file"], .modal input[type="time"] { margin: 0 0 16px 0; }
         .modal-actions { display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Procesador de Archivos de Trabajo</h2>
-    <p>Selecciona el archivo base para aplicar las reglas automáticas.</p>
+    <h2>Confeccionar eleve</h2>
+    <p>Selecciona o arrastra el archivo descargado de Sistemas1 o Devolucion del Area para comenzar el proceso.</p>
     
-    <label class="label-text">Archivo Base (Datos)</label>
+    <label class="label-text">Archivo Base</label>
     <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
 
     <button onclick="procesarArchivo()">Procesar y Descargar</button>
@@ -88,8 +88,14 @@
             </select>
         </div>
         <div id="modalEqFields" style="display:none;">
-            <label class="label-text" for="fileEquivalencias">Tabla de Equivalencias</label>
+            <label class="label-text" for="fileEquivalencias">Control de Cargos y Espejado</label>
             <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
+        </div>
+        <div id="modalHorariosFields" style="display:none;">
+            <label class="label-text" for="horaPublicacionAdultos">Hora de publicación</label>
+            <input type="time" id="horaPublicacionAdultos" value="10:00" />
+            <label class="label-text" for="horaAperturaAdultos">Comienzo del horario de apertura</label>
+            <input type="time" id="horaAperturaAdultos" value="18:00" />
         </div>
         <div id="modalError" class="error" style="display:none; margin-bottom: 12px; font-size: 13px; font-weight: bold;"></div>
         <div class="modal-actions">
@@ -531,8 +537,22 @@
         document.getElementById('modalOverlay').classList.remove('visible');
         document.getElementById('modalTurnoFields').style.display = 'none';
         document.getElementById('modalEqFields').style.display = 'none';
+        document.getElementById('modalHorariosFields').style.display = 'none';
         document.getElementById('modalConfirm').onclick = null;
         document.getElementById('modalCancel').onclick = null;
+    }
+
+    function parseHoraInput(value) {
+        const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+        if (!match) return null;
+        const horas = Number(match[1]);
+        const minutos = Number(match[2]);
+        if (horas > 23 || minutos > 59) return null;
+        const pad = (n) => String(n).padStart(2, "0");
+        return {
+            str: pad(horas) + ":" + pad(minutos),
+            minutes: horas * 60 + minutos
+        };
     }
 
     function pedirEnPopup({ titulo, texto, modo }) {
@@ -545,12 +565,17 @@
             modalError.innerText = '';
             document.getElementById('modalTurnoFields').style.display = modo === 'turno' ? 'block' : 'none';
             document.getElementById('modalEqFields').style.display = modo === 'equivalencias' ? 'block' : 'none';
+            document.getElementById('modalHorariosFields').style.display = modo === 'horarios' ? 'block' : 'none';
 
             if (modo === 'turno') {
                 document.getElementById('varianteTurno').value = 'manana';
             }
             if (modo === 'equivalencias') {
                 document.getElementById('fileEquivalencias').value = '';
+            }
+            if (modo === 'horarios') {
+                document.getElementById('horaPublicacionAdultos').value = '10:00';
+                document.getElementById('horaAperturaAdultos').value = '18:00';
             }
 
             overlay.classList.add('visible');
@@ -565,6 +590,19 @@
                     const valor = document.getElementById('varianteTurno').value;
                     cerrarModal();
                     resolve(valor);
+                    return;
+                }
+
+                if (modo === 'horarios') {
+                    const publicacion = parseHoraInput(document.getElementById('horaPublicacionAdultos').value);
+                    const apertura = parseHoraInput(document.getElementById('horaAperturaAdultos').value);
+                    if (!publicacion || !apertura) {
+                        modalError.style.display = 'block';
+                        modalError.innerText = 'Completá la hora de publicación y el comienzo de apertura.';
+                        return;
+                    }
+                    cerrarModal();
+                    resolve({ publicacion, apertura });
                     return;
                 }
 
@@ -639,16 +677,22 @@
 
             // --- VALIDACIÓN DE ÁREA Y BASE ---
             let areaValor = String(filasConDatos[0].row['AREA'] || "").trim().toLowerCase();
-            let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
             let baseValor = String(filasConDatos[0].row['BASE/ASCENSO'] || "").trim().toLowerCase();
 
             let isInicial = areaNormalizada === "educacion inicial";
             let isPrimaria = areaNormalizada === "educacion primaria";
             let isCurricular = areaNormalizada === "curricular";
             let isEspecial = areaNormalizada === "especial" || areaNormalizada === "educacion especial";
-            let usaReglasCurricular = isCurricular || isEspecial;
+            let isServiciosProf = areaNormalizada === "servicios profesionales" || areaNormalizada === "servicio profesional";
+            let isPrimariaAdultos = areaNormalizada === "primaria adultos"
+                || areaNormalizada === "educacion primaria adultos"
+                || (areaNormalizada.includes("primaria") && areaNormalizada.includes("adulto"));
+            let usaReglasCurricular = isCurricular || isEspecial || isServiciosProf;
+            let usaVaciarColumnas = usaReglasCurricular || isPrimariaAdultos;
+            let conservaVacantesConFondo = isEspecial || isServiciosProf || isPrimariaAdultos;
 
-            if ((!isInicial && !isPrimaria && !isCurricular && !isEspecial) || baseValor !== "base") {
+            if ((!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos) || baseValor !== "base") {
                 statusDiv.className = "error";
                 statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                 return; 
@@ -657,7 +701,7 @@
             let jsonData = [];
             let filasRojasEliminadas = 0;
             filasConDatos.forEach(item => {
-                if (item.isRed && !isEspecial) {
+                if (item.isRed && !conservaVacantesConFondo) {
                     filasRojasEliminadas++;
                     return;
                 }
@@ -671,6 +715,7 @@
             }
 
             let varianteTurno = "manana";
+            let horariosAdultos = null;
             if (isInicial || isPrimaria) {
                 statusDiv.className = "";
                 statusDiv.innerText = "Área detectada: " + (isPrimaria ? "Educación Primaria" : "Educación Inicial") + ". Elegí el turno.";
@@ -686,8 +731,23 @@
                 }
             }
 
+            if (isPrimariaAdultos) {
+                statusDiv.className = "";
+                statusDiv.innerText = "Área detectada: Primaria Adultos. Definí los horarios.";
+                horariosAdultos = await pedirEnPopup({
+                    titulo: "Primaria Adultos",
+                    texto: "El archivo corresponde a Primaria Adultos. Indicá la hora de publicación y el comienzo del horario de apertura. El resto de los cargos se van a ir corriendo de a 10 minutos.",
+                    modo: "horarios"
+                });
+                if (!horariosAdultos) {
+                    statusDiv.className = "";
+                    statusDiv.innerText = "Proceso cancelado.";
+                    return;
+                }
+            }
+
             if (usaReglasCurricular) {
-                const nombreAreaEq = isEspecial ? "Especial" : "Curricular";
+                const nombreAreaEq = isEspecial ? "Especial" : (isServiciosProf ? "Servicios Profesionales" : "Curricular");
                 statusDiv.className = "";
                 statusDiv.innerText = "Área detectada: " + nombreAreaEq + ". Cargá la tabla de equivalencias.";
                 const archivoEq = await pedirEnPopup({
@@ -737,8 +797,8 @@
                     }
                 });
                 
-                // --- REGLA: VACIAR COLUMNAS EN CURRICULAR / ESPECIAL ---
-                if (usaReglasCurricular) {
+                // --- REGLA: VACIAR COLUMNAS EN CURRICULAR / ESPECIAL / ADULTOS ---
+                if (usaVaciarColumnas) {
                     const normalizarCol = (nombre) => String(nombre || "")
                         .trim()
                         .toLowerCase()
@@ -775,6 +835,10 @@
                     if (!validNewCodes.has(String(nuevoCargo))) {
                         newRow['TEMP_VACIA'] = "CONTROLAR";
                     }
+                } else if (isPrimariaAdultos) {
+                    nuevoCargo = String(cargo) === "1081" ? "1080" : cargo;
+                    let numericCargo = Number(nuevoCargo);
+                    newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
                 } else {
                     // Para las demás áreas queda el código original y sin formato numérico
                     newRow['CODIGO CARGO'] = cargo; 
@@ -828,9 +892,9 @@
                                  ? 'Novedad Mayor 60 dias hábiles' 
                                  : 'Novedad Mayor 60 dias habiles';
 
-                if (isEspecial) {
+                if (isEspecial || isPrimariaAdultos) {
                     newRow[colNovedad] = "2";
-                } else if (isPrimaria || isInicial) {
+                } else if (isPrimaria || isInicial || isServiciosProf) {
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
                     let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
 
@@ -869,7 +933,9 @@
 
                 // --- 6. HORA PUBLICACION ---
                 let horaPublicacionStr = "10:00";
-                if (isPrimaria) {
+                if (isPrimariaAdultos && horariosAdultos) {
+                    horaPublicacionStr = horariosAdultos.publicacion.str;
+                } else if (isPrimaria) {
                     horaPublicacionStr = esVarianteManana ? "08:00" : "12:00";
                 } else if (isInicial) {
                     horaPublicacionStr = esVarianteManana ? "09:30" : "13:00";
@@ -940,8 +1006,25 @@
                 return 0;
             });
 
-            // --- 8. ASIGNAR HORA DE APERTURA (CURRICULAR / ESPECIAL) ---
-            if (usaReglasCurricular) {
+            // --- 8. ASIGNAR HORA DE APERTURA (CURRICULAR / ESPECIAL / SERVICIOS / ADULTOS) ---
+            if (isServiciosProf) {
+                const horaApertura16 = (16 * 60) / 1440;
+                processedData.forEach(row => {
+                    row['HORA APERTURA'] = horaApertura16;
+                });
+            } else if (isPrimariaAdultos && horariosAdultos) {
+                let currentHoraApertura = horariosAdultos.apertura.minutes;
+                let lastCode = null;
+
+                processedData.forEach(row => {
+                    let code = String(row['CODIGO CARGO']);
+                    if (lastCode !== null && code !== lastCode) {
+                        currentHoraApertura += 10;
+                    }
+                    row['HORA APERTURA'] = currentHoraApertura / 1440;
+                    lastCode = code;
+                });
+            } else if (usaReglasCurricular) {
                 let currentHoraApertura = 18 * 60; 
                 let lastCode = null;
 
@@ -1008,7 +1091,7 @@
                 .replace(/_+/g, "_")
                 .replace(/^_|_$/g, "");
 
-            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : "Curricular"));
+            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : (isServiciosProf ? "Servicios_Profesionales" : (isPrimariaAdultos ? "Primaria_Adultos" : "Curricular"))));
             let tipoNombre = baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base"));
             const stamp = now.getFullYear() + "-" + pad2(currentMonth + 1) + "-" + pad2(currentDay)
                 + "_" + pad2(now.getHours()) + "-" + pad2(now.getMinutes());
@@ -1037,5 +1120,6 @@
 
 </body>
 </html>
+
 
 
