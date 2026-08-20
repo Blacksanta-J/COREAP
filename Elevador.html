@@ -91,94 +91,359 @@
         return attrs;
     }
 
-    function colorIsRed(rgb, indexed) {
-        if (indexed === 2 || indexed === 10) return true;
-        if (!rgb) return false;
-        let hex = String(rgb).replace("#", "").toUpperCase();
-        if (hex.length === 8) hex = hex.slice(2);
-        if (hex.length !== 6 || /[^0-9A-F]/.test(hex)) return false;
+    function xmlBlocks(xml, tag) {
+        const re = new RegExp("<(?:\\w+:)?" + tag + "\\b[^>]*>([\\s\\S]*?)</(?:\\w+:)?" + tag + ">", "g");
+        const out = [];
+        let match;
+        while ((match = re.exec(xml))) out.push(match[1]);
+        return out;
+    }
+
+    function xmlTags(xml, tag) {
+        const re = new RegExp("<(?:\\w+:)?" + tag + "\\b[^>]*\\/?>", "g");
+        return xml.match(re) || [];
+    }
+
+    function applyTint(hex, tint) {
+        tint = Number(tint);
+        if (!hex || !tint) return hex;
+        const apply = (c) => tint < 0 ? Math.round(c * (1 + tint)) : Math.round(c * (1 - tint) + 255 * tint);
+        const to = (v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0").toUpperCase();
         const r = parseInt(hex.slice(0, 2), 16);
         const g = parseInt(hex.slice(2, 4), 16);
         const b = parseInt(hex.slice(4, 6), 16);
-        return r >= 160 && g <= 90 && b <= 90;
+        return to(apply(r)) + to(apply(g)) + to(apply(b));
+    }
+
+    function rgbChannels(hex) {
+        if (!hex) return null;
+        let value = String(hex).replace("#", "").toUpperCase();
+        if (value.length === 8) value = value.slice(2);
+        if (value.length !== 6 || /[^0-9A-F]/.test(value)) return null;
+        return {
+            hex: value,
+            r: parseInt(value.slice(0, 2), 16),
+            g: parseInt(value.slice(2, 4), 16),
+            b: parseInt(value.slice(4, 6), 16)
+        };
+    }
+
+    function rgbIsRed(r, g, b) {
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        if (max < 70) return false;
+        const d = max - min;
+        if (d < 18) return false;
+        let h = 0;
+        if (d !== 0) {
+            if (max === r) h = ((g - b) / d) % 6;
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h *= 60;
+            if (h < 0) h += 360;
+        }
+        const s = max === 0 ? 0 : d / max;
+        return (h <= 18 || h >= 340) && s >= 0.08 && r >= 110 && r > g && r > b;
+    }
+
+    function colorAttrsAreRed(attrs, themeColors) {
+        if (!attrs) return false;
+        const indexed = attrs.indexed != null ? Number(attrs.indexed) : NaN;
+        if (indexed === 2 || indexed === 10) return true;
+        let hex = null;
+        if (attrs.rgb) {
+            const ch = rgbChannels(attrs.rgb);
+            hex = ch && ch.hex;
+        } else if (attrs.theme != null && themeColors && themeColors[Number(attrs.theme)]) {
+            hex = themeColors[Number(attrs.theme)];
+        }
+        if (!hex) return false;
+        hex = applyTint(hex, attrs.tint);
+        const ch = rgbChannels(hex);
+        return !!(ch && rgbIsRed(ch.r, ch.g, ch.b));
+    }
+
+    function sheetJsColorIsRed(color) {
+        if (!color) return false;
+        if (typeof color === "string") {
+            const ch = rgbChannels(color);
+            return !!(ch && rgbIsRed(ch.r, ch.g, ch.b));
+        }
+        return colorAttrsAreRed(color, null);
     }
 
     function sheetJsCellIsRed(cell) {
         if (!cell || !cell.s || typeof cell.s !== "object") return false;
-        const fill = cell.s.fill || {};
-        const colors = [fill.fgColor, fill.bgColor, fill.fgColor && fill.fgColor.rgb, fill.bgColor && fill.bgColor.rgb];
-        return colors.some(color => {
-            if (!color) return false;
-            if (typeof color === "string") return colorIsRed(color);
-            return colorIsRed(color.rgb, color.indexed != null ? Number(color.indexed) : undefined);
+        const style = cell.s;
+        const fill = style.fill || {};
+        const colors = [
+            style.fgColor, style.bgColor, style.color,
+            fill.fgColor, fill.bgColor,
+            fill.fgColor && fill.fgColor.rgb, fill.bgColor && fill.bgColor.rgb,
+            style.font && style.font.color, style.font && style.font.color && style.font.color.rgb
+        ];
+        return colors.some(sheetJsColorIsRed);
+    }
+
+    async function inflateRaw(compressed) {
+        const ds = new DecompressionStream("deflate-raw");
+        const ab = await new Response(new Blob([compressed]).stream().pipeThrough(ds)).arrayBuffer();
+        return new Uint8Array(ab);
+    }
+
+    async function readZipTextFiles(u8) {
+        const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+        let eocd = -1;
+        const min = Math.max(0, u8.length - 65557);
+        for (let i = u8.length - 22; i >= min; i--) {
+            if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) return null;
+        const count = view.getUint16(eocd + 10, true);
+        const cdOffset = view.getUint32(eocd + 16, true);
+        const files = {};
+        let off = cdOffset;
+        const decoder = new TextDecoder("utf-8");
+        for (let i = 0; i < count; i++) {
+            if (view.getUint32(off, true) !== 0x02014b50) break;
+            const method = view.getUint16(off + 10, true);
+            const compSize = view.getUint32(off + 20, true);
+            const nameLen = view.getUint16(off + 28, true);
+            const extraLen = view.getUint16(off + 30, true);
+            const commentLen = view.getUint16(off + 32, true);
+            const localOff = view.getUint32(off + 42, true);
+            const name = decoder.decode(u8.subarray(off + 46, off + 46 + nameLen)).replace(/\\/g, "/");
+            const localNameLen = view.getUint16(localOff + 26, true);
+            const localExtraLen = view.getUint16(localOff + 28, true);
+            const dataStart = localOff + 30 + localNameLen + localExtraLen;
+            const compressed = u8.subarray(dataStart, dataStart + compSize);
+            let data;
+            if (method === 0) data = compressed;
+            else if (method === 8) data = await inflateRaw(compressed);
+            else { off += 46 + nameLen + extraLen + commentLen; continue; }
+            files[name] = decoder.decode(data);
+            off += 46 + nameLen + extraLen + commentLen;
+        }
+        return files;
+    }
+
+    function zipGet(files, path) {
+        const want = String(path || "").replace(/\\/g, "/").replace(/^\//, "").toLowerCase();
+        const key = Object.keys(files).find(k => k.replace(/\\/g, "/").toLowerCase() === want);
+        return key ? files[key] : "";
+    }
+
+    function parseThemeColors(themeXml) {
+        const colors = [];
+        if (!themeXml) return colors;
+        const scheme = xmlBlocks(themeXml, "clrScheme")[0] || "";
+        const vals = [];
+        const colorRe = /<(?:a:)?(?:srgbClr|sysClr)\b[^>]*\/?>/g;
+        let match;
+        while ((match = colorRe.exec(scheme))) {
+            const attrs = parseXmlAttrs(match[0]);
+            const hex = rgbChannels(attrs.val || attrs.lastClr);
+            if (hex) vals.push(hex.hex);
+        }
+        return vals;
+    }
+
+    function parseFillFromXml(fillXml, themeColors) {
+        const fgTag = xmlTags(fillXml, "fgColor")[0];
+        const bgTag = xmlTags(fillXml, "bgColor")[0];
+        const pattern = (fillXml.match(/patternType="([^"]+)"/) || [])[1] || "";
+        const fg = fgTag ? parseXmlAttrs(fgTag) : {};
+        const bg = bgTag ? parseXmlAttrs(bgTag) : {};
+        const isRed = pattern !== "none" && (colorAttrsAreRed(fg, themeColors) || colorAttrsAreRed(bg, themeColors));
+        return { isRed };
+    }
+
+    function parseXfs(block) {
+        return xmlTags(block || "", "xf").map(tag => {
+            const attrs = parseXmlAttrs(tag);
+            return {
+                fillId: attrs.fillId != null ? Number(attrs.fillId) : 0,
+                fontId: attrs.fontId != null ? Number(attrs.fontId) : 0,
+                xfId: attrs.xfId != null ? Number(attrs.xfId) : 0,
+                applyFill: attrs.applyFill,
+                applyFont: attrs.applyFont
+            };
         });
+    }
+
+    function markSqrefRows(sqref, redRows) {
+        String(sqref || "").split(/\s+/).forEach(ref => {
+            const m = ref.match(/[A-Z]+(\d+)(?::[A-Z]+(\d+))?/i);
+            if (!m) return;
+            const r1 = Number(m[1]);
+            const r2 = Number(m[2] || m[1]);
+            for (let r = r1; r <= r2; r++) redRows.add(r - 1);
+        });
+    }
+
+    function cssColorIsRed(value) {
+        if (!value) return false;
+        const raw = String(value).trim().toLowerCase();
+        if (raw === "red" || raw === "darkred" || raw === "crimson" || raw === "firebrick" || raw === "indianred") return true;
+        const hex = rgbChannels(raw.replace(/^#/, "").toUpperCase());
+        if (hex) return rgbIsRed(hex.r, hex.g, hex.b);
+        const rgb = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (rgb) return rgbIsRed(Number(rgb[1]), Number(rgb[2]), Number(rgb[3]));
+        return false;
+    }
+
+    function decodeWorkbookText(u8) {
+        if (u8.length >= 2 && u8[0] === 0xFF && u8[1] === 0xFE) return new TextDecoder("utf-16le").decode(u8);
+        if (u8.length >= 2 && u8[0] === 0xFE && u8[1] === 0xFF) return new TextDecoder("utf-16be").decode(u8);
+        return new TextDecoder("utf-8").decode(u8);
+    }
+
+    function getRedRowsFromSpreadsheetML(xml) {
+        const result = {};
+        const styles = {};
+        (xml.match(/<Style\b[\s\S]*?<\/Style>/gi) || []).forEach(block => {
+            const id = (block.match(/\bss:ID="([^"]+)"/) || [])[1];
+            if (!id) return;
+            const interior = (block.match(/<Interior\b[^>]*>/i) || [])[0] || "";
+            const color = (interior.match(/\bss:Color="([^"]+)"/) || [])[1];
+            styles[id] = cssColorIsRed(color);
+        });
+
+        (xml.match(/<Worksheet\b[\s\S]*?<\/Worksheet>/gi) || []).forEach(sheetXml => {
+            const name = decodeXml((sheetXml.match(/\bss:Name="([^"]+)"/) || [])[1] || "");
+            const redRows = new Set();
+            let excelRow = 0;
+            const rows = sheetXml.match(/<Row\b[\s\S]*?<\/Row>/gi) || [];
+            rows.forEach(rowXml => {
+                const idx = rowXml.match(/\bss:Index="(\d+)"/);
+                if (idx) excelRow = Number(idx[1]) - 1;
+                const openTag = (rowXml.match(/<Row\b[^>]*>/i) || [])[0] || "";
+                const rowStyle = (openTag.match(/\bss:StyleID="([^"]+)"/) || [])[1];
+                let isRed = !!(rowStyle && styles[rowStyle]);
+                (rowXml.match(/<Cell\b[^>]*>/gi) || []).forEach(cell => {
+                    const sid = (cell.match(/\bss:StyleID="([^"]+)"/) || [])[1];
+                    if (sid && styles[sid]) isRed = true;
+                });
+                if (isRed) redRows.add(excelRow);
+                excelRow++;
+            });
+            result[name] = redRows;
+        });
+        return result;
+    }
+
+    function getRedRowsFromHtml(html) {
+        const redClasses = new Set();
+        const styleRe = /\.([A-Za-z0-9_-]+)\s*\{([^}]+)\}/g;
+        let match;
+        while ((match = styleRe.exec(html))) {
+            const color = (match[2].match(/background(?:-color)?\s*:\s*([^;]+)/i) || [])[1];
+            if (cssColorIsRed(color)) redClasses.add(match[1].toLowerCase());
+        }
+
+        const redRows = new Set();
+        const trRe = /<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi;
+        let rowIndex = 0;
+        let tr;
+        while ((tr = trRe.exec(html))) {
+            const attrs = tr[1] || "";
+            const body = tr[2] || "";
+            let isRed = false;
+            const rowBg = (attrs.match(/bgcolor="([^"]+)"/i) || attrs.match(/background(?:-color)?\s*:\s*([^;"']+)/i) || [])[1];
+            if (cssColorIsRed(rowBg)) isRed = true;
+            const classRe = /class=["']([^"']+)["']/gi;
+            let cls;
+            while ((cls = classRe.exec(attrs + " " + body))) {
+                String(cls[1]).split(/\s+/).forEach(name => {
+                    if (redClasses.has(name.toLowerCase())) isRed = true;
+                });
+            }
+            const tdBg = /(?:bgcolor="([^"]+)"|background(?:-color)?\s*:\s*([^;"')]+))/gi;
+            let bg;
+            while ((bg = tdBg.exec(body))) {
+                if (cssColorIsRed(bg[1] || bg[2])) isRed = true;
+            }
+            if (isRed) redRows.add(rowIndex);
+            rowIndex++;
+        }
+        return { "*": redRows };
     }
 
     async function getRedRowsBySheet(uint8) {
         const redRowsBySheet = {};
-        if (typeof JSZip === "undefined") return redRowsBySheet;
-
-        let zip;
+        let files = null;
         try {
-            zip = await JSZip.loadAsync(uint8);
+            files = await readZipTextFiles(uint8);
         } catch (e) {
+            files = null;
+        }
+        if (!files || !zipGet(files, "xl/styles.xml")) {
+            const text = decodeWorkbookText(uint8);
+            const head = text.slice(0, 4000);
+            if (/urn:schemas-microsoft-com:office:spreadsheet|Excel\.Sheet|<Workbook\b/i.test(head)) {
+                return getRedRowsFromSpreadsheetML(text);
+            }
+            if (/<html|<table|MIME-Version/i.test(head)) {
+                return getRedRowsFromHtml(text);
+            }
             return redRowsBySheet;
         }
 
-        const stylesEntry = zip.file("xl/styles.xml");
-        const workbookEntry = zip.file("xl/workbook.xml");
-        const relsEntry = zip.file("xl/_rels/workbook.xml.rels");
-        if (!stylesEntry || !workbookEntry || !relsEntry) return redRowsBySheet;
+        const stylesXml = zipGet(files, "xl/styles.xml");
+        const wbXml = zipGet(files, "xl/workbook.xml");
+        const relsXml = zipGet(files, "xl/_rels/workbook.xml.rels");
+        if (!stylesXml || !wbXml || !relsXml) return redRowsBySheet;
 
-        const stylesXml = await stylesEntry.async("string");
+        const themeKey = Object.keys(files).find(k => /xl\/theme\/theme\d+\.xml$/i.test(k.replace(/\\/g, "/")));
+        const themeColors = parseThemeColors(themeKey ? files[themeKey] : "");
+
         const fills = [];
-        const fillsBlock = stylesXml.match(/<fills\b[^>]*>([\s\S]*?)<\/fills>/);
-        if (fillsBlock) {
-            const fillXmls = fillsBlock[1].match(/<fill\b[\s\S]*?<\/fill>/g) || [];
-            fillXmls.forEach(fillXml => {
-                const fgTag = fillXml.match(/<fgColor\b[^>]*\/?>/);
-                const bgTag = fillXml.match(/<bgColor\b[^>]*\/?>/);
-                const pattern = fillXml.match(/patternType="([^"]+)"/);
-                fills.push({
-                    fg: fgTag ? parseXmlAttrs(fgTag[0]) : {},
-                    bg: bgTag ? parseXmlAttrs(bgTag[0]) : {},
-                    pattern: pattern ? pattern[1] : ""
-                });
+        xmlBlocks(stylesXml, "fills").forEach(block => {
+            (block.match(/<(?:\w+:)?fill\b[\s\S]*?<\/(?:\w+:)?fill>/g) || []).forEach(fillXml => {
+                fills.push(parseFillFromXml(fillXml, themeColors));
             });
-        }
+        });
 
-        function fillIsRed(fill) {
-            if (!fill || fill.pattern === "none") return false;
-            return colorIsRed(fill.fg.rgb, fill.fg.indexed != null ? Number(fill.fg.indexed) : undefined)
-                || colorIsRed(fill.bg.rgb, fill.bg.indexed != null ? Number(fill.bg.indexed) : undefined);
-        }
-
-        const fillIdByXf = [];
-        const xfBlock = stylesXml.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/);
-        if (xfBlock) {
-            const xfs = xfBlock[1].match(/<xf\b[^>]*>/g) || [];
-            xfs.forEach(xf => {
-                const attrs = parseXmlAttrs(xf);
-                fillIdByXf.push(attrs.fillId != null ? Number(attrs.fillId) : 0);
+        const fontsAreRed = [];
+        xmlBlocks(stylesXml, "fonts").forEach(block => {
+            (block.match(/<(?:\w+:)?font\b[\s\S]*?<\/(?:\w+:)?font>/g) || []).forEach(fontXml => {
+                const colorTag = xmlTags(fontXml, "color")[0];
+                fontsAreRed.push(colorTag ? colorAttrsAreRed(parseXmlAttrs(colorTag), themeColors) : false);
             });
-        }
+        });
+
+        const dxfsAreRed = [];
+        xmlBlocks(stylesXml, "dxfs").forEach(block => {
+            (block.match(/<(?:\w+:)?dxf\b[\s\S]*?<\/(?:\w+:)?dxf>/g) || []).forEach(dxfXml => {
+                const fillXml = (dxfXml.match(/<(?:\w+:)?fill\b[\s\S]*?<\/(?:\w+:)?fill>/) || [])[0] || "";
+                const colorTag = xmlTags(dxfXml, "color")[0];
+                dxfsAreRed.push(parseFillFromXml(fillXml, themeColors).isRed || (colorTag ? colorAttrsAreRed(parseXmlAttrs(colorTag), themeColors) : false));
+            });
+        });
+
+        const cellStyleXfs = parseXfs(xmlBlocks(stylesXml, "cellStyleXfs")[0] || "");
+        const cellXfs = parseXfs(xmlBlocks(stylesXml, "cellXfs")[0] || "");
 
         function styleIsRed(styleId) {
-            return fillIsRed(fills[fillIdByXf[styleId]]);
+            const xf = cellXfs[styleId];
+            if (!xf) return false;
+            let fillId = xf.fillId;
+            if ((xf.applyFill === "0" || xf.applyFill === "false") && cellStyleXfs[xf.xfId]) {
+                fillId = cellStyleXfs[xf.xfId].fillId;
+            }
+            return !!(fills[fillId] && fills[fillId].isRed);
         }
 
         const ridToTarget = {};
-        const relsXml = await relsEntry.async("string");
-        (relsXml.match(/<Relationship\b[^>]*\/?>/g) || []).forEach(tag => {
+        xmlTags(relsXml, "Relationship").forEach(tag => {
             const attrs = parseXmlAttrs(tag);
-            let target = attrs.Target || "";
+            let target = (attrs.Target || "").replace(/\\/g, "/");
             if (target && !target.startsWith("xl/")) target = "xl/" + target.replace(/^\//, "");
             if (attrs.Id) ridToTarget[attrs.Id] = target;
         });
 
-        const wbXml = await workbookEntry.async("string");
         const sheets = [];
-        (wbXml.match(/<sheet\b[^>]*\/?>/g) || []).forEach(tag => {
+        xmlTags(wbXml, "sheet").forEach(tag => {
             const attrs = parseXmlAttrs(tag);
             const rid = attrs["r:id"] || attrs["r:Id"];
             sheets.push({ name: attrs.name, path: ridToTarget[rid] });
@@ -186,28 +451,33 @@
 
         for (const sheet of sheets) {
             if (!sheet.path) continue;
-            const sheetFile = zip.file(sheet.path);
-            if (!sheetFile) continue;
-            const sheetXml = await sheetFile.async("string");
+            const sheetXml = zipGet(files, sheet.path);
+            if (!sheetXml) continue;
             const redRows = new Set();
 
-            const cellRe = /<c\b([^>]*)>/g;
-            let match;
-            while ((match = cellRe.exec(sheetXml))) {
-                const attrs = parseXmlAttrs(match[1]);
-                if (attrs.s == null || attrs.s === "") continue;
-                if (!styleIsRed(Number(attrs.s))) continue;
+            xmlTags(sheetXml, "c").forEach(tag => {
+                const attrs = parseXmlAttrs(tag);
+                if (attrs.s == null || attrs.s === "") return;
+                if (!styleIsRed(Number(attrs.s))) return;
                 const rowMatch = (attrs.r || "").match(/(\d+)$/);
                 if (rowMatch) redRows.add(Number(rowMatch[1]) - 1);
-            }
+            });
 
-            const rowRe = /<row\b([^>]*)>/g;
-            while ((match = rowRe.exec(sheetXml))) {
-                const attrs = parseXmlAttrs(match[1]);
-                if (attrs.s == null || attrs.s === "") continue;
-                if (!styleIsRed(Number(attrs.s))) continue;
+            xmlTags(sheetXml, "row").forEach(tag => {
+                const attrs = parseXmlAttrs(tag);
+                if (attrs.s == null || attrs.s === "") return;
+                if (!styleIsRed(Number(attrs.s))) return;
                 if (attrs.r) redRows.add(Number(attrs.r) - 1);
-            }
+            });
+
+            (sheetXml.match(/<(?:\w+:)?conditionalFormatting\b[\s\S]*?<\/(?:\w+:)?conditionalFormatting>/g) || []).forEach(block => {
+                const wrapAttrs = parseXmlAttrs(xmlTags(block, "conditionalFormatting")[0] || block);
+                xmlTags(block, "cfRule").forEach(ruleTag => {
+                    const rule = parseXmlAttrs(ruleTag);
+                    if (rule.dxfId == null) return;
+                    if (dxfsAreRed[Number(rule.dxfId)]) markSqrefRows(wrapAttrs.sqref, redRows);
+                });
+            });
 
             redRowsBySheet[sheet.name] = redRows;
         }
@@ -255,11 +525,12 @@
             // --- 2. AGRUPAR HOJAS Y FILTRAR VACANTES ROJAS ---
             const redRowsBySheet = await getRedRowsBySheet(dataBase);
             let jsonData = [];
+            let filasRojasEliminadas = 0;
             wbBase.SheetNames.forEach(sheetName => {
                 const worksheet = wbBase.Sheets[sheetName];
                 let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
                 let range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
-                const redRows = redRowsBySheet[sheetName] || new Set();
+                const redRows = redRowsBySheet[sheetName] || redRowsBySheet["*"] || new Set();
                 
                 if (range) {
                     for(let R = range.s.r + 1; R <= range.e.r; ++R) {
@@ -275,9 +546,10 @@
                         }
                         
                         let rowIdx = R - range.s.r - 1;
-                        if(sheetData[rowIdx] && !isRed) {
+                        if(sheetData[rowIdx]) {
                             let hasData = Object.values(sheetData[rowIdx]).some(v => String(v).trim() !== "");
-                            if (hasData) jsonData.push(sheetData[rowIdx]);
+                            if (hasData && isRed) filasRojasEliminadas++;
+                            if (hasData && !isRed) jsonData.push(sheetData[rowIdx]);
                         }
                     }
                 }
@@ -445,8 +717,46 @@
                 newRow['FECHA PUBLICACION'] = dateActual;
                 newRow['FECHA APERTURA'] = dateActual;
 
-                // --- 6. HORA PUBLICACION A 10:00 ---
-                newRow['HORA PUBLICACION'] = (10 * 60) / 1440;
+                // --- 6. HORA PUBLICACION ---
+                let horaPublicacionStr = "10:00";
+                if (isPrimaria) {
+                    horaPublicacionStr = currentHour < 8 ? "08:00" : "12:00";
+                } else if (isInicial) {
+                    horaPublicacionStr = currentHour < 12 ? "09:30" : "13:00";
+                }
+                let pubParts = horaPublicacionStr.split(":").map(Number);
+                newRow['HORA PUBLICACION'] = (pubParts[0] * 60 + pubParts[1]) / 1440;
+
+                if (isPrimaria || isInicial) {
+                    let haFrac = "";
+                    let cargoApertura = String(nuevoCargo);
+
+                    if (isPrimaria) {
+                        if (horaPublicacionStr === "08:00") {
+                            if (isMananaOrCompleto && cargoApertura === "1020") haFrac = (9 * 60 + 30) / 1440;
+                            else if (isMananaOrCompleto && cargoApertura === "1028") haFrac = (9 * 60 + 45) / 1440;
+                        } else if (horaPublicacionStr === "12:00") {
+                            if (isTarde && cargoApertura === "1020") haFrac = (13 * 60) / 1440;
+                            else if (isTarde && cargoApertura === "1028") haFrac = (13 * 60 + 15) / 1440;
+                        }
+                    } else {
+                        if (horaPublicacionStr === "09:30") {
+                            if (isMananaOrCompleto && cargoApertura === "1010") haFrac = (11 * 60) / 1440;
+                            else if (isMananaOrCompleto && cargoApertura === "1018") haFrac = (11 * 60 + 15) / 1440;
+                            else if (isTarde && cargoApertura === "1010") haFrac = (11 * 60 + 30) / 1440;
+                            else if (isTarde && cargoApertura === "1018") haFrac = (11 * 60 + 45) / 1440;
+                        } else if (horaPublicacionStr === "13:00") {
+                            if (isMananaOrCompleto && cargoApertura === "1010") haFrac = (15 * 60) / 1440;
+                            else if (isMananaOrCompleto && cargoApertura === "1018") haFrac = (15 * 60 + 15) / 1440;
+                            else if (isTarde && cargoApertura === "1010") haFrac = (15 * 60 + 30) / 1440;
+                            else if (isTarde && cargoApertura === "1018") haFrac = (15 * 60 + 45) / 1440;
+                        }
+                    }
+
+                    if (haFrac !== "") {
+                        newRow['HORA APERTURA'] = haFrac;
+                    }
+                }
 
                 let colObs = newRow.hasOwnProperty('Observación') ? 'Observación' : 'observaciones';
                 let obs = newRow[colObs] ? String(newRow[colObs]).trim() : "";
@@ -480,18 +790,20 @@
                 return 0;
             });
 
-            // --- 8. ASIGNAR HORA DE APERTURA ---
-            let currentHoraApertura = 18 * 60; 
-            let lastCode = null;
+            // --- 8. ASIGNAR HORA DE APERTURA (SOLO CURRICULAR) ---
+            if (isCurricular) {
+                let currentHoraApertura = 18 * 60; 
+                let lastCode = null;
 
-            processedData.forEach(row => {
-                let code = String(row['CODIGO CARGO']);
-                if (lastCode !== null && code !== lastCode) {
-                    currentHoraApertura += 10; 
-                }
-                row['HORA APERTURA'] = currentHoraApertura / 1440;
-                lastCode = code;
-            });
+                processedData.forEach(row => {
+                    let code = String(row['CODIGO CARGO']);
+                    if (lastCode !== null && code !== lastCode) {
+                        currentHoraApertura += 10; 
+                    }
+                    row['HORA APERTURA'] = currentHoraApertura / 1440;
+                    lastCode = code;
+                });
+            }
 
             const newWorksheet = XLSX.utils.json_to_sheet(processedData);
             const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
@@ -542,7 +854,7 @@
             XLSX.writeFile(newWorkbook, "Archivo_Modificado.xlsx");
 
             statusDiv.className = "";
-            statusDiv.innerText = "¡Archivo procesado y descargado con éxito!";
+            statusDiv.innerText = "¡Archivo procesado y descargado con éxito! Filas rojas eliminadas: " + filasRojasEliminadas;
             
         } catch (error) {
             console.error(error);
