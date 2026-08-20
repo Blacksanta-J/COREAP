@@ -571,7 +571,7 @@
                 const archivo = document.getElementById('fileEquivalencias').files[0] || null;
                 if (!archivo) {
                     modalError.style.display = 'block';
-                    modalError.innerText = 'Para Curricular tenés que cargar la tabla de equivalencias.';
+                    modalError.innerText = 'Tenés que cargar la tabla de equivalencias para continuar.';
                     return;
                 }
                 cerrarModal();
@@ -600,10 +600,9 @@
             let mapOldToNew = {};
             let validNewCodes = new Set();
 
-            // --- 2. AGRUPAR HOJAS Y FILTRAR VACANTES ROJAS ---
+            // --- 2. AGRUPAR HOJAS (EL FILTRO DE FONDO ROJO SE APLICA DESPUÉS, SEGÚN EL ÁREA) ---
             const redRowsBySheet = await getRedRowsBySheet(dataBase);
-            let jsonData = [];
-            let filasRojasEliminadas = 0;
+            let filasConDatos = [];
             wbBase.SheetNames.forEach(sheetName => {
                 const worksheet = wbBase.Sheets[sheetName];
                 let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
@@ -626,32 +625,49 @@
                         let rowIdx = R - range.s.r - 1;
                         if(sheetData[rowIdx]) {
                             let hasData = Object.values(sheetData[rowIdx]).some(v => String(v).trim() !== "");
-                            if (hasData && isRed) filasRojasEliminadas++;
-                            if (hasData && !isRed) jsonData.push(sheetData[rowIdx]);
+                            if (hasData) filasConDatos.push({ row: sheetData[rowIdx], isRed });
                         }
                     }
                 }
             });
 
-            if (jsonData.length === 0) {
+            if (filasConDatos.length === 0) {
                 statusDiv.className = "error";
                 statusDiv.innerText = "El archivo está vacío o todas las filas fueron eliminadas.";
                 return;
             }
 
             // --- VALIDACIÓN DE ÁREA Y BASE ---
-            let areaValor = String(jsonData[0]['AREA'] || "").trim().toLowerCase();
+            let areaValor = String(filasConDatos[0].row['AREA'] || "").trim().toLowerCase();
             let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            let baseValor = String(jsonData[0]['BASE/ASCENSO'] || "").trim().toLowerCase();
+            let baseValor = String(filasConDatos[0].row['BASE/ASCENSO'] || "").trim().toLowerCase();
 
             let isInicial = areaNormalizada === "educacion inicial";
             let isPrimaria = areaNormalizada === "educacion primaria";
             let isCurricular = areaNormalizada === "curricular";
+            let isEspecial = areaNormalizada === "especial" || areaNormalizada === "educacion especial";
+            let usaReglasCurricular = isCurricular || isEspecial;
 
-            if ((!isInicial && !isPrimaria && !isCurricular) || baseValor !== "base") {
+            if ((!isInicial && !isPrimaria && !isCurricular && !isEspecial) || baseValor !== "base") {
                 statusDiv.className = "error";
                 statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                 return; 
+            }
+
+            let jsonData = [];
+            let filasRojasEliminadas = 0;
+            filasConDatos.forEach(item => {
+                if (item.isRed && !isEspecial) {
+                    filasRojasEliminadas++;
+                    return;
+                }
+                jsonData.push(item.row);
+            });
+
+            if (jsonData.length === 0) {
+                statusDiv.className = "error";
+                statusDiv.innerText = "El archivo está vacío o todas las filas fueron eliminadas.";
+                return;
             }
 
             let varianteTurno = "manana";
@@ -670,12 +686,13 @@
                 }
             }
 
-            if (isCurricular) {
+            if (usaReglasCurricular) {
+                const nombreAreaEq = isEspecial ? "Especial" : "Curricular";
                 statusDiv.className = "";
-                statusDiv.innerText = "Área detectada: Curricular. Cargá la tabla de equivalencias.";
+                statusDiv.innerText = "Área detectada: " + nombreAreaEq + ". Cargá la tabla de equivalencias.";
                 const archivoEq = await pedirEnPopup({
-                    titulo: "Curricular",
-                    texto: "El archivo corresponde a Curricular. Seleccioná la tabla de equivalencias para continuar.",
+                    titulo: nombreAreaEq,
+                    texto: "El archivo corresponde a " + nombreAreaEq + ". Seleccioná la tabla de equivalencias para continuar.",
                     modo: "equivalencias"
                 });
                 if (!archivoEq) {
@@ -720,8 +737,8 @@
                     }
                 });
                 
-                // --- REGLA: VACIAR COLUMNAS EN CURRICULAR ---
-                if (isCurricular) {
+                // --- REGLA: VACIAR COLUMNAS EN CURRICULAR / ESPECIAL ---
+                if (usaReglasCurricular) {
                     const normalizarCol = (nombre) => String(nombre || "")
                         .trim()
                         .toLowerCase()
@@ -743,11 +760,11 @@
                     });
                 }
 
-                // --- 3. REEMPLAZO Y CONTROL DE CÓDIGOS DE CARGO (SOLO CURRICULAR) ---
+                // --- 3. REEMPLAZO Y CONTROL DE CÓDIGOS DE CARGO (CURRICULAR / ESPECIAL) ---
                 let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
                 let nuevoCargo = cargo; // Por defecto es el mismo cargo
                 
-                if (isCurricular) {
+                if (usaReglasCurricular) {
                     nuevoCargo = mapOldToNew[cargo] || cargo;
                     
                     // Convertimos el cargo a número para que quede con formato número en Excel
@@ -811,7 +828,9 @@
                                  ? 'Novedad Mayor 60 dias hábiles' 
                                  : 'Novedad Mayor 60 dias habiles';
 
-                if (isPrimaria || isInicial) {
+                if (isEspecial) {
+                    newRow[colNovedad] = "2";
+                } else if (isPrimaria || isInicial) {
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
                     let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
 
@@ -921,8 +940,8 @@
                 return 0;
             });
 
-            // --- 8. ASIGNAR HORA DE APERTURA (SOLO CURRICULAR) ---
-            if (isCurricular) {
+            // --- 8. ASIGNAR HORA DE APERTURA (CURRICULAR / ESPECIAL) ---
+            if (usaReglasCurricular) {
                 let currentHoraApertura = 18 * 60; 
                 let lastCode = null;
 
@@ -989,7 +1008,7 @@
                 .replace(/_+/g, "_")
                 .replace(/^_|_$/g, "");
 
-            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : "Curricular");
+            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : "Curricular"));
             let tipoNombre = baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base"));
             const stamp = now.getFullYear() + "-" + pad2(currentMonth + 1) + "-" + pad2(currentDay)
                 + "_" + pad2(now.getHours()) + "-" + pad2(now.getMinutes());
