@@ -42,30 +42,61 @@
             transition: background-color 0.3s;
         }
         button:hover { background-color: #1d4ed8; }
+        button.secondary {
+            background-color: #e5e7eb; color: #1f2937; margin-top: 8px;
+        }
+        button.secondary:hover { background-color: #d1d5db; }
         #status { margin-top: 15px; font-weight: bold; color: #16a34a; }
         .error { color: #dc2626 !important; }
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45);
+            align-items: center; justify-content: center; z-index: 50; padding: 16px;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal {
+            background: #fff; border-radius: 10px; padding: 24px; width: 100%;
+            max-width: 420px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); text-align: left;
+        }
+        .modal h3 { margin: 0 0 8px 0; color: #1f2937; }
+        .modal p { margin: 0 0 16px 0; color: #4b5563; font-size: 14px; }
+        .modal select, .modal input[type="file"] { margin: 0 0 16px 0; }
+        .modal-actions { display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>Procesador de Archivos de Trabajo</h2>
-    <p>Selecciona tus archivos para aplicar las reglas automáticas.</p>
+    <p>Selecciona el archivo base para aplicar las reglas automáticas.</p>
     
-    <label class="label-text">1. Archivo Base (Datos)</label>
+    <label class="label-text">Archivo Base (Datos)</label>
     <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
-
-    <label class="label-text">2. Tabla de Equivalencias (solo Curricular)</label>
-    <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
-
-    <label class="label-text">3. Variante (Inicial / Primaria)</label>
-    <select id="varianteTurno">
-        <option value="manana">Mañana</option>
-        <option value="tarde">Tarde</option>
-    </select>
 
     <button onclick="procesarArchivo()">Procesar y Descargar</button>
     <div id="status"></div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+        <h3 id="modalTitle"></h3>
+        <p id="modalText"></p>
+        <div id="modalTurnoFields" style="display:none;">
+            <label class="label-text" for="varianteTurno">Turno</label>
+            <select id="varianteTurno">
+                <option value="manana">Mañana</option>
+                <option value="tarde">Tarde</option>
+            </select>
+        </div>
+        <div id="modalEqFields" style="display:none;">
+            <label class="label-text" for="fileEquivalencias">Tabla de Equivalencias</label>
+            <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
+        </div>
+        <div id="modalError" class="error" style="display:none; margin-bottom: 12px; font-size: 13px; font-weight: bold;"></div>
+        <div class="modal-actions">
+            <button type="button" id="modalConfirm">Continuar</button>
+            <button type="button" class="secondary" id="modalCancel">Cancelar</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -496,9 +527,61 @@
         return redRowsBySheet;
     }
 
+    function cerrarModal() {
+        document.getElementById('modalOverlay').classList.remove('visible');
+        document.getElementById('modalTurnoFields').style.display = 'none';
+        document.getElementById('modalEqFields').style.display = 'none';
+        document.getElementById('modalConfirm').onclick = null;
+        document.getElementById('modalCancel').onclick = null;
+    }
+
+    function pedirEnPopup({ titulo, texto, modo }) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('modalOverlay');
+            document.getElementById('modalTitle').innerText = titulo;
+            document.getElementById('modalText').innerText = texto;
+            const modalError = document.getElementById('modalError');
+            modalError.style.display = 'none';
+            modalError.innerText = '';
+            document.getElementById('modalTurnoFields').style.display = modo === 'turno' ? 'block' : 'none';
+            document.getElementById('modalEqFields').style.display = modo === 'equivalencias' ? 'block' : 'none';
+
+            if (modo === 'turno') {
+                document.getElementById('varianteTurno').value = 'manana';
+            }
+            if (modo === 'equivalencias') {
+                document.getElementById('fileEquivalencias').value = '';
+            }
+
+            overlay.classList.add('visible');
+
+            document.getElementById('modalCancel').onclick = () => {
+                cerrarModal();
+                resolve(null);
+            };
+
+            document.getElementById('modalConfirm').onclick = () => {
+                if (modo === 'turno') {
+                    const valor = document.getElementById('varianteTurno').value;
+                    cerrarModal();
+                    resolve(valor);
+                    return;
+                }
+
+                const archivo = document.getElementById('fileEquivalencias').files[0] || null;
+                if (!archivo) {
+                    modalError.style.display = 'block';
+                    modalError.innerText = 'Para Curricular tenés que cargar la tabla de equivalencias.';
+                    return;
+                }
+                cerrarModal();
+                resolve(archivo);
+            };
+        });
+    }
+
     async function procesarArchivo() {
         const fileInput = document.getElementById('fileInput');
-        const fileEquivalencias = document.getElementById('fileEquivalencias');
         const statusDiv = document.getElementById('status');
         
         if (!fileInput.files.length) {
@@ -571,14 +654,37 @@
                 return; 
             }
 
+            let varianteTurno = "manana";
+            if (isInicial || isPrimaria) {
+                statusDiv.className = "";
+                statusDiv.innerText = "Área detectada: " + (isPrimaria ? "Educación Primaria" : "Educación Inicial") + ". Elegí el turno.";
+                varianteTurno = await pedirEnPopup({
+                    titulo: isPrimaria ? "Educación Primaria" : "Educación Inicial",
+                    texto: "El archivo corresponde a " + (isPrimaria ? "Primaria" : "Inicial") + ". Elegí si querés procesar la variante de Mañana o de Tarde.",
+                    modo: "turno"
+                });
+                if (!varianteTurno) {
+                    statusDiv.className = "";
+                    statusDiv.innerText = "Proceso cancelado.";
+                    return;
+                }
+            }
+
             if (isCurricular) {
-                if (!fileEquivalencias.files.length) {
-                    statusDiv.className = "error";
-                    statusDiv.innerText = "Para Curricular tenés que cargar la tabla de equivalencias.";
+                statusDiv.className = "";
+                statusDiv.innerText = "Área detectada: Curricular. Cargá la tabla de equivalencias.";
+                const archivoEq = await pedirEnPopup({
+                    titulo: "Curricular",
+                    texto: "El archivo corresponde a Curricular. Seleccioná la tabla de equivalencias para continuar.",
+                    modo: "equivalencias"
+                });
+                if (!archivoEq) {
+                    statusDiv.className = "";
+                    statusDiv.innerText = "Proceso cancelado.";
                     return;
                 }
 
-                const dataEq = await readFileAsync(fileEquivalencias.files[0]);
+                const dataEq = await readFileAsync(archivoEq);
                 const wbEq = XLSX.read(dataEq, {type: 'array'});
                 let eqSheetName = wbEq.SheetNames[0];
                 let eqData = XLSX.utils.sheet_to_json(wbEq.Sheets[eqSheetName], { header: 1 });
@@ -598,7 +704,6 @@
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
             const currentDay = now.getDate();
-            const varianteTurno = document.getElementById('varianteTurno').value;
             const esVarianteManana = varianteTurno !== "tarde";
             
             const dateHasta = getExcelDate(currentYear, 11, 31); 
@@ -875,9 +980,30 @@
                 });
             }
 
+            const pad2 = (n) => String(n).padStart(2, "0");
+            const slugArchivo = (texto) => String(texto || "")
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[<>:"/\\|?*]/g, "")
+                .trim()
+                .replace(/\s+/g, "_")
+                .replace(/_+/g, "_")
+                .replace(/^_|_$/g, "");
+
+            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : "Curricular");
+            let tipoNombre = baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base"));
+            const stamp = now.getFullYear() + "-" + pad2(currentMonth + 1) + "-" + pad2(currentDay)
+                + "_" + pad2(now.getHours()) + "-" + pad2(now.getMinutes());
+
+            const partesNombre = [areaNombre, tipoNombre];
+            if (isPrimaria || isInicial) {
+                partesNombre.push(esVarianteManana ? "Manana" : "Tarde");
+            }
+            partesNombre.push(stamp);
+            const nombreDescarga = slugArchivo(partesNombre.join("_")) + ".xlsx";
+
             const newWorkbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Datos Procesados");
-            XLSX.writeFile(newWorkbook, "Archivo_Modificado.xlsx");
+            XLSX.writeFile(newWorkbook, nombreDescarga);
 
             statusDiv.className = "";
             statusDiv.innerText = "¡Archivo procesado y descargado con éxito! Filas rojas eliminadas: " + filasRojasEliminadas;
@@ -892,4 +1018,5 @@
 
 </body>
 </html>
+
 
