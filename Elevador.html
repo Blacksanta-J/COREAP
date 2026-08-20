@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procesador de Vacantes</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -71,6 +72,149 @@
         });
     }
 
+    function decodeXml(value) {
+        return String(value || "")
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'");
+    }
+
+    function parseXmlAttrs(tag) {
+        const attrs = {};
+        const re = /([:\w]+)\s*=\s*"([^"]*)"/g;
+        let match;
+        while ((match = re.exec(tag))) {
+            attrs[match[1]] = decodeXml(match[2]);
+        }
+        return attrs;
+    }
+
+    function colorIsRed(rgb, indexed) {
+        if (indexed === 2 || indexed === 10) return true;
+        if (!rgb) return false;
+        let hex = String(rgb).replace("#", "").toUpperCase();
+        if (hex.length === 8) hex = hex.slice(2);
+        if (hex.length !== 6 || /[^0-9A-F]/.test(hex)) return false;
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return r >= 160 && g <= 90 && b <= 90;
+    }
+
+    function sheetJsCellIsRed(cell) {
+        if (!cell || !cell.s || typeof cell.s !== "object") return false;
+        const fill = cell.s.fill || {};
+        const colors = [fill.fgColor, fill.bgColor, fill.fgColor && fill.fgColor.rgb, fill.bgColor && fill.bgColor.rgb];
+        return colors.some(color => {
+            if (!color) return false;
+            if (typeof color === "string") return colorIsRed(color);
+            return colorIsRed(color.rgb, color.indexed != null ? Number(color.indexed) : undefined);
+        });
+    }
+
+    async function getRedRowsBySheet(uint8) {
+        const redRowsBySheet = {};
+        if (typeof JSZip === "undefined") return redRowsBySheet;
+
+        let zip;
+        try {
+            zip = await JSZip.loadAsync(uint8);
+        } catch (e) {
+            return redRowsBySheet;
+        }
+
+        const stylesEntry = zip.file("xl/styles.xml");
+        const workbookEntry = zip.file("xl/workbook.xml");
+        const relsEntry = zip.file("xl/_rels/workbook.xml.rels");
+        if (!stylesEntry || !workbookEntry || !relsEntry) return redRowsBySheet;
+
+        const stylesXml = await stylesEntry.async("string");
+        const fills = [];
+        const fillsBlock = stylesXml.match(/<fills\b[^>]*>([\s\S]*?)<\/fills>/);
+        if (fillsBlock) {
+            const fillXmls = fillsBlock[1].match(/<fill\b[\s\S]*?<\/fill>/g) || [];
+            fillXmls.forEach(fillXml => {
+                const fgTag = fillXml.match(/<fgColor\b[^>]*\/?>/);
+                const bgTag = fillXml.match(/<bgColor\b[^>]*\/?>/);
+                const pattern = fillXml.match(/patternType="([^"]+)"/);
+                fills.push({
+                    fg: fgTag ? parseXmlAttrs(fgTag[0]) : {},
+                    bg: bgTag ? parseXmlAttrs(bgTag[0]) : {},
+                    pattern: pattern ? pattern[1] : ""
+                });
+            });
+        }
+
+        function fillIsRed(fill) {
+            if (!fill || fill.pattern === "none") return false;
+            return colorIsRed(fill.fg.rgb, fill.fg.indexed != null ? Number(fill.fg.indexed) : undefined)
+                || colorIsRed(fill.bg.rgb, fill.bg.indexed != null ? Number(fill.bg.indexed) : undefined);
+        }
+
+        const fillIdByXf = [];
+        const xfBlock = stylesXml.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/);
+        if (xfBlock) {
+            const xfs = xfBlock[1].match(/<xf\b[^>]*>/g) || [];
+            xfs.forEach(xf => {
+                const attrs = parseXmlAttrs(xf);
+                fillIdByXf.push(attrs.fillId != null ? Number(attrs.fillId) : 0);
+            });
+        }
+
+        function styleIsRed(styleId) {
+            return fillIsRed(fills[fillIdByXf[styleId]]);
+        }
+
+        const ridToTarget = {};
+        const relsXml = await relsEntry.async("string");
+        (relsXml.match(/<Relationship\b[^>]*\/?>/g) || []).forEach(tag => {
+            const attrs = parseXmlAttrs(tag);
+            let target = attrs.Target || "";
+            if (target && !target.startsWith("xl/")) target = "xl/" + target.replace(/^\//, "");
+            if (attrs.Id) ridToTarget[attrs.Id] = target;
+        });
+
+        const wbXml = await workbookEntry.async("string");
+        const sheets = [];
+        (wbXml.match(/<sheet\b[^>]*\/?>/g) || []).forEach(tag => {
+            const attrs = parseXmlAttrs(tag);
+            const rid = attrs["r:id"] || attrs["r:Id"];
+            sheets.push({ name: attrs.name, path: ridToTarget[rid] });
+        });
+
+        for (const sheet of sheets) {
+            if (!sheet.path) continue;
+            const sheetFile = zip.file(sheet.path);
+            if (!sheetFile) continue;
+            const sheetXml = await sheetFile.async("string");
+            const redRows = new Set();
+
+            const cellRe = /<c\b([^>]*)>/g;
+            let match;
+            while ((match = cellRe.exec(sheetXml))) {
+                const attrs = parseXmlAttrs(match[1]);
+                if (attrs.s == null || attrs.s === "") continue;
+                if (!styleIsRed(Number(attrs.s))) continue;
+                const rowMatch = (attrs.r || "").match(/(\d+)$/);
+                if (rowMatch) redRows.add(Number(rowMatch[1]) - 1);
+            }
+
+            const rowRe = /<row\b([^>]*)>/g;
+            while ((match = rowRe.exec(sheetXml))) {
+                const attrs = parseXmlAttrs(match[1]);
+                if (attrs.s == null || attrs.s === "") continue;
+                if (!styleIsRed(Number(attrs.s))) continue;
+                if (attrs.r) redRows.add(Number(attrs.r) - 1);
+            }
+
+            redRowsBySheet[sheet.name] = redRows;
+        }
+
+        return redRowsBySheet;
+    }
+
     async function procesarArchivo() {
         const fileInput = document.getElementById('fileInput');
         const fileEquivalencias = document.getElementById('fileEquivalencias');
@@ -109,20 +253,21 @@
             }
 
             // --- 2. AGRUPAR HOJAS Y FILTRAR VACANTES ROJAS ---
+            const redRowsBySheet = await getRedRowsBySheet(dataBase);
             let jsonData = [];
             wbBase.SheetNames.forEach(sheetName => {
                 const worksheet = wbBase.Sheets[sheetName];
                 let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
                 let range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
+                const redRows = redRowsBySheet[sheetName] || new Set();
                 
                 if (range) {
                     for(let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        let isRed = false;
-                        for(let C = range.s.c; C <= range.e.c; ++C) {
-                            let cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
-                            if(cell && cell.s && cell.s.fill && cell.s.fill.fgColor) {
-                                let color = cell.s.fill.fgColor.rgb || "";
-                                if(color.toUpperCase().includes("FF0000")) {
+                        let isRed = redRows.has(R);
+                        if (!isRed) {
+                            for(let C = range.s.c; C <= range.e.c; ++C) {
+                                let cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
+                                if (sheetJsCellIsRed(cell)) {
                                     isRed = true;
                                     break;
                                 }
@@ -179,7 +324,7 @@
                     }
                 });
                 
-                // --- REGLA NUEVA: VACIAR COLUMNAS EN CURRICULAR ---
+                // --- REGLA: VACIAR COLUMNAS EN CURRICULAR ---
                 if (isCurricular) {
                     const columnasABorrar = [
                         "codigo de asignatura", 
@@ -190,22 +335,29 @@
                     
                     Object.keys(newRow).forEach(key => {
                         if (columnasABorrar.includes(key.trim().toLowerCase())) {
-                            newRow[key] = ""; // Vacia la celda manteniendo la columna
+                            newRow[key] = ""; 
                         }
                     });
                 }
 
-                // --- 3. REEMPLAZO Y CONTROL DE CÓDIGOS DE CARGO (FORMATO NÚMERO) ---
+                // --- 3. REEMPLAZO Y CONTROL DE CÓDIGOS DE CARGO (SOLO CURRICULAR) ---
                 let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
-                let nuevoCargo = mapOldToNew[cargo] || cargo;
+                let nuevoCargo = cargo; // Por defecto es el mismo cargo
                 
-                // Convertimos el cargo a número para que quede con formato número en Excel
-                let numericCargo = Number(nuevoCargo);
-                newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
-                
-                // Controlar usando el código como texto
-                if (!validNewCodes.has(String(nuevoCargo))) {
-                    newRow['TEMP_VACIA'] = "CONTROLAR";
+                if (isCurricular) {
+                    nuevoCargo = mapOldToNew[cargo] || cargo;
+                    
+                    // Convertimos el cargo a número para que quede con formato número en Excel
+                    let numericCargo = Number(nuevoCargo);
+                    newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
+                    
+                    // Controlar usando el código como texto
+                    if (!validNewCodes.has(String(nuevoCargo))) {
+                        newRow['TEMP_VACIA'] = "CONTROLAR";
+                    }
+                } else {
+                    // Para las demás áreas queda el código original y sin formato numérico
+                    newRow['CODIGO CARGO'] = cargo; 
                 }
 
                 let turno = newRow['TURNO'] ? String(newRow['TURNO']).trim() : "";
@@ -255,11 +407,26 @@
                 let colNovedad = newRow.hasOwnProperty('Novedad Mayor 60 dias hábiles') 
                                  ? 'Novedad Mayor 60 dias hábiles' 
                                  : 'Novedad Mayor 60 dias habiles';
-                                 
-                if (String(newRow['Cant. Horas']) === "32") {
-                    newRow[colNovedad] = "1";
+
+                if (isPrimaria || isInicial) {
+                    let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
+                    let sitRev = newRow['Sit. Rev.'] ? String(newRow['Sit. Rev.']).toUpperCase() : "";
+
+                    if (turnoLower === 'completo' && sitRev.includes('INTERINO')) {
+                        newRow[colNovedad] = "1";
+                    } else if (turnoLower === 'mañana' || turnoLower === 'manana' || turnoLower === 'tarde') {
+                        newRow[colNovedad] = "2";
+                    } else if (novedad === "1") {
+                        newRow[colNovedad] = "1";
+                    } else {
+                        newRow[colNovedad] = "2";
+                    }
                 } else {
-                    newRow[colNovedad] = "2";
+                    if (String(newRow['Cant. Horas']) === "32") {
+                        newRow[colNovedad] = "1";
+                    } else {
+                        newRow[colNovedad] = "2";
+                    }
                 }
 
                 let fDesde = newRow['FECHA DESDE'];
