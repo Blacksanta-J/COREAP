@@ -50,7 +50,7 @@
     <label class="label-text">1. Archivo Base (Datos)</label>
     <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
 
-    <label class="label-text">2. Tabla de Equivalencias (Espejado Curricular.xlsx)</label>
+    <label class="label-text">2. Tabla de Equivalencias (solo Curricular)</label>
     <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
 
     <button onclick="procesarArchivo()">Procesar y Descargar</button>
@@ -490,8 +490,8 @@
         const fileEquivalencias = document.getElementById('fileEquivalencias');
         const statusDiv = document.getElementById('status');
         
-        if (!fileInput.files.length || !fileEquivalencias.files.length) {
-            statusDiv.innerText = "Por favor, selecciona ambos archivos antes de procesar.";
+        if (!fileInput.files.length) {
+            statusDiv.innerText = "Por favor, selecciona el archivo base antes de procesar.";
             statusDiv.className = "error";
             return;
         }
@@ -501,26 +501,10 @@
             statusDiv.innerText = "Procesando...";
 
             const dataBase = await readFileAsync(fileInput.files[0]);
-            const dataEq = await readFileAsync(fileEquivalencias.files[0]);
-
             const wbBase = XLSX.read(dataBase, {type: 'array', cellStyles: true});
-            const wbEq = XLSX.read(dataEq, {type: 'array'});
             
-            // --- 1. PROCESAR TABLA DE EQUIVALENCIAS ---
-            let eqSheetName = wbEq.SheetNames[0];
-            let eqData = XLSX.utils.sheet_to_json(wbEq.Sheets[eqSheetName], { header: 1 });
             let mapOldToNew = {};
             let validNewCodes = new Set();
-            
-            for(let i = 1; i < eqData.length; i++) {
-                let row = eqData[i];
-                if(row && row.length >= 2) {
-                    let oldC = String(row[0] || "").trim();
-                    let newC = String(row[1] || "").trim();
-                    if(oldC) mapOldToNew[oldC] = newC;
-                    if(newC) validNewCodes.add(newC);
-                }
-            }
 
             // --- 2. AGRUPAR HOJAS Y FILTRAR VACANTES ROJAS ---
             const redRowsBySheet = await getRedRowsBySheet(dataBase);
@@ -576,6 +560,29 @@
                 return; 
             }
 
+            if (isCurricular) {
+                if (!fileEquivalencias.files.length) {
+                    statusDiv.className = "error";
+                    statusDiv.innerText = "Para Curricular tenés que cargar la tabla de equivalencias.";
+                    return;
+                }
+
+                const dataEq = await readFileAsync(fileEquivalencias.files[0]);
+                const wbEq = XLSX.read(dataEq, {type: 'array'});
+                let eqSheetName = wbEq.SheetNames[0];
+                let eqData = XLSX.utils.sheet_to_json(wbEq.Sheets[eqSheetName], { header: 1 });
+
+                for(let i = 1; i < eqData.length; i++) {
+                    let row = eqData[i];
+                    if(row && row.length >= 2) {
+                        let oldC = String(row[0] || "").trim();
+                        let newC = String(row[1] || "").trim();
+                        if(oldC) mapOldToNew[oldC] = newC;
+                        if(newC) validNewCodes.add(newC);
+                    }
+                }
+            }
+
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
@@ -599,10 +606,10 @@
                 // --- REGLA: VACIAR COLUMNAS EN CURRICULAR ---
                 if (isCurricular) {
                     const columnasABorrar = [
-                        "codigo de asignatura", 
-                        "descripcion de asignatura", 
-                        "codigo de especialidad", 
-                        "descripcion de especialidad"
+                        "CODIGO ASIGNATURA", 
+                        "DESCRIPCION ASIGNATURA", 
+                        "CODIGO ESPECIALIDAD", 
+                        "DESCRIPCION ESPECIALIDAD"
                     ];
                     
                     Object.keys(newRow).forEach(key => {
