@@ -31,6 +31,11 @@
             text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: #4b5563;
         }
         input[type="file"] { margin: 10px 0 20px 0; display: block; width: 100%; }
+        select {
+            margin: 10px 0 20px 0; display: block; width: 100%;
+            padding: 10px; font-size: 15px; border: 1px solid #d1d5db;
+            border-radius: 6px; background: #fff; color: #1f2937;
+        }
         button {
             background-color: #2563eb; color: white; border: none; padding: 12px 20px;
             font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%;
@@ -52,6 +57,12 @@
 
     <label class="label-text">2. Tabla de Equivalencias (solo Curricular)</label>
     <input type="file" id="fileEquivalencias" accept=".csv, .xls, .xlsx" />
+
+    <label class="label-text">3. Variante (Inicial / Primaria)</label>
+    <select id="varianteTurno">
+        <option value="manana">Mañana</option>
+        <option value="tarde">Tarde</option>
+    </select>
 
     <button onclick="procesarArchivo()">Procesar y Descargar</button>
     <div id="status"></div>
@@ -587,7 +598,8 @@
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
             const currentDay = now.getDate();
-            const currentHour = now.getHours();
+            const varianteTurno = document.getElementById('varianteTurno').value;
+            const esVarianteManana = varianteTurno !== "tarde";
             
             const dateHasta = getExcelDate(currentYear, 11, 31); 
             const dateActual = getExcelDate(currentYear, currentMonth, currentDay);
@@ -605,16 +617,23 @@
                 
                 // --- REGLA: VACIAR COLUMNAS EN CURRICULAR ---
                 if (isCurricular) {
-                    const columnasABorrar = [
-                        "CODIGO ASIGNATURA", 
-                        "DESCRIPCION ASIGNATURA", 
-                        "CODIGO ESPECIALIDAD", 
-                        "DESCRIPCION ESPECIALIDAD"
-                    ];
-                    
+                    const normalizarCol = (nombre) => String(nombre || "")
+                        .trim()
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/\s+/g, " ");
+
+                    const columnasABorrar = new Set([
+                        "codigo asignatura",
+                        "descripcion asignatura",
+                        "codigo especialidad",
+                        "descripcion especialidad"
+                    ]);
+
                     Object.keys(newRow).forEach(key => {
-                        if (columnasABorrar.includes(key.trim().toLowerCase())) {
-                            newRow[key] = ""; 
+                        if (columnasABorrar.has(normalizarCol(key))) {
+                            newRow[key] = "";
                         }
                     });
                 }
@@ -651,8 +670,8 @@
 
                 if (isPrimaria) {
                     if (String(nuevoCargo) !== "1020" && String(nuevoCargo) !== "1028") return null;
-                    if (currentHour < 8 && isTarde) return null;
-                    if (currentHour >= 8 && isMananaOrCompleto) return null;
+                    if (esVarianteManana && isTarde) return null;
+                    if (!esVarianteManana && isMananaOrCompleto) return null;
                 }
 
                 // --- 4. CANT. HORAS ---
@@ -727,9 +746,9 @@
                 // --- 6. HORA PUBLICACION ---
                 let horaPublicacionStr = "10:00";
                 if (isPrimaria) {
-                    horaPublicacionStr = currentHour < 8 ? "08:00" : "12:00";
+                    horaPublicacionStr = esVarianteManana ? "08:00" : "12:00";
                 } else if (isInicial) {
-                    horaPublicacionStr = currentHour < 12 ? "09:30" : "13:00";
+                    horaPublicacionStr = esVarianteManana ? "09:30" : "13:00";
                 }
                 let pubParts = horaPublicacionStr.split(":").map(Number);
                 newRow['HORA PUBLICACION'] = (pubParts[0] * 60 + pubParts[1]) / 1440;
@@ -873,3 +892,4 @@
 
 </body>
 </html>
+
