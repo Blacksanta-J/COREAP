@@ -690,7 +690,7 @@
                 || (areaNormalizada.includes("primaria") && areaNormalizada.includes("adulto"));
             let usaReglasCurricular = isCurricular || isEspecial || isServiciosProf;
             let usaVaciarColumnas = usaReglasCurricular || isPrimariaAdultos;
-            let conservaVacantesConFondo = isEspecial || isServiciosProf || isPrimariaAdultos;
+            let conservaVacantesConFondo = isEspecial || isServiciosProf;
 
             if ((!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos) || baseValor !== "base") {
                 statusDiv.className = "error";
@@ -836,12 +836,22 @@
                         newRow['TEMP_VACIA'] = "CONTROLAR";
                     }
                 } else if (isPrimariaAdultos) {
-                    nuevoCargo = String(cargo) === "1081" ? "1080" : cargo;
+                    const cargosAdultos = { "1081": "1080", "691": "904" };
+                    nuevoCargo = cargosAdultos[String(cargo)] || cargo;
                     let numericCargo = Number(nuevoCargo);
                     newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
                 } else {
                     // Para las demás áreas queda el código original y sin formato numérico
                     newRow['CODIGO CARGO'] = cargo; 
+                }
+
+                if (isEspecial) {
+                    let colDistrito = Object.keys(newRow).find(key => String(key).trim().toLowerCase() === "distrito") || "Distrito";
+                    let distritoValor = newRow[colDistrito];
+                    let distritoTexto = distritoValor == null ? "" : String(distritoValor).trim();
+                    if (distritoTexto === "" || distritoTexto === "0") {
+                        newRow[colDistrito] = 1;
+                    }
                 }
 
                 let turno = newRow['TURNO'] ? String(newRow['TURNO']).trim() : "";
@@ -1120,6 +1130,5 @@
 
 </body>
 </html>
-
 
 
