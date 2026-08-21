@@ -672,6 +672,139 @@
         };
     }
 
+    function normalizarNombreCol(nombre) {
+        return String(nombre || "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ");
+    }
+
+    function normalizarCodigo(valor) {
+        let texto = String(valor == null ? "" : valor).trim();
+        if (texto === "") return "";
+        if (/^-?\d+\.0+$/.test(texto)) texto = texto.replace(/\.0+$/, "");
+        return texto;
+    }
+
+    function valorPorNombres(row, candidatos) {
+        const wanted = candidatos.map(normalizarNombreCol);
+        const key = Object.keys(row || {}).find(k => wanted.includes(normalizarNombreCol(k)));
+        return key == null ? "" : row[key];
+    }
+
+    function limpiarCeldaTexto(valor) {
+        return String(valor == null ? "" : valor)
+            .replace(/[\u00A0\u200B-\u200D\uFEFF]/g, " ")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ");
+    }
+
+    function filaEncabezadoConArea(worksheet) {
+        if (!worksheet || !worksheet['!ref']) return 0;
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const maxR = Math.min(range.e.r, range.s.r + 12);
+        for (let R = range.s.r; R <= maxR; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                const cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
+                if (!cell || cell.v == null) continue;
+                if (normalizarNombreCol(cell.v) === "area") return R;
+            }
+        }
+        return range.s.r;
+    }
+
+    function claveCombinacion(cargo, asignatura, especialidad) {
+        return [
+            normalizarCodigo(cargo),
+            normalizarCodigo(asignatura),
+            normalizarCodigo(especialidad)
+        ].join("|");
+    }
+
+    function claveCombinacionDeFila(row) {
+        return claveCombinacion(
+            valorPorNombres(row, ["codigo cargo", "cod. cargo"]),
+            valorPorNombres(row, ["codigo asignatura", "codigo de asignatura", "cod. asignatura"]),
+            valorPorNombres(row, ["codigo especialidad", "codigo de especialidad", "cod. especialidad"])
+        );
+    }
+
+    function cargarCatalogoCombinaciones(eqData) {
+        const catalogo = new Set();
+        if (!eqData || !eqData.length) return catalogo;
+
+        const header = (eqData[0] || []).map(normalizarNombreCol);
+        const idxCargo = header.findIndex(h => h === "codigo cargo" || h === "cod. cargo");
+        const idxAsig = header.findIndex(h => h === "codigo asignatura" || h === "codigo de asignatura" || h === "cod. asignatura");
+        const idxEsp = header.findIndex(h => h === "codigo especialidad" || h === "codigo de especialidad" || h === "cod. especialidad");
+
+        const start = (idxCargo >= 0 && idxAsig >= 0 && idxEsp >= 0) ? 1 : 0;
+        for (let i = start; i < eqData.length; i++) {
+            const row = eqData[i] || [];
+            let cargo, asig, esp;
+            if (idxCargo >= 0 && idxAsig >= 0 && idxEsp >= 0) {
+                cargo = row[idxCargo];
+                asig = row[idxAsig];
+                esp = row[idxEsp];
+            } else {
+                cargo = row[0];
+                asig = row[1];
+                esp = row[2];
+            }
+            const clave = claveCombinacion(cargo, asig, esp);
+            if (clave === "||") continue;
+            catalogo.add(clave);
+        }
+        return catalogo;
+    }
+
+    function aplicarFormatoFechasHoras(worksheet) {
+        if (!worksheet || !worksheet['!ref']) return;
+        const rangeObj = XLSX.utils.decode_range(worksheet['!ref']);
+        for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
+            let cell = worksheet[XLSX.utils.encode_cell({c: C, r: 0})];
+            if (cell && cell.v === 'TEMP_VACIA') cell.v = '';
+        }
+
+        let headers = {};
+        for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
+            let cell = worksheet[XLSX.utils.encode_cell({c: C, r: 0})];
+            if (cell && typeof cell.v === 'string' && cell.v !== '') {
+                headers[cell.v] = C;
+            }
+        }
+
+        const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
+        const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
+        for (let R = 1; R <= rangeObj.e.r; ++R) {
+            dateCols.forEach(col => {
+                let C = headers[col];
+                if (C !== undefined) {
+                    let cell = worksheet[XLSX.utils.encode_cell({c: C, r: R})];
+                    if (cell && typeof cell.v === 'number') {
+                        cell.t = 'n';
+                        cell.z = 'dd/mm/yyyy';
+                    }
+                }
+            });
+            timeCols.forEach(col => {
+                let C = headers[col];
+                if (C !== undefined) {
+                    let cell = worksheet[XLSX.utils.encode_cell({c: C, r: R})];
+                    if (cell && typeof cell.v === 'number') {
+                        cell.t = 'n';
+                        cell.z = 'hh:mm';
+                    }
+                }
+            });
+        }
+    }
+
     function pedirEnPopup({ titulo, texto, modo }) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('modalOverlay');
@@ -681,13 +814,20 @@
             modalError.style.display = 'none';
             modalError.innerText = '';
             document.getElementById('modalTurnoFields').style.display = modo === 'turno' ? 'block' : 'none';
-            document.getElementById('modalEqFields').style.display = modo === 'equivalencias' ? 'block' : 'none';
+            document.getElementById('modalEqFields').style.display = (modo === 'equivalencias' || modo === 'catalogo') ? 'block' : 'none';
             document.getElementById('modalHorariosFields').style.display = modo === 'horarios' ? 'block' : 'none';
+
+            const eqLabel = document.querySelector('label[for="fileEquivalencias"]');
+            if (eqLabel) {
+                eqLabel.innerText = modo === 'catalogo'
+                    ? 'Catálogo de combinaciones (una hoja)'
+                    : 'Control de Cargos y Espejado';
+            }
 
             if (modo === 'turno') {
                 document.getElementById('varianteTurno').value = 'manana';
             }
-            if (modo === 'equivalencias') {
+            if (modo === 'equivalencias' || modo === 'catalogo') {
                 document.getElementById('fileEquivalencias').value = '';
             }
             if (modo === 'horarios') {
@@ -726,7 +866,9 @@
                 const archivo = document.getElementById('fileEquivalencias').files[0] || null;
                 if (!archivo) {
                     modalError.style.display = 'block';
-                    modalError.innerText = 'Tenés que cargar la tabla de equivalencias para continuar.';
+                    modalError.innerText = modo === 'catalogo'
+                        ? 'Tenés que cargar el catálogo de combinaciones para continuar.'
+                        : 'Tenés que cargar la tabla de equivalencias para continuar.';
                     return;
                 }
                 cerrarModal();
@@ -760,28 +902,28 @@
             let filasConDatos = [];
             wbBase.SheetNames.forEach(sheetName => {
                 const worksheet = wbBase.Sheets[sheetName];
-                let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
                 let range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
+                if (!range) return;
+                const headerRow = filaEncabezadoConArea(worksheet);
+                let sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true, range: headerRow });
                 const redRows = redRowsBySheet[sheetName] || redRowsBySheet["*"] || new Set();
                 
-                if (range) {
-                    for(let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        let isRed = redRows.has(R);
-                        if (!isRed) {
-                            for(let C = range.s.c; C <= range.e.c; ++C) {
-                                let cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
-                                if (sheetJsCellIsRed(cell)) {
-                                    isRed = true;
-                                    break;
-                                }
+                for(let R = headerRow + 1; R <= range.e.r; ++R) {
+                    let isRed = redRows.has(R);
+                    if (!isRed) {
+                        for(let C = range.s.c; C <= range.e.c; ++C) {
+                            let cell = worksheet[XLSX.utils.encode_cell({r: R, c: C})];
+                            if (sheetJsCellIsRed(cell)) {
+                                isRed = true;
+                                break;
                             }
                         }
-                        
-                        let rowIdx = R - range.s.r - 1;
-                        if(sheetData[rowIdx]) {
-                            let hasData = Object.values(sheetData[rowIdx]).some(v => String(v).trim() !== "");
-                            if (hasData) filasConDatos.push({ row: sheetData[rowIdx], isRed });
-                        }
+                    }
+                    
+                    let rowIdx = R - headerRow - 1;
+                    if(sheetData[rowIdx]) {
+                        let hasData = Object.values(sheetData[rowIdx]).some(v => String(v).trim() !== "");
+                        if (hasData) filasConDatos.push({ row: sheetData[rowIdx], isRed });
                     }
                 }
             });
@@ -793,9 +935,22 @@
             }
 
             // --- VALIDACIÓN DE ÁREA Y BASE ---
-            let areaValor = String(filasConDatos[0].row['AREA'] || "").trim().toLowerCase();
-            let areaNormalizada = areaValor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
-            let baseValor = String(filasConDatos[0].row['BASE/ASCENSO'] || "").trim().toLowerCase();
+            const filaConArea = filasConDatos.find(item => {
+                const area = limpiarCeldaTexto(valorPorNombres(item.row, ["area"]));
+                return area === "media"
+                    || area === "educacion inicial"
+                    || area === "educacion primaria"
+                    || area === "curricular"
+                    || area === "especial"
+                    || area === "educacion especial"
+                    || area === "servicios profesionales"
+                    || area === "servicio profesional"
+                    || area === "primaria adultos"
+                    || area === "educacion primaria adultos"
+                    || (area.includes("primaria") && area.includes("adulto"));
+            }) || filasConDatos.find(item => limpiarCeldaTexto(valorPorNombres(item.row, ["area"])) !== "") || filasConDatos[0];
+            let areaNormalizada = limpiarCeldaTexto(valorPorNombres(filaConArea.row, ["area"]));
+            let baseValor = limpiarCeldaTexto(valorPorNombres(filaConArea.row, ["base/ascenso"]));
 
             let isInicial = areaNormalizada === "educacion inicial";
             let isPrimaria = areaNormalizada === "educacion primaria";
@@ -805,14 +960,24 @@
             let isPrimariaAdultos = areaNormalizada === "primaria adultos"
                 || areaNormalizada === "educacion primaria adultos"
                 || (areaNormalizada.includes("primaria") && areaNormalizada.includes("adulto"));
+            let isMedia = areaNormalizada === "media";
             let usaReglasCurricular = isCurricular || isEspecial || isServiciosProf;
+            let usaEquivalencias = isCurricular || isEspecial;
             let usaVaciarColumnas = usaReglasCurricular || isPrimariaAdultos;
             let conservaVacantesConFondo = isEspecial || isServiciosProf;
+            let isAreaCatalogo = isMedia;
+            let usaHorariosAdultos = isPrimariaAdultos;
 
-            if ((!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos) || baseValor !== "base") {
+            if (!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos && !isMedia) {
                 statusDiv.className = "error";
                 statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                 return; 
+            }
+
+            if (!isMedia && baseValor !== "base") {
+                statusDiv.className = "error";
+                statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
+                return;
             }
 
             let jsonData = [];
@@ -848,7 +1013,7 @@
                 }
             }
 
-            if (isPrimariaAdultos) {
+            if (usaHorariosAdultos) {
                 statusDiv.className = "";
                 statusDiv.innerText = "Área detectada: Primaria Adultos. Definí los horarios.";
                 horariosAdultos = await pedirEnPopup({
@@ -863,8 +1028,8 @@
                 }
             }
 
-            if (usaReglasCurricular) {
-                const nombreAreaEq = isEspecial ? "Especial" : (isServiciosProf ? "Servicios Profesionales" : "Curricular");
+            if (usaEquivalencias) {
+                const nombreAreaEq = isEspecial ? "Especial" : "Curricular";
                 statusDiv.className = "";
                 statusDiv.innerText = "Área detectada: " + nombreAreaEq + ". Cargá la tabla de equivalencias.";
                 const archivoEq = await pedirEnPopup({
@@ -891,6 +1056,33 @@
                         if(oldC) mapOldToNew[oldC] = newC;
                         if(newC) validNewCodes.add(newC);
                     }
+                }
+            }
+
+            let catalogoCombinaciones = new Set();
+            if (isAreaCatalogo) {
+                statusDiv.className = "";
+                statusDiv.innerText = "Área detectada: Media. Cargá el catálogo de combinaciones.";
+                const archivoCat = await pedirEnPopup({
+                    titulo: "Media",
+                    texto: "El archivo corresponde a Media. Seleccioná el Excel del catálogo (una hoja, coincidencia exacta de código de cargo, asignatura y especialidad).",
+                    modo: "catalogo"
+                });
+                if (!archivoCat) {
+                    statusDiv.className = "";
+                    statusDiv.innerText = "Proceso cancelado.";
+                    return;
+                }
+
+                const dataCat = await readFileAsync(archivoCat);
+                const wbCat = XLSX.read(dataCat, {type: 'array'});
+                const catSheetName = wbCat.SheetNames[0];
+                const catData = XLSX.utils.sheet_to_json(wbCat.Sheets[catSheetName], { header: 1 });
+                catalogoCombinaciones = cargarCatalogoCombinaciones(catData);
+                if (catalogoCombinaciones.size === 0) {
+                    statusDiv.className = "error";
+                    statusDiv.innerText = "El catálogo no tiene combinaciones válidas. Revisá que la hoja tenga código de cargo, asignatura y especialidad.";
+                    return;
                 }
             }
 
@@ -941,7 +1133,7 @@
                 let cargo = newRow['CODIGO CARGO'] ? String(newRow['CODIGO CARGO']).trim() : "";
                 let nuevoCargo = cargo; // Por defecto es el mismo cargo
                 
-                if (usaReglasCurricular) {
+                if (usaEquivalencias) {
                     nuevoCargo = mapOldToNew[cargo] || cargo;
                     
                     // Convertimos el cargo a número para que quede con formato número en Excel
@@ -952,6 +1144,9 @@
                     if (!validNewCodes.has(String(nuevoCargo))) {
                         newRow['TEMP_VACIA'] = "CONTROLAR";
                     }
+                } else if (isServiciosProf || isMedia) {
+                    let numericCargo = Number(nuevoCargo);
+                    newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
                 } else if (isPrimariaAdultos) {
                     const cargosAdultos = { "1081": "1080", "691": "904" };
                     nuevoCargo = cargosAdultos[String(cargo)] || cargo;
@@ -1019,7 +1214,7 @@
                                  ? 'Novedad Mayor 60 dias hábiles' 
                                  : 'Novedad Mayor 60 dias habiles';
 
-                if (isEspecial || isPrimariaAdultos) {
+                if (isEspecial || isPrimariaAdultos || isMedia) {
                     newRow[colNovedad] = "2";
                 } else if (isPrimaria || isInicial || isServiciosProf) {
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
@@ -1060,7 +1255,9 @@
 
                 // --- 6. HORA PUBLICACION ---
                 let horaPublicacionStr = "10:00";
-                if (isPrimariaAdultos && horariosAdultos) {
+                if (isMedia && normalizarCodigo(nuevoCargo) === "1582") {
+                    horaPublicacionStr = "16:00";
+                } else if (isPrimariaAdultos && horariosAdultos) {
                     horaPublicacionStr = horariosAdultos.publicacion.str;
                 } else if (isPrimaria) {
                     horaPublicacionStr = esVarianteManana ? "08:00" : "12:00";
@@ -1133,8 +1330,50 @@
                 return 0;
             });
 
-            // --- 8. ASIGNAR HORA DE APERTURA (CURRICULAR / ESPECIAL / SERVICIOS / ADULTOS) ---
-            if (isServiciosProf) {
+            if (isMedia) {
+                const tipoFila = (row) => {
+                    const tipo = limpiarCeldaTexto(valorPorNombres(row, ["base/ascenso"]));
+                    return tipo === "ascenso" ? "ascenso" : "base";
+                };
+
+                processedData.sort((a, b) => {
+                    const tipoA = tipoFila(a);
+                    const tipoB = tipoFila(b);
+                    if (tipoA !== tipoB) return tipoA === "ascenso" ? -1 : 1;
+
+                    let codeA = String(a['CODIGO CARGO'] || "");
+                    let codeB = String(b['CODIGO CARGO'] || "");
+                    let numA = parseInt(codeA, 10);
+                    let numB = parseInt(codeB, 10);
+                    if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numB - numA;
+                    if (codeA !== codeB) return codeA > codeB ? -1 : 1;
+                    const claveA = claveCombinacionDeFila(a);
+                    const claveB = claveCombinacionDeFila(b);
+                    if (claveA < claveB) return -1;
+                    if (claveA > claveB) return 1;
+                    return 0;
+                });
+
+                let minNormal = 18 * 60;
+                let min1582 = 19 * 60 + 30;
+                let lastNormal = null;
+                let last1582 = null;
+                processedData.forEach(row => {
+                    const cargo = normalizarCodigo(valorPorNombres(row, ["codigo cargo", "cod. cargo"]));
+                    const clave = tipoFila(row) + "|" + claveCombinacionDeFila(row);
+                    if (cargo === "1582") {
+                        row['HORA PUBLICACION'] = (16 * 60) / 1440;
+                        if (last1582 !== null && clave !== last1582) min1582 += 5;
+                        row['HORA APERTURA'] = min1582 / 1440;
+                        last1582 = clave;
+                    } else {
+                        row['HORA PUBLICACION'] = (10 * 60) / 1440;
+                        if (lastNormal !== null && clave !== lastNormal) minNormal += 5;
+                        row['HORA APERTURA'] = minNormal / 1440;
+                        lastNormal = clave;
+                    }
+                });
+            } else if (isServiciosProf) {
                 const horaApertura16 = (16 * 60) / 1440;
                 processedData.forEach(row => {
                     row['HORA APERTURA'] = horaApertura16;
@@ -1165,49 +1404,23 @@
                 });
             }
 
-            const newWorksheet = XLSX.utils.json_to_sheet(processedData);
-            const rangeObj = XLSX.utils.decode_range(newWorksheet['!ref']);
-            
-            for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
-                let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
-                if (cell && cell.v === 'TEMP_VACIA') {
-                    cell.v = ''; 
-                }
-            }
-
-            let headers = {};
-            for (let C = rangeObj.s.c; C <= rangeObj.e.c; ++C) {
-                let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: 0})];
-                if (cell && typeof cell.v === 'string' && cell.v !== '') {
-                    headers[cell.v] = C;
-                }
-            }
-
-            const dateCols = ['FECHA DESDE', 'FECHA HASTA', 'FECHA PUBLICACION', 'FECHA APERTURA'];
-            const timeCols = ['HORA PUBLICACION', 'HORA APERTURA'];
-
-            for (let R = 1; R <= rangeObj.e.r; ++R) {
-                dateCols.forEach(col => {
-                    let C = headers[col];
-                    if (C !== undefined) {
-                        let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                        if (cell && typeof cell.v === 'number') {
-                            cell.t = 'n'; 
-                            cell.z = 'dd/mm/yyyy'; 
-                        }
-                    }
-                });
-                timeCols.forEach(col => {
-                    let C = headers[col];
-                    if (C !== undefined) {
-                        let cell = newWorksheet[XLSX.utils.encode_cell({c: C, r: R})];
-                        if (cell && typeof cell.v === 'number') {
-                            cell.t = 'n'; 
-                            cell.z = 'hh:mm'; 
-                        }
+            let filasOk = processedData;
+            let filasSinCoincidencia = [];
+            if (isAreaCatalogo) {
+                filasOk = [];
+                processedData.forEach(row => {
+                    if (catalogoCombinaciones.has(claveCombinacionDeFila(row))) {
+                        filasOk.push(row);
+                    } else {
+                        filasSinCoincidencia.push(row);
                     }
                 });
             }
+
+            const newWorksheet = filasOk.length ? XLSX.utils.json_to_sheet(filasOk) : null;
+            const wsSinCoincidencia = filasSinCoincidencia.length ? XLSX.utils.json_to_sheet(filasSinCoincidencia) : null;
+            if (newWorksheet) aplicarFormatoFechasHoras(newWorksheet);
+            if (wsSinCoincidencia) aplicarFormatoFechasHoras(wsSinCoincidencia);
 
             const pad2 = (n) => String(n).padStart(2, "0");
             const slugArchivo = (texto) => String(texto || "")
@@ -1218,8 +1431,8 @@
                 .replace(/_+/g, "_")
                 .replace(/^_|_$/g, "");
 
-            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : (isServiciosProf ? "Servicios_Profesionales" : (isPrimariaAdultos ? "Primaria_Adultos" : "Curricular"))));
-            let tipoNombre = baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base"));
+            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : (isServiciosProf ? "Servicios_Profesionales" : (isPrimariaAdultos ? "Primaria_Adultos" : (isMedia ? "Media" : "Curricular")))));
+            let tipoNombre = isMedia ? "Base_y_Ascenso" : (baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base")));
             const stamp = now.getFullYear() + "-" + pad2(currentMonth + 1) + "-" + pad2(currentDay)
                 + "_" + pad2(now.getHours()) + "-" + pad2(now.getMinutes());
 
@@ -1231,11 +1444,16 @@
             const nombreDescarga = slugArchivo(partesNombre.join("_")) + ".xlsx";
 
             const newWorkbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Datos Procesados");
+            if (newWorksheet) XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Datos Procesados");
+            if (wsSinCoincidencia) XLSX.utils.book_append_sheet(newWorkbook, wsSinCoincidencia, "Sin coincidencia");
             XLSX.writeFile(newWorkbook, nombreDescarga);
 
             statusDiv.className = "";
-            statusDiv.innerText = "¡Archivo procesado y descargado con éxito! Filas rojas eliminadas: " + filasRojasEliminadas;
+            if (isAreaCatalogo) {
+                statusDiv.innerText = "¡Archivo procesado y descargado con éxito! Coincidencias: " + filasOk.length + ". Sin coincidencia: " + filasSinCoincidencia.length + ". Filas rojas eliminadas: " + filasRojasEliminadas;
+            } else {
+                statusDiv.innerText = "¡Archivo procesado y descargado con éxito! Filas rojas eliminadas: " + filasRojasEliminadas;
+            }
             
         } catch (error) {
             console.error(error);
