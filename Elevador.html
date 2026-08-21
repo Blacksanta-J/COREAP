@@ -938,6 +938,10 @@
             const filaConArea = filasConDatos.find(item => {
                 const area = limpiarCeldaTexto(valorPorNombres(item.row, ["area"]));
                 return area === "media"
+                    || area === "tecnica"
+                    || area === "artistica"
+                    || area === "normales"
+                    || area === "secundaria adultos"
                     || area === "educacion inicial"
                     || area === "educacion primaria"
                     || area === "curricular"
@@ -961,20 +965,28 @@
                 || areaNormalizada === "educacion primaria adultos"
                 || (areaNormalizada.includes("primaria") && areaNormalizada.includes("adulto"));
             let isMedia = areaNormalizada === "media";
+            let isTecnica = areaNormalizada === "tecnica";
+            let isArtistica = areaNormalizada === "artistica";
+            let isNormales = areaNormalizada === "normales";
+            let isSecundariaAdultos = areaNormalizada === "secundaria adultos"
+                || (areaNormalizada.includes("secundaria") && areaNormalizada.includes("adulto"));
+            let usaReglasMedia = isMedia || isTecnica || isArtistica;
+            let usaReglasNormales = isNormales || isSecundariaAdultos;
+            let usaBaseYAscenso = usaReglasMedia || usaReglasNormales;
             let usaReglasCurricular = isCurricular || isEspecial || isServiciosProf;
             let usaEquivalencias = isCurricular || isEspecial;
             let usaVaciarColumnas = usaReglasCurricular || isPrimariaAdultos;
             let conservaVacantesConFondo = isEspecial || isServiciosProf;
-            let isAreaCatalogo = isMedia;
-            let usaHorariosAdultos = isPrimariaAdultos;
+            let isAreaCatalogo = usaReglasMedia;
+            let usaHorariosAdultos = isPrimariaAdultos || usaReglasNormales;
 
-            if (!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos && !isMedia) {
+            if (!isInicial && !isPrimaria && !isCurricular && !isEspecial && !isServiciosProf && !isPrimariaAdultos && !usaReglasMedia && !usaReglasNormales) {
                 statusDiv.className = "error";
                 statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                 return; 
             }
 
-            if (!isMedia && baseValor !== "base") {
+            if (!usaBaseYAscenso && baseValor !== "base") {
                 statusDiv.className = "error";
                 statusDiv.innerText = "TODAVIA NO TENEMOS ESTA AREA AUTOMATIZADA";
                 return;
@@ -1014,11 +1026,12 @@
             }
 
             if (usaHorariosAdultos) {
+                const nombreHorarios = isSecundariaAdultos ? "Secundaria Adultos" : (isNormales ? "Normales" : "Primaria Adultos");
                 statusDiv.className = "";
-                statusDiv.innerText = "Área detectada: Primaria Adultos. Definí los horarios.";
+                statusDiv.innerText = "Área detectada: " + nombreHorarios + ". Definí los horarios.";
                 horariosAdultos = await pedirEnPopup({
-                    titulo: "Primaria Adultos",
-                    texto: "El archivo corresponde a Primaria Adultos. Indicá la hora de publicación y el comienzo del horario de apertura. El resto de los cargos se van a ir corriendo de a 10 minutos.",
+                    titulo: nombreHorarios,
+                    texto: "El archivo corresponde a " + nombreHorarios + ". Indicá la hora de publicación y el comienzo del horario de apertura. El resto de los cargos se van a ir corriendo de a " + (usaReglasNormales ? "5" : "10") + " minutos.",
                     modo: "horarios"
                 });
                 if (!horariosAdultos) {
@@ -1061,11 +1074,12 @@
 
             let catalogoCombinaciones = new Set();
             if (isAreaCatalogo) {
+                const nombreAreaCat = isTecnica ? "Tecnica" : (isArtistica ? "Artistica" : "Media");
                 statusDiv.className = "";
-                statusDiv.innerText = "Área detectada: Media. Cargá el catálogo de combinaciones.";
+                statusDiv.innerText = "Área detectada: " + nombreAreaCat + ". Cargá el catálogo de combinaciones.";
                 const archivoCat = await pedirEnPopup({
-                    titulo: "Media",
-                    texto: "El archivo corresponde a Media. Seleccioná el Excel del catálogo (una hoja, coincidencia exacta de código de cargo, asignatura y especialidad).",
+                    titulo: nombreAreaCat,
+                    texto: "El archivo corresponde a " + nombreAreaCat + ". Seleccioná el Excel del catálogo (una hoja, coincidencia exacta de código de cargo, asignatura y especialidad).",
                     modo: "catalogo"
                 });
                 if (!archivoCat) {
@@ -1144,7 +1158,7 @@
                     if (!validNewCodes.has(String(nuevoCargo))) {
                         newRow['TEMP_VACIA'] = "CONTROLAR";
                     }
-                } else if (isServiciosProf || isMedia) {
+                } else if (isServiciosProf || usaReglasMedia || usaReglasNormales) {
                     let numericCargo = Number(nuevoCargo);
                     newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
                 } else if (isPrimariaAdultos) {
@@ -1155,6 +1169,17 @@
                 } else {
                     // Para las demás áreas queda el código original y sin formato numérico
                     newRow['CODIGO CARGO'] = cargo; 
+                }
+
+                if (isSecundariaAdultos) {
+                    const asignaturasEsp1081 = new Set(["1598","3422","4835","5620","6015","6095","6099","6107","6116","6125","6152","6169","6229"]);
+                    const colAsig = Object.keys(newRow).find(k => ["codigo asignatura","codigo de asignatura","cod. asignatura"].includes(normalizarNombreCol(k)));
+                    let colEsp = Object.keys(newRow).find(k => ["codigo especialidad","codigo de especialidad","cod. especialidad"].includes(normalizarNombreCol(k)));
+                    if (!colEsp) colEsp = "CODIGO ESPECIALIDAD";
+                    const asig = normalizarCodigo(colAsig ? newRow[colAsig] : "");
+                    if (asignaturasEsp1081.has(asig)) {
+                        newRow[colEsp] = 1081;
+                    }
                 }
 
                 if (isEspecial) {
@@ -1214,7 +1239,7 @@
                                  ? 'Novedad Mayor 60 dias hábiles' 
                                  : 'Novedad Mayor 60 dias habiles';
 
-                if (isEspecial || isPrimariaAdultos || isMedia) {
+                if (isEspecial || isPrimariaAdultos || usaReglasMedia || usaReglasNormales) {
                     newRow[colNovedad] = "2";
                 } else if (isPrimaria || isInicial || isServiciosProf) {
                     let novedad = newRow[colNovedad] ? String(newRow[colNovedad]).trim() : "";
@@ -1255,9 +1280,9 @@
 
                 // --- 6. HORA PUBLICACION ---
                 let horaPublicacionStr = "10:00";
-                if (isMedia && normalizarCodigo(nuevoCargo) === "1582") {
+                if (usaReglasMedia && normalizarCodigo(nuevoCargo) === "1582") {
                     horaPublicacionStr = "16:00";
-                } else if (isPrimariaAdultos && horariosAdultos) {
+                } else if ((isPrimariaAdultos || usaReglasNormales) && horariosAdultos) {
                     horaPublicacionStr = horariosAdultos.publicacion.str;
                 } else if (isPrimaria) {
                     horaPublicacionStr = esVarianteManana ? "08:00" : "12:00";
@@ -1330,7 +1355,7 @@
                 return 0;
             });
 
-            if (isMedia) {
+            if (usaReglasMedia) {
                 const tipoFila = (row) => {
                     const tipo = limpiarCeldaTexto(valorPorNombres(row, ["base/ascenso"]));
                     return tipo === "ascenso" ? "ascenso" : "base";
@@ -1378,14 +1403,29 @@
                 processedData.forEach(row => {
                     row['HORA APERTURA'] = horaApertura16;
                 });
-            } else if (isPrimariaAdultos && horariosAdultos) {
+            } else if ((isPrimariaAdultos || usaReglasNormales) && horariosAdultos) {
+                if (usaReglasNormales) {
+                    processedData.sort((a, b) => {
+                        const tipoA = limpiarCeldaTexto(valorPorNombres(a, ["base/ascenso"])) === "ascenso" ? 0 : 1;
+                        const tipoB = limpiarCeldaTexto(valorPorNombres(b, ["base/ascenso"])) === "ascenso" ? 0 : 1;
+                        if (tipoA !== tipoB) return tipoA - tipoB;
+                        let codeA = String(a['CODIGO CARGO'] || "");
+                        let codeB = String(b['CODIGO CARGO'] || "");
+                        let numA = parseInt(codeA, 10);
+                        let numB = parseInt(codeB, 10);
+                        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numB - numA;
+                        if (codeA > codeB) return -1;
+                        if (codeA < codeB) return 1;
+                        return 0;
+                    });
+                }
                 let currentHoraApertura = horariosAdultos.apertura.minutes;
                 let lastCode = null;
 
                 processedData.forEach(row => {
                     let code = String(row['CODIGO CARGO']);
                     if (lastCode !== null && code !== lastCode) {
-                        currentHoraApertura += 10;
+                        currentHoraApertura += usaReglasNormales ? 5 : 10;
                     }
                     row['HORA APERTURA'] = currentHoraApertura / 1440;
                     lastCode = code;
@@ -1431,8 +1471,8 @@
                 .replace(/_+/g, "_")
                 .replace(/^_|_$/g, "");
 
-            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : (isServiciosProf ? "Servicios_Profesionales" : (isPrimariaAdultos ? "Primaria_Adultos" : (isMedia ? "Media" : "Curricular")))));
-            let tipoNombre = isMedia ? "Base_y_Ascenso" : (baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base")));
+            let areaNombre = isPrimaria ? "Primaria" : (isInicial ? "Inicial" : (isEspecial ? "Especial" : (isServiciosProf ? "Servicios_Profesionales" : (isPrimariaAdultos ? "Primaria_Adultos" : (isSecundariaAdultos ? "Secundaria_Adultos" : (isNormales ? "Normales" : (isTecnica ? "Tecnica" : (isArtistica ? "Artistica" : (isMedia ? "Media" : "Curricular")))))))));
+            let tipoNombre = usaBaseYAscenso ? "Base_y_Ascenso" : (baseValor === "base" ? "Base" : (baseValor === "ascenso" ? "Ascenso" : String(jsonData[0]['BASE/ASCENSO'] || "Base")));
             const stamp = now.getFullYear() + "-" + pad2(currentMonth + 1) + "-" + pad2(currentDay)
                 + "_" + pad2(now.getHours()) + "-" + pad2(now.getMinutes());
 
