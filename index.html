@@ -186,8 +186,8 @@ html[data-theme="dark"] .section-label{color:#8DE2D6}
 /* ── Cards grid ─────────────────────────────── */
 .cards-grid{
   display:grid;
-  /* Actualizado a 5 columnas para incluir "Eleves Acto Publico" y "Eleves Concursos" */
-  grid-template-columns:repeat(5,1fr);
+  /* 4 módulos activos (Seguimiento desactivado) */
+  grid-template-columns:repeat(4,1fr);
   gap:20px;
 }
 .section-card{
@@ -370,8 +370,8 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
       <h1>Bienvenido al <em>Portal COREAP</em></h1>
       <p class="hero-lead">Centro de referencia operativa para la gestión de la carrera docente del Gobierno de la Ciudad de Buenos Aires. Manuales, reglas, prioridades, escalafones y seguimiento integrados en un único entorno de consulta.</p>
       <div class="hero-meta">
-        <!-- Contador actualizado de 4 a 5 módulos -->
-        <span><strong>5</strong> módulos operativos</span>
+        <!-- Contador: Seguimiento desactivado -->
+        <span><strong>4</strong> módulos operativos</span>
         <span><strong>GCBA</strong> · Dirección de Carrera Docente</span>
         <span>Acceso directo al <strong>Estatuto</strong></span>
       </div>
@@ -400,7 +400,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
         </div>
       </a>
 
-      <!-- Seguimiento -->
+      <!-- Seguimiento (desactivado)
       <a class="section-card" href="seguimiento_final.html">
         <div class="card-icon">📊</div>
         <h2 class="card-title">Seguimiento</h2>
@@ -415,6 +415,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
           <span class="card-arrow">→</span>
         </div>
       </a>
+      -->
 
       <!-- Clasificación -->
       <a class="section-card" href="clasificacion_final.html">
