@@ -7,7 +7,9 @@
     <script>
         (function () {
             try {
-                var saved = localStorage.getItem('elevador-theme');
+                var saved = localStorage.getItem('portal-theme')
+                    || localStorage.getItem('elevador-theme')
+                    || localStorage.getItem('procesador-theme');
                 var theme = (saved === 'light' || saved === 'dark')
                     ? saved
                     : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -209,7 +211,11 @@
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
-        try { localStorage.setItem('elevador-theme', theme); } catch (e) {}
+        try {
+            localStorage.setItem('portal-theme', theme);
+            localStorage.setItem('elevador-theme', theme);
+            localStorage.setItem('procesador-theme', theme);
+        } catch (e) {}
         syncThemeToggle();
     }
 
