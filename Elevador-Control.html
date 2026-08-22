@@ -124,6 +124,7 @@
                 <li><strong>Horas:</strong> Se eliminan los decimales de la "Cant. Horas" (Si viene en 0 o vacía, se pone 1).</li>
                 <li><strong>Formato Nativo:</strong> Las fechas de apertura, publicación, desde y hasta (31/12/del año actual) adquieren formato serial compatible con Excel.</li>
                 <li><strong>Nombrado:</strong> El archivo descargado incluirá el Área, la palabra "CONTROL" y la fecha de exportación.</li>
+                <li><strong>Informe:</strong> Se genera una segunda hoja con el conteo de vacantes por área y por cargo.</li>
             </ul>
         </div>
     </div>
@@ -351,6 +352,109 @@
         });
     }
 
+    function construirInformeVacantes(dataFinal) {
+        const porArea = {};
+        const porAreaCargo = {};
+
+        dataFinal.forEach(fila => {
+            const area = String(fila["AREA"] || "").trim() || "(Sin área)";
+            const codCargo = String(fila["CODIGO CARGO"] || "").trim();
+            const descCargo = String(fila["DESCRIPCION CARGO"] || "").trim() || "(Sin cargo)";
+            const claveCargo = `${codCargo}||${descCargo}`;
+
+            porArea[area] = (porArea[area] || 0) + 1;
+
+            if (!porAreaCargo[area]) porAreaCargo[area] = {};
+            if (!porAreaCargo[area][claveCargo]) {
+                porAreaCargo[area][claveCargo] = { codigo: codCargo, descripcion: descCargo, cantidad: 0 };
+            }
+            porAreaCargo[area][claveCargo].cantidad += 1;
+        });
+
+        const filas = [];
+        const areasOrdenadas = Object.keys(porArea).sort((a, b) => a.localeCompare(b, "es"));
+
+        filas.push({
+            "SECCIÓN": "RESUMEN POR ÁREA",
+            "AREA": "",
+            "CODIGO CARGO": "",
+            "DESCRIPCION CARGO": "",
+            "CANTIDAD VACANTES": ""
+        });
+
+        let totalGeneral = 0;
+        areasOrdenadas.forEach(area => {
+            filas.push({
+                "SECCIÓN": "",
+                "AREA": area,
+                "CODIGO CARGO": "",
+                "DESCRIPCION CARGO": "",
+                "CANTIDAD VACANTES": porArea[area]
+            });
+            totalGeneral += porArea[area];
+        });
+
+        filas.push({
+            "SECCIÓN": "",
+            "AREA": "TOTAL GENERAL",
+            "CODIGO CARGO": "",
+            "DESCRIPCION CARGO": "",
+            "CANTIDAD VACANTES": totalGeneral
+        });
+
+        filas.push({
+            "SECCIÓN": "",
+            "AREA": "",
+            "CODIGO CARGO": "",
+            "DESCRIPCION CARGO": "",
+            "CANTIDAD VACANTES": ""
+        });
+
+        filas.push({
+            "SECCIÓN": "DETALLE POR ÁREA Y CARGO",
+            "AREA": "",
+            "CODIGO CARGO": "",
+            "DESCRIPCION CARGO": "",
+            "CANTIDAD VACANTES": ""
+        });
+
+        areasOrdenadas.forEach(area => {
+            const cargos = Object.values(porAreaCargo[area] || {}).sort((a, b) => {
+                const d = a.descripcion.localeCompare(b.descripcion, "es");
+                if (d !== 0) return d;
+                return String(a.codigo).localeCompare(String(b.codigo), "es");
+            });
+
+            cargos.forEach(cargo => {
+                filas.push({
+                    "SECCIÓN": "",
+                    "AREA": area,
+                    "CODIGO CARGO": cargo.codigo,
+                    "DESCRIPCION CARGO": cargo.descripcion,
+                    "CANTIDAD VACANTES": cargo.cantidad
+                });
+            });
+
+            filas.push({
+                "SECCIÓN": "",
+                "AREA": `Subtotal ${area}`,
+                "CODIGO CARGO": "",
+                "DESCRIPCION CARGO": "",
+                "CANTIDAD VACANTES": porArea[area]
+            });
+        });
+
+        filas.push({
+            "SECCIÓN": "",
+            "AREA": "TOTAL GENERAL",
+            "CODIGO CARGO": "",
+            "DESCRIPCION CARGO": "",
+            "CANTIDAD VACANTES": totalGeneral
+        });
+
+        return filas;
+    }
+
     async function iniciarProceso() {
         const fileInput = document.getElementById('fileInput');
         const statusDiv = document.getElementById('status');
@@ -538,13 +642,26 @@
                 aplicarFormatoFechasHoras(ws);
 
                 XLSX.utils.book_append_sheet(wb, ws, "Resultado");
+
+                const informeFilas = construirInformeVacantes(dataFinal);
+                const wsInforme = XLSX.utils.json_to_sheet(informeFilas, {
+                    header: ["SECCIÓN", "AREA", "CODIGO CARGO", "DESCRIPCION CARGO", "CANTIDAD VACANTES"]
+                });
+                wsInforme["!cols"] = [
+                    { wch: 28 },
+                    { wch: 32 },
+                    { wch: 14 },
+                    { wch: 40 },
+                    { wch: 18 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsInforme, "Informe");
                 
                 let nombreArchivo = `${areaDetectada}_CONTROL_${formatearFechaHoraNombre()}.xlsx`;
                 
                 XLSX.writeFile(wb, nombreArchivo);
 
                 statusDiv.className = "";
-                statusDiv.innerText = `¡Proceso completado! Archivo guardado como:\n"${nombreArchivo}"`;
+                statusDiv.innerText = `¡Proceso completado! Archivo guardado como:\n"${nombreArchivo}"\n(Hojas: Resultado + Informe)`;
 
             };
             reader.readAsArrayBuffer(file);
