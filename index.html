@@ -121,8 +121,8 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 /* ── Cards grid ─────────────────────────────── */
 .cards-grid{
   display:grid;
-  /* Actualizado a 4 columnas para incluir el nuevo box "Elevador" */
-  grid-template-columns:repeat(4,1fr);
+  /* Actualizado a 5 columnas para incluir "Eleves Acto Publico" y "Eleves Concursos" */
+  grid-template-columns:repeat(5,1fr);
   gap:20px;
 }
 .section-card{
@@ -296,8 +296,8 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
       <h1>Bienvenido al <em>Portal COREAP</em></h1>
       <p class="hero-lead">Centro de referencia operativa para la gestión de la carrera docente del Gobierno de la Ciudad de Buenos Aires. Manuales, reglas, prioridades, escalafones y seguimiento integrados en un único entorno de consulta.</p>
       <div class="hero-meta">
-        <!-- Contador actualizado de 3 a 4 módulos -->
-        <span><strong>4</strong> módulos operativos</span>
+        <!-- Contador actualizado de 4 a 5 módulos -->
+        <span><strong>5</strong> módulos operativos</span>
         <span><strong>GCBA</strong> · Dirección de Carrera Docente</span>
         <span>Acceso directo al <strong>Estatuto</strong></span>
       </div>
@@ -358,13 +358,29 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
         </div>
       </a>
       
-      <!-- Elevador (NUEVO BOX) -->
+      <!-- Eleves Acto Publico -->
       <a class="section-card" href="Elevador.html">
         <div class="card-icon">🛗</div>
-        <h2 class="card-title">Elevador</h2>
+        <h2 class="card-title">Eleves Acto Publico</h2>
         <p class="card-desc">Eleves a Acto publico</p>
         <div class="card-tags">
           <span class="card-tag">Eleves</span>
+          <span class="card-tag">Acto Público</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+
+      <!-- Eleves Concursos -->
+      <a class="section-card" href="Elevador-Control.html">
+        <div class="card-icon">📁</div>
+        <h2 class="card-title">Eleves Concursos</h2>
+        <p class="card-desc">Procesamiento y unificación de archivos para eleves de concursos.</p>
+        <div class="card-tags">
+          <span class="card-tag">Eleves</span>
+          <span class="card-tag">Concursos</span>
         </div>
         <div class="card-cta">
           <span>Abrir módulo</span>
