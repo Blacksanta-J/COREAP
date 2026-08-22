@@ -224,6 +224,11 @@ html[data-theme="dark"] .section-label{color:#8DE2D6}
   font-size:26px;margin-bottom:16px;
   transition:background .2s,transform .25s;
 }
+.card-icon svg{
+  width:28px;height:28px;display:block;
+  color:#153244;
+}
+html[data-theme="dark"] .card-icon svg{color:#8DE2D6}
 .section-card:hover .card-icon{
   background:var(--cy-mid);
   transform:rotate(-4deg) scale(1.05);
@@ -435,7 +440,14 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
       
       <!-- Eleves Acto Publico -->
       <a class="section-card" href="Elevador.html">
-        <div class="card-icon">🛗</div>
+        <div class="card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M9 11h6M9 14h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M12 8.5V5.5M12 5.5l-2 2M12 5.5l2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="17.5" r="1.1" fill="currentColor"/>
+          </svg>
+        </div>
         <h2 class="card-title">Eleves Acto Publico</h2>
         <p class="card-desc">Eleves a Acto publico</p>
         <div class="card-tags">
