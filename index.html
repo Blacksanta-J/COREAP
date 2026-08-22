@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Inicio</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('portal-theme')
+      || localStorage.getItem('elevador-theme')
+      || localStorage.getItem('procesador-theme');
+    var theme = (saved === 'light' || saved === 'dark')
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 
@@ -26,10 +41,41 @@
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
   --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
   --shadow-lg:0 10px 30px rgba(21,50,68,.12),0 4px 10px rgba(21,50,68,.06);
+  --toggle-bg:rgba(255,255,255,.12);
+  --toggle-hover:rgba(255,255,255,.2);
+  --toggle-border:rgba(255,255,255,.18);
+  --eyebrow-fg:#0a4a42;
+  --hero-accent:rgba(141,226,214,.28);
   font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
+  color-scheme:light;
+}
+html[data-theme="dark"]{
+  --az:#8DE2D6;
+  --az-hover:#a8ebe2;
+  --am:#FFCC00;
+  --am-light:#3d3500;
+  --cy:#8DE2D6;
+  --cy-light:#14353a;
+  --cy-mid:#1a454c;
+  --gr:#e8eaed;
+  --gr-light:#a8b0b8;
+  --wh:#FCFCFC;
+  --bg:#0f1a22;
+  --surface:#172832;
+  --border:#2a3d4a;
+  --border-strong:#3d5566;
+  --shadow:0 1px 3px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.25);
+  --shadow-md:0 4px 12px rgba(0,0,0,.4),0 2px 4px rgba(0,0,0,.3);
+  --shadow-lg:0 10px 30px rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.3);
+  --toggle-bg:rgba(255,255,255,.1);
+  --toggle-hover:rgba(255,255,255,.18);
+  --toggle-border:rgba(255,255,255,.16);
+  --eyebrow-fg:#8DE2D6;
+  --hero-accent:rgba(141,226,214,.12);
+  color-scheme:dark;
 }
 
-body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-direction:column}
+body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-direction:column;transition:background-color .2s ease,color .2s ease}
 
 /* ── Page shell (sticky footer layout) ─────────── */
 .page-shell{
@@ -39,19 +85,34 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 
 /* ── Topbar ─────────────────────────────────── */
 .portal-topbar{
-  background:var(--az);
+  background:#153244;
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 40px;
   box-shadow:0 2px 8px rgba(0,0,0,.18);
+  gap:16px;
 }
 .topbar-logo{display:flex;align-items:center;opacity:.95;transition:opacity .2s}
 .topbar-logo:hover{opacity:1}
+.topbar-right{
+  display:flex;align-items:center;gap:16px;
+}
 .portal-title{
   font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
   letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
   font-family:'Source Sans 3',sans-serif;
 }
-.portal-title span{display:block;color:var(--cy);font-weight:400;letter-spacing:.4px}
+.portal-title span{display:block;color:#8DE2D6;font-weight:400;letter-spacing:.4px}
+.theme-toggle{
+  width:40px;height:40px;min-width:40px;padding:0;
+  border-radius:8px;border:1px solid var(--toggle-border);
+  background:var(--toggle-bg);color:#fff;
+  font-size:18px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,transform .15s;
+}
+.theme-toggle:hover{background:var(--toggle-hover)}
+.theme-toggle:active{transform:scale(.96)}
+.theme-toggle:focus-visible{outline:2px solid var(--am);outline-offset:2px}
 
 /* ── Main (content wrapper) ─────────────────── */
 .index-main{
@@ -74,12 +135,12 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 .hero::before{
   content:"";position:absolute;top:-40px;right:-40px;
   width:220px;height:220px;
-  background:radial-gradient(circle,rgba(141,226,214,.28),transparent 70%);
+  background:radial-gradient(circle,var(--hero-accent),transparent 70%);
   pointer-events:none;
 }
 .hero-eyebrow{
   display:inline-block;
-  background:var(--cy-light);color:#0a4a42;
+  background:var(--cy-light);color:var(--eyebrow-fg);
   border:1px solid var(--cy);
   padding:4px 12px;border-radius:20px;
   font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
@@ -87,14 +148,16 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 }
 .hero h1{
   font-family:'Source Serif 4',Georgia,serif;
-  font-size:42px;font-weight:600;color:var(--az);
+  font-size:42px;font-weight:600;color:#153244;
   line-height:1.15;letter-spacing:-.5px;margin-bottom:12px;
 }
+html[data-theme="dark"] .hero h1{color:#f2f5f7}
 .hero h1 em{
-  font-style:normal;color:var(--am);
-  background:linear-gradient(180deg,transparent 60%,rgba(255,204,0,.25) 60%);
+  font-style:normal;color:#153244;
+  background:linear-gradient(180deg,transparent 60%,rgba(255,204,0,.35) 60%);
   padding:0 4px;
 }
+html[data-theme="dark"] .hero h1 em{color:#FFCC00;background:linear-gradient(180deg,transparent 60%,rgba(255,204,0,.2) 60%)}
 .hero-lead{
   font-size:16px;color:var(--gr-light);
   line-height:1.65;max-width:680px;
@@ -105,15 +168,17 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
   display:flex;gap:28px;flex-wrap:wrap;
   font-size:12px;color:var(--gr-light);letter-spacing:.3px;
 }
-.hero-meta strong{color:var(--az);font-weight:700}
+.hero-meta strong{color:#153244;font-weight:700}
+html[data-theme="dark"] .hero-meta strong{color:#f2f5f7}
 
 /* ── Section label ──────────────────────────── */
 .section-label{
   display:flex;align-items:center;gap:14px;
   font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
-  color:var(--az);
+  color:#153244;
   margin-bottom:4px;
 }
+html[data-theme="dark"] .section-label{color:#8DE2D6}
 .section-label::before{
   content:"";width:28px;height:2px;background:var(--am);
 }
@@ -165,9 +230,10 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 }
 .card-title{
   font-family:'Source Serif 4',Georgia,serif;
-  font-size:22px;font-weight:600;color:var(--az);
+  font-size:22px;font-weight:600;color:#153244;
   margin-bottom:8px;line-height:1.2;
 }
+html[data-theme="dark"] .card-title{color:#f2f5f7}
 .card-desc{
   font-size:13.5px;color:var(--gr-light);line-height:1.6;
   flex:1;margin-bottom:16px;
@@ -177,32 +243,37 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 }
 .card-tag{
   font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-  background:#eef1f4;color:var(--az);
+  background:#eef1f4;color:#153244;
   border:1px solid var(--border-strong);
   padding:3px 9px;border-radius:4px;
+}
+html[data-theme="dark"] .card-tag{
+  background:#1e3440;color:#c5d4de;
 }
 .card-cta{
   display:flex;align-items:center;justify-content:space-between;
   padding-top:14px;
   border-top:1px solid var(--border);
   font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
-  color:var(--az);
+  color:#153244;
 }
+html[data-theme="dark"] .card-cta{color:#8DE2D6}
 .card-arrow{
   width:28px;height:28px;border-radius:50%;
-  background:var(--az);color:var(--am);
+  background:#153244;color:var(--am);
   display:flex;align-items:center;justify-content:center;
   font-size:12px;font-weight:700;
   transition:transform .25s,background .2s;
 }
+html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 .section-card:hover .card-arrow{
   transform:translateX(4px);
-  background:var(--am);color:var(--az);
+  background:var(--am);color:#153244;
 }
 
 /* ── Estatuto banner ────────────────────────── */
 .estatuto-banner{
-  background:linear-gradient(135deg,var(--az) 0%,#1a3d54 100%);
+  background:linear-gradient(135deg,#153244 0%,#1a3d54 100%);
   border-radius:12px;
   padding:28px 32px;
   display:flex;align-items:center;justify-content:space-between;gap:24px;
@@ -226,7 +297,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
   font-family:'Source Serif 4',Georgia,serif;font-weight:400;
 }
 .estatuto-btn{
-  background:var(--am);color:var(--az);
+  background:var(--am);color:#153244;
   padding:14px 22px;border-radius:8px;
   font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
   text-decoration:none;
@@ -243,7 +314,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 
 /* ── Footer ─────────────────────────────────── */
 .portal-footer{
-  background:var(--az);
+  background:#153244;
   border-top:3px solid var(--am);
   padding:16px 40px;
   display:flex;align-items:center;justify-content:space-between;
@@ -285,7 +356,10 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
     <div class="topbar-logo">
       <svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0)"><path d="M73.6406 31.6806L59.3778 4.12091C58.1475 1.67445 55.627 0 52.7012 0H52.6941C49.7717 0 47.2477 1.67445 46.0175 4.12091L35.9778 23.5199C34.8568 21.5246 33.0695 19.9595 30.9121 19.1134C33.3198 17.372 34.8885 14.5342 34.8885 11.3334C34.8885 7.6214 32.7805 4.40998 29.6995 2.8166C26.9851 1.38891 23.8865 0.581651 20.601 0.581651H5.58386C2.49581 0.581651 0 3.07746 0 6.15846V34.1059C0 37.1869 2.49581 39.6827 5.58386 39.6827H21.8243C24.9546 39.6827 27.9334 39.0341 30.6372 37.8778L31.6665 37.3808C31.7229 37.3526 31.7793 37.3244 31.8357 37.2962C32.8122 38.9142 34.5783 40.0035 36.6123 40.0035C38.872 40.0035 40.8178 38.664 41.6956 36.7286C42.1327 35.7064 43.1198 34.9837 44.2831 34.9273H61.1087C62.2755 34.9837 63.259 35.7064 63.6961 36.7286C64.5704 38.664 66.5198 40.0035 68.7794 40.0035C71.8639 40.0035 74.3598 37.5007 74.3598 34.4302C74.3598 33.4291 74.1024 32.4914 73.6371 31.6841" fill="#FFFFFF"/></g><defs><clipPath id="clip0"><rect width="74.3633" height="40" fill="white"/></clipPath></defs></svg>
     </div>
-    <div class="portal-title">PORTAL COREAP<span>Dirección de Carrera Docente · GCBA</span></div>
+    <div class="topbar-right">
+      <div class="portal-title">PORTAL COREAP<span>Dirección de Carrera Docente · GCBA</span></div>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
+    </div>
   </div>
 
   <main class="index-main">
@@ -415,5 +489,41 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
   </div>
 
 </div>
+<script>
+(function () {
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  function syncThemeToggle() {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    var dark = currentTheme() === 'dark';
+    btn.textContent = dark ? '☀️' : '🌙';
+    btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    btn.setAttribute('aria-label', btn.title);
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('portal-theme', theme);
+      localStorage.setItem('elevador-theme', theme);
+      localStorage.setItem('procesador-theme', theme);
+    } catch (e) {}
+    syncThemeToggle();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    syncThemeToggle();
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+      });
+    }
+  });
+})();
+</script>
 </body>
 </html>
