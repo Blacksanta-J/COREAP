@@ -5,13 +5,24 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 ## Structure
 
 - `index.html` — portal home; navigation hub linking to the module pages below.
+- `login.html` — login (email `@bue.edu.ar` + DNI against preloaded users).
+- `admin-usuarios.html` — admin panel to preload users and assign roles.
+- `auth.js` — client-side auth, roles, and permissions.
 - `actopublico_final.html` — "Acto Público" module (rules/priorities/escalafones).
 - `seguimiento_final.html` — "Seguimiento" module (expediente tracking).
 - `clasificacion_final.html` — "Clasificación" module (scoring/listados).
 - `Elevador.html` — "Eleves Acto Publico".
 - `Elevador-Control.html` — "Eleves Concursos" (client-side spreadsheet processor titled "Procesador de Vacantes").
 
-Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks. Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
+Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks (except shared `auth.js`). Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
+
+## Auth & roles
+
+- Only preloaded users with `@bue.edu.ar` email can log in (email + DNI).
+- Roles: **Admin** (all + manage users), **APEL** (Acto Público, Eleves Acto Público, Manuales), **Usuarios** (Manuales only).
+- Manuales = Acto Público, Clasificación, Estatuto.
+- Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (change from Usuarios panel).
+- User store and session live in browser storage (`localStorage` / `sessionStorage`) — suitable for an internal static portal; not a hardened server-side auth system.
 
 ## Cursor Cloud specific instructions
 
