@@ -10,6 +10,12 @@
   var STORAGE_SESSION = 'portal-session-v1';
   var ALLOWED_DOMAIN = 'bue.edu.ar';
 
+  var _firebaseAppReady = false;
+  var _firestore = null;
+  var _firebaseAuth = null;
+  var _usersCache = null;
+  var _readyPromise = null;
+
   var ROLES = {
     admin: 'admin',
     apel: 'apel',
@@ -170,6 +176,125 @@
 
   function writeUsers(users) {
     localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+    _usersCache = users;
+  }
+
+  function getFirebaseConfig() {
+    var cfg = global.PORTAL_AUTH_CONFIG || {};
+    var fb = cfg.firebase || null;
+    if (!fb || !String(fb.apiKey || '').trim() || !String(fb.projectId || '').trim()) {
+      return null;
+    }
+    return fb;
+  }
+
+  function isFirebaseEnabled() {
+    return !!(getFirebaseConfig() && global.firebase);
+  }
+
+  function initFirebase() {
+    if (!isFirebaseEnabled()) return false;
+    if (_firebaseAppReady) return true;
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(getFirebaseConfig());
+      }
+      _firestore = firebase.firestore();
+      _firebaseAuth = firebase.auth();
+      _firebaseAppReady = true;
+      return true;
+    } catch (e) {
+      console.error('Firebase init error', e);
+      return false;
+    }
+  }
+
+  function userDocId(email) {
+    return normalizeEmail(email);
+  }
+
+  function toFirestorePayload(u) {
+    return {
+      email: normalizeEmail(u.email),
+      dni: normalizeDni(u.dni),
+      role: u.role,
+      active: !!u.active,
+      nombre: u.nombre || '',
+      apellido: u.apellido || '',
+      fechaNacimiento: normalizeBirthDate(u.fechaNacimiento || ''),
+      reparticion: u.reparticion || '',
+      createdAt: u.createdAt || new Date().toISOString(),
+      updatedAt: u.updatedAt || new Date().toISOString()
+    };
+  }
+
+  function fromFirestoreDoc(doc) {
+    var d = doc.data() || {};
+    var u = {
+      id: doc.id,
+      email: normalizeEmail(d.email || doc.id),
+      dni: normalizeDni(d.dni),
+      role: d.role || ROLES.usuarios,
+      active: d.active !== false,
+      nombre: d.nombre || '',
+      apellido: d.apellido || '',
+      fechaNacimiento: d.fechaNacimiento || '',
+      reparticion: d.reparticion || '',
+      createdAt: d.createdAt || '',
+      updatedAt: d.updatedAt || ''
+    };
+    migrateUserShape(u);
+    return u;
+  }
+
+  function syncFromFirestore() {
+    if (!initFirebase()) {
+      return Promise.resolve(ensureSeedLocal());
+    }
+    return _firestore.collection('users').get().then(function (snap) {
+      var users = [];
+      snap.forEach(function (doc) {
+        users.push(fromFirestoreDoc(doc));
+      });
+      if (users.length) {
+        writeUsers(users);
+      } else {
+        ensureSeedLocal();
+      }
+      return getUsers();
+    }).catch(function (err) {
+      console.error('Firestore sync error', err);
+      return ensureSeedLocal();
+    });
+  }
+
+  function bootstrapFirestoreIfNeeded(actorEmail) {
+    if (!initFirebase()) return Promise.resolve();
+    if (normalizeEmail(actorEmail) !== normalizeEmail(SEED_ADMIN.email)) {
+      return Promise.resolve();
+    }
+    return _firestore.collection('users').limit(1).get().then(function (snap) {
+      if (!snap.empty) return null;
+      var batch = _firestore.batch();
+      var now = new Date().toISOString();
+      getPublishedUsers().forEach(function (u) {
+        var payload = toFirestorePayload(u);
+        payload.createdAt = payload.createdAt || now;
+        payload.updatedAt = now;
+        batch.set(_firestore.collection('users').doc(userDocId(payload.email)), payload, { merge: true });
+      });
+      return batch.commit();
+    }).then(function () {
+      return syncFromFirestore();
+    }).catch(function (err) {
+      console.error('Firestore bootstrap error', err);
+    });
+  }
+
+  function signInFirebaseWithGoogleIdToken(idToken) {
+    if (!initFirebase()) return Promise.resolve(null);
+    var credential = firebase.auth.GoogleAuthProvider.credential(idToken);
+    return _firebaseAuth.signInWithCredential(credential);
   }
 
   function hydratePublishedUser(raw) {
@@ -212,7 +337,7 @@
    * - Los usuarios solo-locales se conservan (altas pendientes de publicar).
    * - Si el mail ya existe en local, no se pisa con la publicada (edición local manda).
    */
-  function ensureSeed() {
+  function ensureSeedLocal() {
     var users = readUsers();
     if (!users) users = [];
     var changed = false;
@@ -288,6 +413,11 @@
     ].join('\n');
   }
 
+  function ensureSeed() {
+    if (_usersCache && _usersCache.length) return _usersCache;
+    return ensureSeedLocal();
+  }
+
   function getUsers() {
     return ensureSeed().slice().sort(function (a, b) {
       return a.email.localeCompare(b.email, 'es');
@@ -299,6 +429,23 @@
     return ensureSeed().find(function (u) {
       return normalizeEmail(u.email) === target;
     }) || null;
+  }
+
+  /** Carga usuarios (Firestore si está configurado). Llamar al iniciar cada página. */
+  function ready() {
+    if (_readyPromise) return _readyPromise;
+    _readyPromise = Promise.resolve().then(function () {
+      ensureSeedLocal();
+      if (!isFirebaseEnabled()) {
+        return getUsers();
+      }
+      if (!initFirebase()) {
+        return getUsers();
+      }
+      // Si ya hay sesión Firebase, sincronizar; si no, usar cache/local hasta el login
+      return syncFromFirestore();
+    });
+    return _readyPromise;
   }
 
   function getSession() {
@@ -490,11 +637,26 @@
       return Promise.resolve({ ok: false, error: 'La cuenta no pertenece a @' + ALLOWED_DOMAIN + '.' });
     }
 
-    return Promise.resolve(acceptPreloadedUser(payload.email, {
+    var extras = {
       nombre: payload.name || '',
       picture: payload.picture || '',
       provider: 'google'
-    }));
+    };
+
+    return signInFirebaseWithGoogleIdToken(idToken).then(function () {
+      return bootstrapFirestoreIfNeeded(payload.email);
+    }).then(function () {
+      if (isFirebaseEnabled() && _firebaseAppReady) {
+        return syncFromFirestore();
+      }
+      return getUsers();
+    }).then(function () {
+      return acceptPreloadedUser(payload.email, extras);
+    }).catch(function (err) {
+      console.error(err);
+      // Si Firebase Auth falla pero hay lista local/publicada, intentar igual
+      return acceptPreloadedUser(payload.email, extras);
+    });
   }
 
   /**
@@ -517,6 +679,9 @@
 
   function logout() {
     clearSession();
+    if (_firebaseAuth) {
+      try { _firebaseAuth.signOut(); } catch (e) {}
+    }
   }
 
   function requireAuth(options) {
@@ -536,8 +701,10 @@
   }
 
   function upsertUser(payload, actor) {
+    function fail(msg) { return Promise.resolve({ ok: false, error: msg }); }
+
     if (!actor || actor.role !== ROLES.admin) {
-      return { ok: false, error: 'Solo Admin puede gestionar usuarios.' };
+      return fail('Solo Admin puede gestionar usuarios.');
     }
 
     var email = normalizeEmail(payload.email);
@@ -555,27 +722,17 @@
       active = !(activeStr === '0' || activeStr === 'false' || activeStr === 'no' || activeStr === 'inactivo');
     }
 
-    if (!nombre) {
-      return { ok: false, error: 'El nombre es obligatorio.' };
-    }
-    if (!apellido) {
-      return { ok: false, error: 'El apellido es obligatorio.' };
-    }
-    if (!isBueEmail(email)) {
-      return { ok: false, error: 'El mail debe ser @' + ALLOWED_DOMAIN + '.' };
-    }
-    if (dni.length < 7 || dni.length > 8) {
-      return { ok: false, error: 'El DNI debe tener 7 u 8 dígitos.' };
-    }
+    if (!nombre) return fail('El nombre es obligatorio.');
+    if (!apellido) return fail('El apellido es obligatorio.');
+    if (!isBueEmail(email)) return fail('El mail debe ser @' + ALLOWED_DOMAIN + '.');
+    if (dni.length < 7 || dni.length > 8) return fail('El DNI debe tener 7 u 8 dígitos.');
     if (payload.fechaNacimiento && !fechaNacimiento) {
-      return { ok: false, error: 'Fecha de nacimiento inválida. Usá DD/MM/AAAA o AAAA-MM-DD.' };
+      return fail('Fecha de nacimiento inválida. Usá DD/MM/AAAA o AAAA-MM-DD.');
     }
     if (payload.reparticion && String(payload.reparticion).trim() && !reparticion) {
-      return { ok: false, error: 'Repartición inválida. Opciones: ' + REPARTICIONES.join(', ') + '.' };
+      return fail('Repartición inválida. Opciones: ' + REPARTICIONES.join(', ') + '.');
     }
-    if (!ROLE_PERMISSIONS[role]) {
-      return { ok: false, error: 'Rol inválido.' };
-    }
+    if (!ROLE_PERMISSIONS[role]) return fail('Rol inválido.');
 
     var users = ensureSeed();
     var existing = null;
@@ -590,38 +747,34 @@
     var dniOwner = users.find(function (u) {
       return normalizeDni(u.dni) === dni && (!existing || u.id !== existing.id);
     });
-    if (dniOwner) {
-      return { ok: false, error: 'Ese DNI ya está asignado a otro usuario.' };
-    }
+    if (dniOwner) return fail('Ese DNI ya está asignado a otro usuario.');
 
-    // Si estamos editando y cambiaron el mail a uno ya usado por otro
     if (existing && normalizeEmail(existing.email) !== email) {
       var emailOwner = users.find(function (u) {
         return normalizeEmail(u.email) === email && u.id !== existing.id;
       });
-      if (emailOwner) {
-        return { ok: false, error: 'Ese mail ya está asignado a otro usuario.' };
-      }
+      if (emailOwner) return fail('Ese mail ya está asignado a otro usuario.');
     }
+
+    var createdFlag = false;
+    var saved;
 
     if (existing) {
       if (existing.role === ROLES.admin && role !== ROLES.admin) {
         var otherAdmins = users.filter(function (u) {
           return u.id !== existing.id && u.role === ROLES.admin && u.active;
         });
-        if (!otherAdmins.length) {
-          return { ok: false, error: 'Debe quedar al menos un Admin activo.' };
-        }
+        if (!otherAdmins.length) return fail('Debe quedar al menos un Admin activo.');
       }
       if (existing.role === ROLES.admin && active === false) {
         var otherAdmins2 = users.filter(function (u) {
           return u.id !== existing.id && u.role === ROLES.admin && u.active;
         });
-        if (!otherAdmins2.length) {
-          return { ok: false, error: 'No podés desactivar el único Admin.' };
-        }
+        if (!otherAdmins2.length) return fail('No podés desactivar el único Admin.');
       }
 
+      // Si cambia el mail, el doc id en Firestore es el mail
+      var oldEmail = normalizeEmail(existing.email);
       existing.email = email;
       existing.dni = dni;
       existing.role = role;
@@ -631,26 +784,62 @@
       existing.reparticion = reparticion;
       existing.active = active;
       existing.updatedAt = new Date().toISOString();
-      writeUsers(users);
-      return { ok: true, user: Object.assign({}, existing), created: false };
+      if (oldEmail !== email) existing.id = userDocId(email);
+      saved = existing;
+      createdFlag = false;
+    } else {
+      saved = {
+        id: userDocId(email),
+        email: email,
+        dni: dni,
+        role: role,
+        nombre: nombre,
+        apellido: apellido,
+        fechaNacimiento: fechaNacimiento,
+        reparticion: reparticion,
+        active: active,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      users.push(saved);
+      createdFlag = true;
     }
 
-    var created = {
-      id: uid(),
-      email: email,
-      dni: dni,
-      role: role,
-      nombre: nombre,
-      apellido: apellido,
-      fechaNacimiento: fechaNacimiento,
-      reparticion: reparticion,
-      active: active,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    users.push(created);
     writeUsers(users);
-    return { ok: true, user: Object.assign({}, created), created: true };
+
+    function okResult() {
+      return { ok: true, user: Object.assign({}, findUserByEmail(email) || saved), created: createdFlag };
+    }
+
+    if (!initFirebase()) {
+      return Promise.resolve(okResult());
+    }
+
+    if (!_firebaseAuth.currentUser) {
+      return fail('Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.');
+    }
+
+    var renameFrom = '';
+    if (payloadId && String(payloadId).indexOf('@') !== -1 && userDocId(payloadId) !== userDocId(email)) {
+      renameFrom = userDocId(payloadId);
+    }
+
+    var ref = _firestore.collection('users').doc(userDocId(email));
+    var chain = Promise.resolve();
+    if (renameFrom) {
+      chain = _firestore.collection('users').doc(renameFrom).delete().catch(function () {});
+    }
+
+    return chain.then(function () {
+      return ref.set(toFirestorePayload(saved), { merge: true });
+    }).then(function () {
+      return syncFromFirestore();
+    }).then(function () {
+      return okResult();
+    }).catch(function (err) {
+      console.error(err);
+      return { ok: false, error: 'No se pudo guardar en Firebase. ' + (err && err.message ? err.message : '') };
+    });
   }
 
   /**
@@ -660,93 +849,114 @@
    */
   function importUsers(rows, actor, options) {
     options = options || {};
+    function fail(msg) { return Promise.resolve({ ok: false, error: msg, created: 0, updated: 0, skipped: 0, errors: [msg] }); }
     if (!actor || actor.role !== ROLES.admin) {
-      return { ok: false, error: 'Solo Admin puede importar usuarios.' };
+      return fail('Solo Admin puede importar usuarios.');
     }
     if (!Array.isArray(rows) || !rows.length) {
-      return { ok: false, error: 'No hay filas para importar.' };
+      return fail('No hay filas para importar.');
     }
 
     var created = 0;
     var updated = 0;
     var skipped = 0;
     var errors = [];
+    var chain = Promise.resolve();
 
     rows.forEach(function (row, index) {
-      var line = index + 2; // + header
-      var email = normalizeEmail(row.email || row.mail || row.correo);
-      if (!email) {
-        errors.push('Fila ' + line + ': falta mail.');
-        return;
-      }
-
-      var existing = findUserByEmail(email);
-      if (existing && !options.overwrite) {
-        skipped += 1;
-        return;
-      }
-
-      var roleRaw = String(row.role || row.rol || 'usuarios').trim().toLowerCase();
-      if (roleRaw === 'usuario') roleRaw = 'usuarios';
-      if (roleRaw === 'administrador') roleRaw = 'admin';
-
-      var activeRaw = row.active !== undefined ? row.active : row.activo;
-      var active = true;
-      if (activeRaw !== undefined && activeRaw !== null && String(activeRaw).trim() !== '') {
-        var s = String(activeRaw).trim().toLowerCase();
-        active = !(s === '0' || s === 'false' || s === 'no' || s === 'inactivo');
-      }
-
-      var result = upsertUser({
-        email: email,
-        dni: row.dni || row.documento,
-        nombre: row.nombre || row.name || row.firstname,
-        apellido: row.apellido || row.lastname || row.surname,
-        fechaNacimiento: row.fechaNacimiento || row.fecha_nacimiento || row.nacimiento || row.birthdate,
-        reparticion: row.reparticion || row.repartición || row.area || row.dependencia,
-        role: roleRaw,
-        active: active
-      }, actor);
-
-      if (!result.ok) {
-        errors.push('Fila ' + line + ' (' + email + '): ' + result.error);
-        return;
-      }
-      if (result.created) created += 1;
-      else updated += 1;
+      chain = chain.then(function () {
+        var line = index + 2;
+        var email = normalizeEmail(row.email || row.mail || row.correo);
+        if (!email) {
+          errors.push('Fila ' + line + ': falta mail.');
+          return;
+        }
+        var existing = findUserByEmail(email);
+        if (existing && !options.overwrite) {
+          skipped += 1;
+          return;
+        }
+        var roleRaw = String(row.role || row.rol || 'usuarios').trim().toLowerCase();
+        if (roleRaw === 'usuario') roleRaw = 'usuarios';
+        if (roleRaw === 'administrador') roleRaw = 'admin';
+        var activeRaw = row.active !== undefined ? row.active : row.activo;
+        var active = true;
+        if (activeRaw !== undefined && activeRaw !== null && String(activeRaw).trim() !== '') {
+          var s = String(activeRaw).trim().toLowerCase();
+          active = !(s === '0' || s === 'false' || s === 'no' || s === 'inactivo');
+        }
+        return upsertUser({
+          email: email,
+          dni: row.dni || row.documento,
+          nombre: row.nombre || row.name || row.firstname,
+          apellido: row.apellido || row.lastname || row.surname,
+          fechaNacimiento: row.fechaNacimiento || row.fecha_nacimiento || row.nacimiento || row.birthdate,
+          reparticion: row.reparticion || row.repartición || row.area || row.dependencia,
+          role: roleRaw,
+          active: active
+        }, actor).then(function (result) {
+          if (!result.ok) {
+            errors.push('Fila ' + line + ' (' + email + '): ' + result.error);
+            return;
+          }
+          if (result.created) created += 1;
+          else updated += 1;
+        });
+      });
     });
 
-    return {
-      ok: errors.length === 0 || created + updated > 0,
-      created: created,
-      updated: updated,
-      skipped: skipped,
-      errors: errors
-    };
+    return chain.then(function () {
+      return {
+        ok: errors.length === 0 || created + updated > 0,
+        created: created,
+        updated: updated,
+        skipped: skipped,
+        errors: errors
+      };
+    });
   }
 
   function removeUser(userId, actor) {
+    function fail(msg) { return Promise.resolve({ ok: false, error: msg }); }
     if (!actor || actor.role !== ROLES.admin) {
-      return { ok: false, error: 'Solo Admin puede eliminar usuarios.' };
+      return fail('Solo Admin puede eliminar usuarios.');
     }
     var users = ensureSeed();
     var targetId = String(userId || '');
     var target = users.find(function (u) { return String(u.id) === targetId; });
-    if (!target) return { ok: false, error: 'Usuario no encontrado.' };
+    if (!target) {
+      target = users.find(function (u) { return normalizeEmail(u.email) === normalizeEmail(targetId); }) || null;
+    }
+    if (!target) return fail('Usuario no encontrado.');
     if (target.email === normalizeEmail(SEED_ADMIN.email)) {
-      return { ok: false, error: 'No se puede eliminar el Admin inicial.' };
+      return fail('No se puede eliminar el Admin inicial.');
     }
     if (target.role === ROLES.admin) {
       var otherAdmins = users.filter(function (u) {
         return u.id !== target.id && u.role === ROLES.admin && u.active;
       });
       if (!otherAdmins.length) {
-        return { ok: false, error: 'Debe quedar al menos un Admin activo.' };
+        return fail('Debe quedar al menos un Admin activo.');
       }
     }
-    users = users.filter(function (u) { return String(u.id) !== targetId; });
+    users = users.filter(function (u) {
+      return String(u.id) !== String(target.id) && normalizeEmail(u.email) !== normalizeEmail(target.email);
+    });
     writeUsers(users);
-    return { ok: true };
+
+    if (!initFirebase()) {
+      return Promise.resolve({ ok: true });
+    }
+    if (!_firebaseAuth.currentUser) {
+      return fail('Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.');
+    }
+    return _firestore.collection('users').doc(userDocId(target.email)).delete()
+      .then(function () { return syncFromFirestore(); })
+      .then(function () { return { ok: true }; })
+      .catch(function (err) {
+        console.error(err);
+        return { ok: false, error: 'No se pudo eliminar en Firebase. ' + (err && err.message ? err.message : '') };
+      });
   }
 
   function roleLabel(role) {
@@ -799,6 +1009,9 @@
     removeUser: removeUser,
     roleLabel: roleLabel,
     describePermissions: describePermissions,
-    ensureSeed: ensureSeed
+    ensureSeed: ensureSeed,
+    ready: ready,
+    isFirebaseEnabled: isFirebaseEnabled,
+    syncFromFirestore: syncFromFirestore
   };
 })(window);
