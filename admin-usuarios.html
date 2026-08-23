@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Usuarios</title>
 <script src="portal-theme.js"></script>
+<script src="portal-sidebar.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -110,7 +111,8 @@ code{font-size:11px}
 html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 </style>
 </head>
-<body>
+<body class="portal-tool-body">
+  <div class="page-shell">
   <div class="topbar">
     <div class="topbar-title">Gestión de usuarios<span id="adminEmail"></span></div>
     <div style="display:flex;gap:14px;align-items:center">
@@ -120,6 +122,9 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     </div>
   </div>
 
+  <div class="layout">
+  <aside id="portal-sidebar"></aside>
+  <div class="content portal-tool-content">
   <div class="wrap">
     <h1>Usuarios y permisos</h1>
     <p class="lead">Alta, edición e importación de usuarios precargados (@bue.edu.ar + DNI). El ingreso es con Google.</p>
@@ -160,6 +165,8 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
         </table>
       </div>
     </section>
+  </div>
+  </div>
   </div>
 
   <!-- Modal alta / edición -->
@@ -599,5 +606,6 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   });
 })();
 </script>
+  </div>
 </body>
 </html>
