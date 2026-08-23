@@ -19,6 +19,7 @@
   }
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="auth.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
@@ -26,12 +27,13 @@
 :root{
   --az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--gr-light:#6b6b6a;
   --bg:#f0f2f4;--surface:#ffffff;--border:#e2e6ea;--error:#b91c1c;--ok:#166534;
-  --shadow:0 4px 12px rgba(0,0,0,.08);
+  --shadow:0 4px 12px rgba(0,0,0,.08);--overlay:rgba(17,24,39,.45);
   font-family:'Source Sans 3',sans-serif;color-scheme:light;
 }
 html[data-theme="dark"]{
   --az:#8DE2D6;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
-  --border:#2a3d4a;--error:#f87171;--ok:#4ade80;--shadow:0 8px 24px rgba(0,0,0,.4);color-scheme:dark;
+  --border:#2a3d4a;--error:#f87171;--ok:#4ade80;--shadow:0 8px 24px rgba(0,0,0,.4);
+  --overlay:rgba(0,0,0,.65);color-scheme:dark;
 }
 body{background:var(--bg);color:var(--gr);min-height:100vh}
 .topbar{
@@ -41,9 +43,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh}
 .topbar a{color:var(--am);text-decoration:none;font-weight:700;font-size:13px}
 .topbar-title{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
 .topbar-title span{display:block;font-weight:400;color:#8DE2D6;font-size:11px;margin-top:2px}
-.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 40px}
-.grid{display:grid;grid-template-columns:340px 1fr;gap:20px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 20px 40px}
 .panel{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
   box-shadow:var(--shadow);padding:22px;
@@ -51,15 +51,18 @@ body{background:var(--bg);color:var(--gr);min-height:100vh}
 h1{font-family:'Source Serif 4',Georgia,serif;font-size:28px;color:#153244;margin-bottom:6px}
 html[data-theme="dark"] h1{color:#f2f5f7}
 .lead{color:var(--gr-light);font-size:14px;margin-bottom:18px;line-height:1.5}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 label{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
   color:var(--gr-light);margin:12px 0 6px}
-input,select{
+input,select,textarea{
   width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
   background:var(--bg);color:var(--gr);font:inherit;font-size:14px;
 }
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.grid-2{grid-template-columns:1fr}}
 .row-check{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px}
 .row-check input{width:auto}
-.actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;justify-content:flex-end}
 button{
   border:none;border-radius:8px;padding:10px 14px;font-weight:700;font-size:12px;
   letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
@@ -71,6 +74,12 @@ button{
 .msg.visible{display:block}
 .msg.ok{background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.25);color:var(--ok)}
 .msg.err{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);color:var(--error)}
+.toast{
+  display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;
+}
+.toast.visible{display:block}
+.toast.ok{background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.25);color:var(--ok)}
+.toast.err{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);color:var(--error)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-light)}
@@ -82,8 +91,26 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 .badge.admin{background:rgba(255,204,0,.25)}
 .badge.apel{background:rgba(141,226,214,.3)}
 .muted{color:var(--gr-light);font-size:12px}
-.perms{font-size:11px;color:var(--gr-light);margin-top:4px;line-height:1.4}
 .user-actions{display:flex;gap:6px;flex-wrap:wrap}
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:var(--overlay);z-index:40;
+  align-items:center;justify-content:center;padding:16px;overflow-y:auto;
+}
+.modal-overlay.visible{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);width:100%;max-width:520px;padding:22px;margin:auto;
+}
+.modal.wide{max-width:640px}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.modal-head h2{font-size:18px;color:#153244;margin:0}
+html[data-theme="dark"] .modal-head h2{color:#f2f5f7}
+.modal-close{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--gr);font-size:16px;cursor:pointer;padding:0;
+}
+.hint{font-size:12px;color:var(--gr-light);line-height:1.45;margin:6px 0 10px}
+code{font-size:11px}
 </style>
 </head>
 <body>
@@ -97,57 +124,111 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 
   <div class="wrap">
     <h1>Usuarios y permisos</h1>
-    <p class="lead">Precargá usuarios con mail <strong>@bue.edu.ar</strong> + DNI. El ingreso al portal es con Google (cuenta @bue), igual que Acto Público en línea. Roles: <strong>Admin</strong> (todo + permisos), <strong>APEL</strong> (Acto Público, Eleves Acto Público y Manuales), <strong>Usuarios</strong> (solo Manuales).</p>
+    <p class="lead">Alta, edición e importación de usuarios precargados (@bue.edu.ar + DNI). El ingreso es con Google.</p>
 
-    <div class="grid">
-      <section class="panel">
-        <h2 style="font-size:16px;margin-bottom:4px" id="formTitle">Nuevo usuario</h2>
-        <p class="muted" id="formHint">Completá mail institucional y DNI.</p>
-        <form id="userForm">
-          <input type="hidden" id="editId" value="">
-          <label for="nombre">Nombre (opcional)</label>
-          <input id="nombre" type="text" placeholder="Nombre y apellido">
+    <div class="toast" id="pageToast"></div>
 
-          <label for="email">Mail @bue.edu.ar</label>
-          <input id="email" type="email" required placeholder="nombre.apellido@bue.edu.ar">
+    <div class="toolbar">
+      <button type="button" class="btn-primary" id="btnNewUser">Nuevo usuario</button>
+      <button type="button" class="btn-secondary" id="btnImport">Importar usuarios</button>
+      <button type="button" class="btn-secondary" id="btnTemplate">Descargar plantilla CSV</button>
+    </div>
 
-          <label for="dni">DNI</label>
-          <input id="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" required placeholder="Sin puntos">
+    <section class="panel">
+      <h2 style="font-size:16px;margin-bottom:12px">Base de usuarios</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Mail</th>
+              <th>DNI</th>
+              <th>Nacimiento</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
-          <label for="role">Rol / permisos</label>
-          <select id="role" required>
-            <option value="usuarios">Usuarios — solo Manuales</option>
-            <option value="apel">APEL — Acto Público + Eleves Acto Público + Manuales</option>
-            <option value="admin">Admin — todo + asignar permisos</option>
-          </select>
-
-          <label class="row-check"><input type="checkbox" id="active" checked> Usuario activo</label>
-
-          <div class="actions">
-            <button type="submit" class="btn-primary" id="saveBtn">Guardar</button>
-            <button type="button" class="btn-secondary" id="resetBtn">Limpiar</button>
+  <!-- Modal alta / edición -->
+  <div class="modal-overlay" id="userModal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="userModalTitle">Nuevo usuario</h2>
+        <button type="button" class="modal-close" data-close="userModal" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="hint" id="userModalHint">Completá los datos del usuario.</p>
+      <form id="userForm">
+        <input type="hidden" id="editId" value="">
+        <div class="grid-2">
+          <div>
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" required placeholder="Nombre">
           </div>
-          <div class="msg" id="formMsg"></div>
-        </form>
-      </section>
-
-      <section class="panel">
-        <h2 style="font-size:16px;margin-bottom:12px">Base de usuarios</h2>
-        <div style="overflow-x:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>DNI</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="usersBody"></tbody>
-          </table>
+          <div>
+            <label for="apellido">Apellido</label>
+            <input id="apellido" type="text" required placeholder="Apellido">
+          </div>
         </div>
-      </section>
+
+        <label for="email">Mail @bue.edu.ar</label>
+        <input id="email" type="email" required placeholder="nombre.apellido@bue.edu.ar">
+
+        <div class="grid-2">
+          <div>
+            <label for="dni">DNI</label>
+            <input id="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" required placeholder="Sin puntos">
+          </div>
+          <div>
+            <label for="fechaNacimiento">Fecha de nacimiento</label>
+            <input id="fechaNacimiento" type="date">
+          </div>
+        </div>
+
+        <label for="role">Rol / permisos</label>
+        <select id="role" required>
+          <option value="usuarios">Usuarios — solo Manuales</option>
+          <option value="apel">APEL — Acto Público + Eleves Acto Público + Manuales</option>
+          <option value="admin">Admin — todo + asignar permisos</option>
+        </select>
+
+        <label class="row-check"><input type="checkbox" id="active" checked> Usuario activo</label>
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" data-close="userModal">Cancelar</button>
+          <button type="submit" class="btn-primary" id="saveBtn">Guardar</button>
+        </div>
+        <div class="msg" id="formMsg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal importar -->
+  <div class="modal-overlay" id="importModal" role="dialog" aria-modal="true">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h2>Importar usuarios</h2>
+        <button type="button" class="modal-close" data-close="importModal" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="hint">
+        Subí un CSV o Excel con columnas:
+        <code>nombre, apellido, email, dni, fecha_nacimiento, role, activo</code>.
+        Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>. Roles: <code>admin</code>, <code>apel</code>, <code>usuarios</code>.
+      </p>
+      <label for="importFile">Archivo</label>
+      <input id="importFile" type="file" accept=".csv,.xlsx,.xls">
+      <label class="row-check"><input type="checkbox" id="importOverwrite"> Actualizar si el mail ya existe</label>
+      <div class="actions">
+        <button type="button" class="btn-secondary" data-close="importModal">Cancelar</button>
+        <button type="button" class="btn-primary" id="importRun">Importar</button>
+      </div>
+      <div class="msg" id="importMsg"></div>
     </div>
   </div>
 
@@ -157,7 +238,6 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
   if (!user) return;
 
   document.getElementById('adminEmail').textContent = user.email;
-
   document.getElementById('logoutBtn').addEventListener('click', function (e) {
     e.preventDefault();
     PortalAuth.logout();
@@ -166,19 +246,52 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 
   var form = document.getElementById('userForm');
   var formMsg = document.getElementById('formMsg');
+  var importMsg = document.getElementById('importMsg');
+  var pageToast = document.getElementById('pageToast');
   var editId = document.getElementById('editId');
 
-  function showMsg(text, ok) {
+  function showToast(text, ok) {
+    pageToast.textContent = text;
+    pageToast.className = 'toast visible ' + (ok ? 'ok' : 'err');
+  }
+
+  function showFormMsg(text, ok) {
     formMsg.textContent = text;
     formMsg.className = 'msg visible ' + (ok ? 'ok' : 'err');
   }
+
+  function showImportMsg(text, ok) {
+    importMsg.textContent = text;
+    importMsg.className = 'msg visible ' + (ok ? 'ok' : 'err');
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('visible');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('visible');
+  }
+
+  document.querySelectorAll('[data-close]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      closeModal(btn.getAttribute('data-close'));
+    });
+  });
+
+  document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) overlay.classList.remove('visible');
+    });
+  });
 
   function resetForm() {
     editId.value = '';
     form.reset();
     document.getElementById('active').checked = true;
     document.getElementById('email').readOnly = false;
-    document.getElementById('formTitle').textContent = 'Nuevo usuario';
+    document.getElementById('userModalTitle').textContent = 'Nuevo usuario';
+    document.getElementById('userModalHint').textContent = 'Completá los datos del usuario.';
     document.getElementById('saveBtn').textContent = 'Guardar';
     formMsg.className = 'msg';
   }
@@ -186,27 +299,43 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
   function fillForm(u) {
     editId.value = u.id;
     document.getElementById('nombre').value = u.nombre || '';
+    document.getElementById('apellido').value = u.apellido || '';
     document.getElementById('email').value = u.email;
     document.getElementById('email').readOnly = true;
     document.getElementById('dni').value = u.dni;
+    document.getElementById('fechaNacimiento').value = PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
     document.getElementById('role').value = u.role;
     document.getElementById('active').checked = !!u.active;
-    document.getElementById('formTitle').textContent = 'Editar usuario';
+    document.getElementById('userModalTitle').textContent = 'Editar usuario';
+    document.getElementById('userModalHint').textContent = 'Modificá los datos y guardá los cambios.';
     document.getElementById('saveBtn').textContent = 'Actualizar';
     formMsg.className = 'msg';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   function renderUsers() {
     var tbody = document.getElementById('usersBody');
     var users = PortalAuth.getUsers();
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="muted">No hay usuarios cargados.</td></tr>';
+      return;
+    }
     tbody.innerHTML = users.map(function (u) {
-      var perms = PortalAuth.describePermissions(u.role).join(' · ');
       return (
         '<tr>' +
-          '<td><strong>' + (u.nombre || '—') + '</strong><div class="muted">' + u.email + '</div>' +
-            '<div class="perms">' + perms + '</div></td>' +
-          '<td>' + u.dni + '</td>' +
+          '<td>' + escapeHtml(u.nombre || '—') + '</td>' +
+          '<td>' + escapeHtml(u.apellido || '—') + '</td>' +
+          '<td><div>' + escapeHtml(u.email) + '</div><div class="muted">' +
+            escapeHtml(PortalAuth.describePermissions(u.role).join(' · ')) + '</div></td>' +
+          '<td>' + escapeHtml(u.dni) + '</td>' +
+          '<td>' + escapeHtml(PortalAuth.formatBirthDateDisplay(u.fechaNacimiento)) + '</td>' +
           '<td><span class="badge ' + u.role + '">' + PortalAuth.roleLabel(u.role) + '</span></td>' +
           '<td>' + (u.active ? 'Activo' : 'Inactivo') + '</td>' +
           '<td><div class="user-actions">' +
@@ -220,46 +349,122 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
     }).join('');
   }
 
+  document.getElementById('btnNewUser').addEventListener('click', function () {
+    resetForm();
+    openModal('userModal');
+  });
+
+  document.getElementById('btnImport').addEventListener('click', function () {
+    importMsg.className = 'msg';
+    document.getElementById('importFile').value = '';
+    document.getElementById('importOverwrite').checked = false;
+    openModal('importModal');
+  });
+
+  document.getElementById('btnTemplate').addEventListener('click', function () {
+    var csv = [
+      'nombre,apellido,email,dni,fecha_nacimiento,role,activo',
+      'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,usuarios,si',
+      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,apel,si'
+    ].join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'plantilla_usuarios_coreap.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var result = PortalAuth.upsertUser({
       email: document.getElementById('email').value,
       dni: document.getElementById('dni').value,
-      role: document.getElementById('role').value,
       nombre: document.getElementById('nombre').value,
+      apellido: document.getElementById('apellido').value,
+      fechaNacimiento: document.getElementById('fechaNacimiento').value,
+      role: document.getElementById('role').value,
       active: document.getElementById('active').checked
     }, user);
 
     if (!result.ok) {
-      showMsg(result.error, false);
+      showFormMsg(result.error, false);
       return;
     }
-    showMsg(result.created ? 'Usuario creado.' : 'Usuario actualizado.', true);
     user = PortalAuth.currentUser() || user;
     renderUsers();
-    if (result.created) resetForm();
+    closeModal('userModal');
+    showToast(result.created ? 'Usuario creado.' : 'Usuario actualizado.', true);
   });
-
-  document.getElementById('resetBtn').addEventListener('click', resetForm);
 
   document.getElementById('usersBody').addEventListener('click', function (e) {
     var edit = e.target.getAttribute('data-edit');
     var del = e.target.getAttribute('data-del');
     if (edit) {
       var u = PortalAuth.getUsers().find(function (x) { return x.id === edit; });
-      if (u) fillForm(u);
+      if (!u) return;
+      fillForm(u);
+      openModal('userModal');
       return;
     }
     if (del) {
       if (!confirm('¿Eliminar este usuario?')) return;
       var res = PortalAuth.removeUser(del, user);
       if (!res.ok) {
-        alert(res.error);
+        showToast(res.error, false);
         return;
       }
       renderUsers();
-      resetForm();
+      showToast('Usuario eliminado.', true);
     }
+  });
+
+  function rowsFromSheet(workbook) {
+    var sheetName = workbook.SheetNames[0];
+    var sheet = workbook.Sheets[sheetName];
+    return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  }
+
+  document.getElementById('importRun').addEventListener('click', function () {
+    var fileInput = document.getElementById('importFile');
+    if (!fileInput.files.length) {
+      showImportMsg('Seleccioná un archivo CSV o Excel.', false);
+      return;
+    }
+    var file = fileInput.files[0];
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      try {
+        var data = new Uint8Array(ev.target.result);
+        var workbook = XLSX.read(data, { type: 'array' });
+        var rows = rowsFromSheet(workbook);
+        var result = PortalAuth.importUsers(rows, user, {
+          overwrite: document.getElementById('importOverwrite').checked
+        });
+
+        var summary = 'Creados: ' + result.created +
+          ' · Actualizados: ' + result.updated +
+          ' · Omitidos: ' + result.skipped;
+        if (result.errors && result.errors.length) {
+          summary += '\n' + result.errors.slice(0, 8).join('\n');
+          if (result.errors.length > 8) summary += '\n…';
+        }
+
+        if (!result.ok && result.created + result.updated === 0) {
+          showImportMsg(summary, false);
+          return;
+        }
+
+        user = PortalAuth.currentUser() || user;
+        renderUsers();
+        closeModal('importModal');
+        showToast(summary.replace(/\n/g, ' | '), result.errors.length === 0);
+      } catch (err) {
+        console.error(err);
+        showImportMsg('No se pudo leer el archivo. Verificá el formato.', false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
   });
 
   renderUsers();
