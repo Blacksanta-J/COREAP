@@ -79,32 +79,84 @@ body {
   transition: background-color .2s ease, color .2s ease;
 }
 
-/* ── Topbar / acciones compartidas ── */
+/* ── Topbar / acciones compartidas (estilo actopublico_final) ── */
 .portal-topbar,
 .topbar {
   background: var(--portal-topbar-bg) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: .95;
+  transition: opacity .2s;
+}
+
+.topbar-logo:hover {
+  opacity: 1;
+}
+
+.topbar-logo svg {
+  display: block;
+  width: 75px;
+  height: 40px;
 }
 
 .topbar-right,
 .portal-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.topbar-right {
+  margin-left: auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .portal-title,
 .topbar-title {
-  color: rgba(255,255,255,.92);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .92);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: right;
+  line-height: 1.5;
+  font-family: 'Source Sans 3', sans-serif;
 }
 
 .portal-title span,
 .topbar-title span {
+  display: block;
   color: var(--portal-cy);
+  font-weight: 400;
+  letter-spacing: .4px;
+}
+
+.portal-header-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .65);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-link,
 .portal-home-link {
-  color: rgba(255,255,255,.9);
+  color: rgba(255, 255, 255, .9);
   text-decoration: none;
   font-size: 11px;
   font-weight: 700;
@@ -112,14 +164,14 @@ body {
   text-transform: uppercase;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .08);
   white-space: nowrap;
 }
 
 .topbar-link:hover,
 .portal-home-link:hover {
-  background: rgba(255,255,255,.16);
+  background: rgba(255, 255, 255, .16);
 }
 
 .theme-toggle {
@@ -138,6 +190,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: background .2s, transform .15s;
+  flex-shrink: 0;
 }
 
 .theme-toggle:hover {
@@ -192,6 +245,11 @@ body {
 .portal-tool-panel p,
 .page-intro p {
   color: var(--portal-muted);
+}
+
+.page-intro {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .portal-tool-panel .label-text {
@@ -798,6 +856,24 @@ html[data-theme="dark"] .processor-note.pending {
   .topbar {
     padding-left: 20px !important;
     padding-right: 20px !important;
+  }
+
+  .portal-topbar,
+  .topbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .portal-title,
+  .topbar-title {
+    text-align: left;
+    flex: 1;
+    min-width: 0;
   }
 
   .portal-footer {
