@@ -2,7 +2,9 @@
  * Configuración de autenticación Google + Firebase (Firestore).
  *
  * GOOGLE (Identity Services):
- * En Google Cloud Console → Credenciales → ID de cliente OAuth (Aplicación web):
+ * Usar el cliente OAuth "Web client (auto created by Google Service)" del
+ * proyecto Firebase portal-coreap (Google Cloud → Credenciales).
+ * Orígenes autorizados de JavaScript:
  *   - http://localhost:8000
  *   - http://127.0.0.1:8000
  *   - https://blacksanta-j.github.io
@@ -12,10 +14,9 @@
  * 2. Firestore Database → Create
  * 3. Authentication → Settings → Authorized domains → localhost + blacksanta-j.github.io
  * 4. Publicá las reglas de firestore.rules
- * 5. Primer login del admin siembra users-data.js en Firestore
  */
 window.PORTAL_AUTH_CONFIG = {
-  googleClientId: '396980167437-7h9dp4952g0bvg0dkbtpee4728bmj48e.apps.googleusercontent.com',
+  googleClientId: '691135057707-64u4hv4k93ogmt9mv2hgg0pf656qeld5.apps.googleusercontent.com',
   firebase: {
     apiKey: 'AIzaSyDLHYqb9yM_FWFoxsczkKEDpPns9OLUFtA',
     authDomain: 'portal-coreap.firebaseapp.com',
