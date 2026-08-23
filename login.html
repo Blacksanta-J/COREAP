@@ -4,21 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Ingreso</title>
-<script>
-(function () {
-  try {
-    var saved = localStorage.getItem('portal-theme')
-      || localStorage.getItem('elevador-theme')
-      || localStorage.getItem('procesador-theme');
-    var theme = (saved === 'light' || saved === 'dark')
-      ? saved
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-})();
-</script>
+<script src="portal-theme.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -30,24 +17,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--gr-light:#6b6b6a;
-  --bg:#f0f2f4;--surface:#ffffff;--border:#e2e6ea;--error:#b91c1c;
-  --shadow:0 10px 30px rgba(21,50,68,.12);
-  font-family:'Source Sans 3',sans-serif;color-scheme:light;
-}
-html[data-theme="dark"]{
-  --az:#8DE2D6;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
-  --border:#2a3d4a;--error:#f87171;--shadow:0 10px 30px rgba(0,0,0,.45);color-scheme:dark;
+  --az:var(--portal-az);--am:var(--portal-am);--cy:var(--portal-cy);--gr:var(--portal-gr);--gr-light:var(--portal-gr-light);
+  --bg:var(--portal-bg);--surface:var(--portal-surface);--border:var(--portal-border);--error:var(--portal-error);
+  --shadow:var(--portal-shadow-md);
+  font-family:'Source Sans 3',sans-serif;
 }
 body{
   min-height:100vh;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at top right,rgba(141,226,214,.18),transparent 40%),
              radial-gradient(circle at bottom left,rgba(255,204,0,.12),transparent 35%),
-             var(--bg);
-  color:var(--gr);padding:24px;
+             var(--portal-bg);
+  color:var(--portal-text);padding:24px;
 }
 .card{
-  width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);
+  width:100%;max-width:440px;background:var(--portal-surface);border:1px solid var(--portal-border);
   border-radius:14px;box-shadow:var(--shadow);padding:28px 24px;border-top:4px solid var(--am);
 }
 .brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px}
@@ -108,29 +91,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     location.replace(next);
   }
 
-  function currentTheme() {
-    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  }
-  function syncThemeToggle() {
-    var btn = document.getElementById('themeToggle');
-    if (!btn) return;
-    var dark = currentTheme() === 'dark';
-    btn.textContent = dark ? '☀️' : '🌙';
-    btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
-  }
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem('portal-theme', theme);
-      localStorage.setItem('elevador-theme', theme);
-      localStorage.setItem('procesador-theme', theme);
-    } catch (e) {}
-    syncThemeToggle();
-  }
-  syncThemeToggle();
-  document.getElementById('themeToggle').addEventListener('click', function () {
-    setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
-  });
+  PortalTheme.initThemeToggle('themeToggle');
 
   function finishLogin(result) {
     if (!result.ok) {

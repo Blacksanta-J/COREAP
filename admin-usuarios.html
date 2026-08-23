@@ -4,21 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Usuarios</title>
-<script>
-(function () {
-  try {
-    var saved = localStorage.getItem('portal-theme')
-      || localStorage.getItem('elevador-theme')
-      || localStorage.getItem('procesador-theme');
-    var theme = (saved === 'light' || saved === 'dark')
-      ? saved
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-})();
-</script>
+<script src="portal-theme.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -48,7 +35,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh}
 .topbar a{color:var(--am);text-decoration:none;font-weight:700;font-size:13px}
 .topbar-title{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
 .topbar-title span{display:block;font-weight:400;color:#8DE2D6;font-size:11px;margin-top:2px}
-.wrap{max-width:1200px;margin:0 auto;padding:28px 20px 40px}
+.wrap{max-width:none;width:100%;margin:0;padding:28px 40px 40px}
 .panel{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
   box-shadow:var(--shadow);padding:22px;
@@ -128,6 +115,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     <div class="topbar-title">Gestión de usuarios<span id="adminEmail"></span></div>
     <div style="display:flex;gap:14px;align-items:center">
       <a href="index.html">← Volver al portal</a>
+      <button type="button" class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
       <a href="#" id="logoutBtn">Salir</a>
     </div>
   </div>
@@ -604,6 +592,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   });
 
   renderUsers();
+  PortalTheme.initThemeToggle('themeToggle');
   }).catch(function (err) {
     console.error(err);
     alert('No se pudo cargar usuarios. Reintentá.');
