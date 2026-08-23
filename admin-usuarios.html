@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Usuarios</title>
 <script src="portal-theme.js"></script>
+<script src="portal-header.js"></script>
 <script src="portal-sidebar.js"></script>
 <script src="portal-footer.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
@@ -114,14 +115,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 </head>
 <body class="portal-tool-body">
   <div class="page-shell">
-  <div class="topbar">
-    <div class="topbar-title">Gestión de usuarios<span id="adminEmail"></span></div>
-    <div style="display:flex;gap:14px;align-items:center">
-      <a href="index.html">← Volver al portal</a>
-      <button type="button" class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
-      <a href="#" id="logoutBtn">Salir</a>
-    </div>
-  </div>
+  <header id="portal-header"></header>
 
   <div class="layout">
   <aside id="portal-sidebar"></aside>
