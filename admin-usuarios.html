@@ -20,7 +20,8 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="auth.js?v=20260823-edit2"></script>
+<script src="users-data.js?v=20260823-shared"></script>
+<script src="auth.js?v=20260823-shared"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -111,6 +112,11 @@ html[data-theme="dark"] .modal-head h2{color:#f2f5f7}
 }
 .hint{font-size:12px;color:var(--gr-light);line-height:1.45;margin:6px 0 10px}
 code{font-size:11px}
+.callout{
+  margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+  background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.45);color:var(--gr);
+}
+html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 </style>
 </head>
 <body>
@@ -126,12 +132,19 @@ code{font-size:11px}
     <h1>Usuarios y permisos</h1>
     <p class="lead">Alta, edición e importación de usuarios precargados (@bue.edu.ar + DNI). El ingreso es con Google.</p>
 
+    <div class="callout" id="publishHint">
+      Las altas en este panel quedan en <strong>este navegador</strong>.
+      Para que una cuenta pueda ingresar desde otra PC, descargá <code>users-data.js</code>
+      y reemplazá ese archivo en el sitio (repo / GitHub Pages).
+    </div>
+
     <div class="toast" id="pageToast"></div>
 
     <div class="toolbar">
       <button type="button" class="btn-primary" id="btnNewUser">Nuevo usuario</button>
       <button type="button" class="btn-secondary" id="btnImport">Importar usuarios</button>
       <button type="button" class="btn-secondary" id="btnTemplate">Descargar plantilla CSV</button>
+      <button type="button" class="btn-secondary" id="btnExportUsersData">Descargar users-data.js</button>
     </div>
 
     <section class="panel">
@@ -422,6 +435,17 @@ code{font-size:11px}
     URL.revokeObjectURL(a.href);
   });
 
+  document.getElementById('btnExportUsersData').addEventListener('click', function () {
+    var content = PortalAuth.exportUsersDataJs(PortalAuth.getUsers());
+    var blob = new Blob([content], { type: 'application/javascript;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'users-data.js';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Descargaste users-data.js. Reemplazalo en el sitio para publicar las altas.', true);
+  });
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     formMsg.className = 'msg';
@@ -471,7 +495,11 @@ code{font-size:11px}
     closeModal('userModal');
     resetForm();
     renderUsers();
-    showToast(result.created ? 'Usuario creado.' : 'Usuario actualizado.', true);
+    if (result.created) {
+      showToast('Usuario creado en este navegador. Descargá users-data.js y publicarlo para que pueda ingresar desde otra PC.', true);
+    } else {
+      showToast('Usuario actualizado.', true);
+    }
   });
 
   document.getElementById('usersBody').addEventListener('click', function (e) {

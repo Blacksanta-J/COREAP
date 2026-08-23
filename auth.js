@@ -172,40 +172,120 @@
     localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
   }
 
+  function hydratePublishedUser(raw) {
+    var email = normalizeEmail(raw && raw.email);
+    if (!email) return null;
+    var role = String((raw && raw.role) || ROLES.usuarios).trim().toLowerCase();
+    if (role === 'usuario') role = ROLES.usuarios;
+    if (role === 'administrador') role = ROLES.admin;
+    if (!ROLE_PERMISSIONS[role]) role = ROLES.usuarios;
+    var active = true;
+    if (raw && typeof raw.active === 'boolean') active = raw.active;
+    return {
+      id: (raw && raw.id) || uid(),
+      email: email,
+      dni: normalizeDni((raw && raw.dni) || ''),
+      role: role,
+      active: active,
+      nombre: String((raw && raw.nombre) || '').trim(),
+      apellido: String((raw && raw.apellido) || '').trim(),
+      fechaNacimiento: normalizeBirthDate((raw && raw.fechaNacimiento) || ''),
+      reparticion: normalizeReparticion((raw && raw.reparticion) || '') || String((raw && raw.reparticion) || '').trim(),
+      createdAt: (raw && raw.createdAt) || new Date().toISOString(),
+      updatedAt: (raw && raw.updatedAt) || new Date().toISOString(),
+      published: true
+    };
+  }
+
+  /** Lista publicada en users-data.js (compartida en el sitio). */
+  function getPublishedUsers() {
+    var list = global.PORTAL_USERS;
+    if (!Array.isArray(list) || !list.length) {
+      return [hydratePublishedUser(SEED_ADMIN)].filter(Boolean);
+    }
+    return list.map(hydratePublishedUser).filter(Boolean);
+  }
+
+  /**
+   * Une usuarios publicados (users-data.js) con los locales (localStorage).
+   * - Todo mail publicado se agrega si no existe (así pueden loguear desde otra PC).
+   * - Los usuarios solo-locales se conservan (altas pendientes de publicar).
+   * - Si el mail ya existe en local, no se pisa con la publicada (edición local manda).
+   */
   function ensureSeed() {
     var users = readUsers();
-    if (users && users.length) {
-      var changed = false;
-      users.forEach(function (u) {
-        var before = JSON.stringify(u);
-        migrateUserShape(u);
-        // Normalizar email guardado para búsquedas consistentes
-        var norm = normalizeEmail(u.email);
-        if (u.email !== norm) {
-          u.email = norm;
-          changed = true;
-        }
-        if (JSON.stringify(u) !== before) changed = true;
-      });
-      if (changed) writeUsers(users);
-      return users;
+    if (!users) users = [];
+    var changed = false;
+    var byEmail = {};
+
+    users.forEach(function (u) {
+      migrateUserShape(u);
+      var norm = normalizeEmail(u.email);
+      if (u.email !== norm) {
+        u.email = norm;
+        changed = true;
+      }
+      if (norm) byEmail[norm] = u;
+    });
+
+    getPublishedUsers().forEach(function (pub) {
+      var email = normalizeEmail(pub.email);
+      if (!email) return;
+      if (!byEmail[email]) {
+        byEmail[email] = pub;
+        changed = true;
+      }
+    });
+
+    // Garantizar admin semilla
+    var seedEmail = normalizeEmail(SEED_ADMIN.email);
+    if (!byEmail[seedEmail]) {
+      byEmail[seedEmail] = hydratePublishedUser(SEED_ADMIN);
+      changed = true;
     }
 
-    users = [{
-      id: uid(),
-      email: normalizeEmail(SEED_ADMIN.email),
-      dni: normalizeDni(SEED_ADMIN.dni),
-      role: SEED_ADMIN.role,
-      active: true,
-      nombre: SEED_ADMIN.nombre,
-      apellido: SEED_ADMIN.apellido,
-      fechaNacimiento: SEED_ADMIN.fechaNacimiento || '',
-      reparticion: SEED_ADMIN.reparticion || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }];
-    writeUsers(users);
+    users = Object.keys(byEmail).map(function (k) { return byEmail[k]; });
+    users.forEach(function (u) {
+      var before = JSON.stringify(u);
+      migrateUserShape(u);
+      if (JSON.stringify(u) !== before) changed = true;
+    });
+
+    if (!users.length) {
+      users = [hydratePublishedUser(SEED_ADMIN)];
+      changed = true;
+    }
+
+    if (changed) writeUsers(users);
     return users;
+  }
+
+  /** Genera el contenido de users-data.js a partir de la base actual. */
+  function exportUsersDataJs(usersList) {
+    var list = (usersList || ensureSeed()).map(function (u) {
+      return {
+        email: normalizeEmail(u.email),
+        dni: normalizeDni(u.dni),
+        role: u.role,
+        active: !!u.active,
+        nombre: u.nombre || '',
+        apellido: u.apellido || '',
+        fechaNacimiento: normalizeBirthDate(u.fechaNacimiento || ''),
+        reparticion: u.reparticion || ''
+      };
+    }).sort(function (a, b) {
+      return a.email.localeCompare(b.email, 'es');
+    });
+
+    return [
+      '/**',
+      ' * Usuarios publicados del portal (fuente compartida).',
+      ' * Generado desde Gestión de usuarios. Subí este archivo al repo para que',
+      ' * las altas/ediciones apliquen en todos los navegadores.',
+      ' */',
+      'window.PORTAL_USERS = ' + JSON.stringify(list, null, 2) + ';',
+      ''
+    ].join('\n');
   }
 
   function getUsers() {
@@ -703,6 +783,8 @@
     displayName: displayName,
     isBueEmail: isBueEmail,
     getUsers: getUsers,
+    getPublishedUsers: getPublishedUsers,
+    exportUsersDataJs: exportUsersDataJs,
     findUserByEmail: findUserByEmail,
     currentUser: currentUser,
     login: login,
