@@ -20,7 +20,7 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="auth.js"></script>
+<script src="auth.js?v=20260823-edit"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -195,12 +195,6 @@ code{font-size:11px}
         <label for="reparticion">Repartición</label>
         <select id="reparticion">
           <option value="">Seleccioná una repartición</option>
-          <option value="Sistemas">Sistemas</option>
-          <option value="Administracion">Administracion</option>
-          <option value="RRHH">RRHH</option>
-          <option value="Listados">Listados</option>
-          <option value="APEL">APEL</option>
-          <option value="JUNTA">JUNTA</option>
         </select>
 
         <label for="role">Rol / permisos</label>
@@ -263,6 +257,33 @@ code{font-size:11px}
   var importMsg = document.getElementById('importMsg');
   var pageToast = document.getElementById('pageToast');
   var editId = document.getElementById('editId');
+  var reparticionSelect = document.getElementById('reparticion');
+
+  var REPARTICIONES = (PortalAuth.REPARTICIONES && PortalAuth.REPARTICIONES.length)
+    ? PortalAuth.REPARTICIONES.slice()
+    : ['Sistemas', 'Administracion', 'RRHH', 'Listados', 'APEL', 'JUNTA'];
+
+  function fillReparticionOptions() {
+    var current = reparticionSelect.value;
+    reparticionSelect.innerHTML = '<option value="">Seleccioná una repartición</option>';
+    REPARTICIONES.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      reparticionSelect.appendChild(opt);
+    });
+    if (current) reparticionSelect.value = current;
+  }
+
+  function normalizeReparticionLocal(value) {
+    if (typeof PortalAuth.normalizeReparticion === 'function') {
+      return PortalAuth.normalizeReparticion(value);
+    }
+    var raw = String(value || '').trim().toLowerCase();
+    if (!raw) return '';
+    var found = REPARTICIONES.find(function (r) { return r.toLowerCase() === raw; });
+    return found || '';
+  }
 
   function showToast(text, ok) {
     pageToast.textContent = text;
@@ -302,6 +323,7 @@ code{font-size:11px}
   function resetForm() {
     editId.value = '';
     form.reset();
+    fillReparticionOptions();
     document.getElementById('active').checked = true;
     document.getElementById('email').readOnly = false;
     document.getElementById('userModalTitle').textContent = 'Nuevo usuario';
@@ -311,21 +333,25 @@ code{font-size:11px}
   }
 
   function fillForm(u) {
-    editId.value = u.id;
+    fillReparticionOptions();
+    editId.value = u.id || '';
     document.getElementById('nombre').value = u.nombre || '';
     document.getElementById('apellido').value = u.apellido || '';
-    document.getElementById('email').value = u.email;
+    document.getElementById('email').value = u.email || '';
     document.getElementById('email').readOnly = true;
-    document.getElementById('dni').value = u.dni;
-    document.getElementById('fechaNacimiento').value = PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
-    document.getElementById('reparticion').value = PortalAuth.normalizeReparticion(u.reparticion || '');
-    document.getElementById('role').value = u.role;
+    document.getElementById('dni').value = u.dni || '';
+    document.getElementById('fechaNacimiento').value =
+      PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
+    reparticionSelect.value = normalizeReparticionLocal(u.reparticion || '');
+    document.getElementById('role').value = u.role || 'usuarios';
     document.getElementById('active').checked = !!u.active;
     document.getElementById('userModalTitle').textContent = 'Editar usuario';
     document.getElementById('userModalHint').textContent = 'Modificá los datos y guardá los cambios.';
     document.getElementById('saveBtn').textContent = 'Actualizar';
     formMsg.className = 'msg';
   }
+
+  fillReparticionOptions();
 
   function escapeHtml(str) {
     return String(str || '')
@@ -355,10 +381,10 @@ code{font-size:11px}
           '<td><span class="badge ' + u.role + '">' + PortalAuth.roleLabel(u.role) + '</span></td>' +
           '<td>' + (u.active ? 'Activo' : 'Inactivo') + '</td>' +
           '<td><div class="user-actions">' +
-            '<button type="button" class="btn-secondary" data-edit="' + u.id + '">Editar</button>' +
+            '<button type="button" class="btn-secondary" data-edit="' + escapeHtml(u.id) + '">Editar</button>' +
             (u.email === PortalAuth.SEED_ADMIN_EMAIL
               ? ''
-              : '<button type="button" class="btn-danger" data-del="' + u.id + '">Eliminar</button>') +
+              : '<button type="button" class="btn-danger" data-del="' + escapeHtml(u.id) + '">Eliminar</button>') +
           '</div></td>' +
         '</tr>'
       );
@@ -417,13 +443,26 @@ code{font-size:11px}
   });
 
   document.getElementById('usersBody').addEventListener('click', function (e) {
-    var edit = e.target.getAttribute('data-edit');
-    var del = e.target.getAttribute('data-del');
+    var editBtn = e.target.closest ? e.target.closest('[data-edit]') : null;
+    var delBtn = e.target.closest ? e.target.closest('[data-del]') : null;
+    var edit = editBtn ? editBtn.getAttribute('data-edit') : e.target.getAttribute('data-edit');
+    var del = delBtn ? delBtn.getAttribute('data-del') : e.target.getAttribute('data-del');
+
     if (edit) {
-      var u = PortalAuth.getUsers().find(function (x) { return x.id === edit; });
-      if (!u) return;
-      fillForm(u);
-      openModal('userModal');
+      var users = PortalAuth.getUsers();
+      var editKey = String(edit);
+      var u = users.find(function (x) { return String(x.id) === editKey; });
+      if (!u) {
+        showToast('No se pudo abrir el usuario para editar.', false);
+        return;
+      }
+      try {
+        fillForm(u);
+        openModal('userModal');
+      } catch (err) {
+        console.error(err);
+        showToast('Error al abrir el editor de usuario.', false);
+      }
       return;
     }
     if (del) {

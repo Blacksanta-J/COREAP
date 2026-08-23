@@ -124,6 +124,7 @@
 
   function migrateUserShape(u) {
     if (!u || typeof u !== 'object') return u;
+    if (!u.id) u.id = uid();
     if (u.apellido === undefined || (u.apellido === '' && String(u.nombre || '').trim().indexOf(' ') !== -1)) {
       var parts = String(u.nombre || '').trim().split(/\s+/).filter(Boolean);
       if (parts.length > 1 && !u.apellido) {
@@ -490,8 +491,9 @@
 
     var users = ensureSeed();
     var existing = null;
-    if (payload.id) {
-      existing = users.find(function (u) { return u.id === payload.id; }) || null;
+    var payloadId = payload.id != null && String(payload.id).trim() !== '' ? String(payload.id) : '';
+    if (payloadId) {
+      existing = users.find(function (u) { return String(u.id) === payloadId; }) || null;
     }
     if (!existing) {
       existing = users.find(function (u) { return normalizeEmail(u.email) === email; }) || null;
@@ -640,7 +642,8 @@
       return { ok: false, error: 'Solo Admin puede eliminar usuarios.' };
     }
     var users = ensureSeed();
-    var target = users.find(function (u) { return u.id === userId; });
+    var targetId = String(userId || '');
+    var target = users.find(function (u) { return String(u.id) === targetId; });
     if (!target) return { ok: false, error: 'Usuario no encontrado.' };
     if (target.email === normalizeEmail(SEED_ADMIN.email)) {
       return { ok: false, error: 'No se puede eliminar el Admin inicial.' };
@@ -653,7 +656,7 @@
         return { ok: false, error: 'Debe quedar al menos un Admin activo.' };
       }
     }
-    users = users.filter(function (u) { return u.id !== userId; });
+    users = users.filter(function (u) { return String(u.id) !== targetId; });
     writeUsers(users);
     return { ok: true };
   }
