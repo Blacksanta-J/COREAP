@@ -152,6 +152,12 @@
       users.forEach(function (u) {
         var before = JSON.stringify(u);
         migrateUserShape(u);
+        // Normalizar email guardado para búsquedas consistentes
+        var norm = normalizeEmail(u.email);
+        if (u.email !== norm) {
+          u.email = norm;
+          changed = true;
+        }
         if (JSON.stringify(u) !== before) changed = true;
       });
       if (changed) writeUsers(users);
@@ -184,7 +190,7 @@
   function findUserByEmail(email) {
     var target = normalizeEmail(email);
     return ensureSeed().find(function (u) {
-      return u.email === target;
+      return normalizeEmail(u.email) === target;
     }) || null;
   }
 
@@ -434,7 +440,13 @@
     var apellido = String(payload.apellido || '').trim();
     var fechaNacimiento = normalizeBirthDate(payload.fechaNacimiento);
     var reparticion = String(payload.reparticion || '').trim();
-    var active = payload.active !== false;
+    var active = true;
+    if (typeof payload.active === 'boolean') {
+      active = payload.active;
+    } else if (payload.active !== undefined && payload.active !== null && String(payload.active).trim() !== '') {
+      var activeStr = String(payload.active).trim().toLowerCase();
+      active = !(activeStr === '0' || activeStr === 'false' || activeStr === 'no' || activeStr === 'inactivo');
+    }
 
     if (!nombre) {
       return { ok: false, error: 'El nombre es obligatorio.' };
@@ -456,12 +468,29 @@
     }
 
     var users = ensureSeed();
-    var existing = users.find(function (u) { return u.email === email; });
+    var existing = null;
+    if (payload.id) {
+      existing = users.find(function (u) { return u.id === payload.id; }) || null;
+    }
+    if (!existing) {
+      existing = users.find(function (u) { return normalizeEmail(u.email) === email; }) || null;
+    }
+
     var dniOwner = users.find(function (u) {
       return normalizeDni(u.dni) === dni && (!existing || u.id !== existing.id);
     });
     if (dniOwner) {
       return { ok: false, error: 'Ese DNI ya está asignado a otro usuario.' };
+    }
+
+    // Si estamos editando y cambiaron el mail a uno ya usado por otro
+    if (existing && normalizeEmail(existing.email) !== email) {
+      var emailOwner = users.find(function (u) {
+        return normalizeEmail(u.email) === email && u.id !== existing.id;
+      });
+      if (emailOwner) {
+        return { ok: false, error: 'Ese mail ya está asignado a otro usuario.' };
+      }
     }
 
     if (existing) {
@@ -482,6 +511,7 @@
         }
       }
 
+      existing.email = email;
       existing.dni = dni;
       existing.role = role;
       existing.nombre = nombre;
@@ -491,7 +521,7 @@
       existing.active = active;
       existing.updatedAt = new Date().toISOString();
       writeUsers(users);
-      return { ok: true, user: existing, created: false };
+      return { ok: true, user: Object.assign({}, existing), created: false };
     }
 
     var created = {
@@ -509,7 +539,7 @@
     };
     users.push(created);
     writeUsers(users);
-    return { ok: true, user: created, created: true };
+    return { ok: true, user: Object.assign({}, created), created: true };
   }
 
   /**
