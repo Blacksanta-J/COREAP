@@ -41,7 +41,10 @@
   function syncThemeToggle(btn) {
     if (!btn) return;
     var dark = getTheme() === 'dark';
-    btn.textContent = dark ? '☀️' : '🌙';
+    var icon = btn.querySelector('.user-menu-action-icon');
+    var label = dark ? '☀️' : '🌙';
+    if (icon) icon.textContent = label;
+    else btn.textContent = label;
     btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
     btn.setAttribute('aria-label', btn.title);
   }

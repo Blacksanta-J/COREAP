@@ -41,9 +41,20 @@
       + '<span class="role-pill" id="userRole"></span>'
       + '</div>'
       + '<div class="user-menu-actions">'
-      + '<a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden role="menuitem">Usuarios</a>'
-      + '<button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema" role="menuitem">🌙</button>'
-      + '<button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión" role="menuitem">⎋</button>'
+      + '<button type="button" class="user-menu-action" id="themeToggle" role="menuitem" title="Cambiar tema" aria-label="Cambiar tema">'
+      + '<span class="user-menu-action-icon" aria-hidden="true">🌙</span>'
+      + '<span class="user-menu-action-text">'
+      + '<strong>Modo oscuro / claro</strong>'
+      + '<small>Cambiar el tema visual del portal</small>'
+      + '</span>'
+      + '</button>'
+      + '<button type="button" class="user-menu-action" id="logoutBtn" role="menuitem" title="Cerrar sesión" aria-label="Cerrar sesión">'
+      + '<span class="user-menu-action-icon" aria-hidden="true">⎋</span>'
+      + '<span class="user-menu-action-text">'
+      + '<strong>Cerrar sesión</strong>'
+      + '<small>Salir de tu cuenta en el portal</small>'
+      + '</span>'
+      + '</button>'
       + '</div>'
       + '</div>'
       + '</div>';
@@ -97,7 +108,6 @@
     var nameEl = document.getElementById('userName');
     var emailEl = document.getElementById('userEmail');
     var roleEl = document.getElementById('userRole');
-    var adminLink = document.getElementById('adminLink');
     var logoutBtn = document.getElementById('logoutBtn');
 
     var displayName = user.nombre || (global.PortalAuth && PortalAuth.roleLabel
@@ -109,16 +119,6 @@
       roleEl.textContent = global.PortalAuth && PortalAuth.roleLabel
         ? PortalAuth.roleLabel(user.role)
         : (user.role || '');
-    }
-
-    if (adminLink) {
-      var canAdmin = false;
-      if (global.PortalAuth && PortalAuth.MODULES && typeof PortalAuth.canAccess === 'function') {
-        canAdmin = PortalAuth.canAccess(PortalAuth.MODULES.admin_usuarios, user);
-      } else if (user.role === 'admin') {
-        canAdmin = true;
-      }
-      adminLink.hidden = !canAdmin;
     }
 
     if (logoutBtn && logoutBtn.dataset.bound !== '1') {
