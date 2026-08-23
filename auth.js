@@ -61,6 +61,24 @@
     reparticion: ''
   };
 
+  var REPARTICIONES = [
+    'Sistemas',
+    'Administracion',
+    'RRHH',
+    'Listados',
+    'APEL',
+    'JUNTA'
+  ];
+
+  function normalizeReparticion(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    var found = REPARTICIONES.find(function (r) {
+      return r.toLowerCase() === raw.toLowerCase();
+    });
+    return found || '';
+  }
+
   function getGoogleClientId() {
     var cfg = global.PORTAL_AUTH_CONFIG || {};
     return String(cfg.googleClientId || '').trim();
@@ -439,7 +457,7 @@
     var nombre = String(payload.nombre || '').trim();
     var apellido = String(payload.apellido || '').trim();
     var fechaNacimiento = normalizeBirthDate(payload.fechaNacimiento);
-    var reparticion = String(payload.reparticion || '').trim();
+    var reparticion = normalizeReparticion(payload.reparticion);
     var active = true;
     if (typeof payload.active === 'boolean') {
       active = payload.active;
@@ -462,6 +480,9 @@
     }
     if (payload.fechaNacimiento && !fechaNacimiento) {
       return { ok: false, error: 'Fecha de nacimiento inválida. Usá DD/MM/AAAA o AAAA-MM-DD.' };
+    }
+    if (payload.reparticion && String(payload.reparticion).trim() && !reparticion) {
+      return { ok: false, error: 'Repartición inválida. Opciones: ' + REPARTICIONES.join(', ') + '.' };
     }
     if (!ROLE_PERMISSIONS[role]) {
       return { ok: false, error: 'Rol inválido.' };
@@ -661,10 +682,12 @@
     MANUALES: MANUALES,
     SEED_ADMIN_EMAIL: SEED_ADMIN.email,
     SEED_ADMIN_DNI: SEED_ADMIN.dni,
+    REPARTICIONES: REPARTICIONES,
     getGoogleClientId: getGoogleClientId,
     normalizeEmail: normalizeEmail,
     normalizeDni: normalizeDni,
     normalizeBirthDate: normalizeBirthDate,
+    normalizeReparticion: normalizeReparticion,
     formatBirthDateDisplay: formatBirthDateDisplay,
     displayName: displayName,
     isBueEmail: isBueEmail,
