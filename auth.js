@@ -125,6 +125,9 @@
   function migrateUserShape(u) {
     if (!u || typeof u !== 'object') return u;
     if (!u.id) u.id = uid();
+    if (u.dni !== undefined && u.dni !== null) {
+      u.dni = normalizeDni(u.dni);
+    }
     if (u.apellido === undefined || (u.apellido === '' && String(u.nombre || '').trim().indexOf(' ') !== -1)) {
       var parts = String(u.nombre || '').trim().split(/\s+/).filter(Boolean);
       if (parts.length > 1 && !u.apellido) {
@@ -137,6 +140,11 @@
     if (u.fechaNacimiento === undefined) u.fechaNacimiento = '';
     else u.fechaNacimiento = normalizeBirthDate(u.fechaNacimiento);
     if (u.reparticion === undefined) u.reparticion = '';
+    else {
+      // Conservar vacío; si hay valor libre viejo, intentar mapear a la lista fija
+      var mapped = normalizeReparticion(u.reparticion);
+      if (mapped) u.reparticion = mapped;
+    }
     return u;
   }
 
