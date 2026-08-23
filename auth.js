@@ -1,6 +1,6 @@
 /**
  * Portal COREAP — autenticación y permisos (cliente).
- * Usuarios precargados: email @bue.edu.ar + DNI.
+ * Login Google con cuentas @bue.edu.ar + usuarios precargados (mail + DNI).
  * Roles: admin | apel | usuarios
  */
 (function (global) {
@@ -22,7 +22,6 @@
     usuarios: 'Usuarios'
   };
 
-  /** Módulos del portal */
   var MODULES = {
     acto_publico: 'acto_publico',
     clasificacion: 'clasificacion',
@@ -32,7 +31,6 @@
     admin_usuarios: 'admin_usuarios'
   };
 
-  /** Manuales: Acto Público, Clasificación, Estatuto */
   var MANUALES = [
     MODULES.acto_publico,
     MODULES.clasificacion,
@@ -59,6 +57,11 @@
     active: true,
     nombre: 'Jonathan Perez'
   };
+
+  function getGoogleClientId() {
+    var cfg = global.PORTAL_AUTH_CONFIG || {};
+    return String(cfg.googleClientId || '').trim();
+  }
 
   function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -133,12 +136,15 @@
     }
   }
 
-  function setSession(user) {
+  function setSession(user, extra) {
+    extra = extra || {};
     var session = {
       id: user.id,
       email: user.email,
       role: user.role,
-      nombre: user.nombre || '',
+      nombre: extra.nombre || user.nombre || '',
+      picture: extra.picture || '',
+      provider: extra.provider || 'local',
       at: new Date().toISOString()
     };
     sessionStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
@@ -157,13 +163,14 @@
       clearSession();
       return null;
     }
-    // Refrescar rol por si el admin lo cambió
     return {
       id: user.id,
       email: user.email,
       role: user.role,
-      nombre: user.nombre || '',
-      dni: user.dni
+      nombre: session.nombre || user.nombre || '',
+      dni: user.dni,
+      picture: session.picture || '',
+      provider: session.provider || 'local'
     };
   }
 
@@ -177,15 +184,48 @@
     return permissionsFor(u.role).indexOf(moduleKey) !== -1;
   }
 
+  function acceptPreloadedUser(email, extras) {
+    extras = extras || {};
+    var cleanEmail = normalizeEmail(email);
+
+    if (!isBueEmail(cleanEmail)) {
+      return { ok: false, error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.' };
+    }
+
+    var user = findUserByEmail(cleanEmail);
+    if (!user) {
+      return { ok: false, error: 'Tu cuenta @bue no está precargada. Pedile al admin que te dé de alta.' };
+    }
+    if (!user.active) {
+      return { ok: false, error: 'Usuario desactivado. Contactá al administrador.' };
+    }
+
+    if (extras.nombre && extras.nombre.trim()) {
+      var users = ensureSeed();
+      var idx = users.findIndex(function (u) { return u.id === user.id; });
+      if (idx !== -1 && (!users[idx].nombre || users[idx].email === normalizeEmail(SEED_ADMIN.email))) {
+        users[idx].nombre = extras.nombre.trim();
+        users[idx].updatedAt = new Date().toISOString();
+        writeUsers(users);
+        user = users[idx];
+      }
+    }
+
+    var session = setSession(user, {
+      nombre: extras.nombre || user.nombre,
+      picture: extras.picture || '',
+      provider: extras.provider || 'google'
+    });
+    return { ok: true, session: session, user: user };
+  }
+
+  /** Login legacy mail + DNI (respaldo interno). */
   function login(email, dni) {
     var cleanEmail = normalizeEmail(email);
     var cleanDni = normalizeDni(dni);
 
     if (!cleanEmail || !cleanDni) {
       return { ok: false, error: 'Completá mail y DNI.' };
-    }
-    if (!isBueEmail(cleanEmail)) {
-      return { ok: false, error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.' };
     }
     if (cleanDni.length < 7 || cleanDni.length > 8) {
       return { ok: false, error: 'El DNI debe tener 7 u 8 dígitos.' };
@@ -202,8 +242,56 @@
       return { ok: false, error: 'DNI o mail incorrectos.' };
     }
 
-    var session = setSession(user);
-    return { ok: true, session: session, user: user };
+    return acceptPreloadedUser(cleanEmail, {
+      nombre: user.nombre,
+      provider: 'local'
+    });
+  }
+
+  /**
+   * Login con ID token de Google (mismo patrón que actopublico.bue.edu.ar).
+   * Verifica el token con Google, exige @bue.edu.ar y usuario precargado.
+   */
+  function loginWithGoogleIdToken(idToken) {
+    var clientId = getGoogleClientId();
+    if (!clientId) {
+      return Promise.resolve({
+        ok: false,
+        error: 'Falta configurar el Google Client ID en auth-config.js'
+      });
+    }
+    if (!idToken) {
+      return Promise.resolve({ ok: false, error: 'No se recibió credencial de Google.' });
+    }
+
+    return fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken))
+      .then(function (res) {
+        if (!res.ok) throw new Error('token_invalid');
+        return res.json();
+      })
+      .then(function (payload) {
+        if (payload.aud !== clientId) {
+          return { ok: false, error: 'Credencial de Google inválida para esta app.' };
+        }
+        if (String(payload.email_verified) !== 'true' && payload.email_verified !== true) {
+          return { ok: false, error: 'El mail de Google no está verificado.' };
+        }
+        if (!isBueEmail(payload.email)) {
+          return { ok: false, error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.' };
+        }
+        if (payload.hd && normalizeEmail(payload.hd) !== ALLOWED_DOMAIN) {
+          return { ok: false, error: 'La cuenta no pertenece a @' + ALLOWED_DOMAIN + '.' };
+        }
+
+        return acceptPreloadedUser(payload.email, {
+          nombre: payload.name || '',
+          picture: payload.picture || '',
+          provider: 'google'
+        });
+      })
+      .catch(function () {
+        return { ok: false, error: 'No se pudo validar la cuenta de Google. Reintentá.' };
+      });
   }
 
   function logout() {
@@ -257,7 +345,6 @@
     }
 
     if (existing) {
-      // Evitar que el admin se quite el último admin activo
       if (existing.role === ROLES.admin && role !== ROLES.admin) {
         var otherAdmins = users.filter(function (u) {
           return u.id !== existing.id && u.role === ROLES.admin && u.active;
@@ -346,6 +433,7 @@
     MANUALES: MANUALES,
     SEED_ADMIN_EMAIL: SEED_ADMIN.email,
     SEED_ADMIN_DNI: SEED_ADMIN.dni,
+    getGoogleClientId: getGoogleClientId,
     normalizeEmail: normalizeEmail,
     normalizeDni: normalizeDni,
     isBueEmail: isBueEmail,
@@ -353,6 +441,7 @@
     findUserByEmail: findUserByEmail,
     currentUser: currentUser,
     login: login,
+    loginWithGoogleIdToken: loginWithGoogleIdToken,
     logout: logout,
     requireAuth: requireAuth,
     canAccess: canAccess,

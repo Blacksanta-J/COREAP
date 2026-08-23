@@ -19,7 +19,9 @@
   }
 })();
 </script>
+<script src="auth-config.js"></script>
 <script src="auth.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -41,10 +43,10 @@ body{
   color:var(--gr);padding:24px;
 }
 .card{
-  width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);
+  width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border);
   border-radius:14px;box-shadow:var(--shadow);padding:32px 28px;border-top:4px solid var(--am);
 }
-.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px}
+.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px}
 .brand h1{font-family:'Source Serif 4',Georgia,serif;font-size:26px;color:#153244;line-height:1.2}
 html[data-theme="dark"] .brand h1{color:#f2f5f7}
 .brand p{font-size:12px;color:var(--gr-light);margin-top:4px;letter-spacing:.3px}
@@ -52,20 +54,49 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   width:40px;height:40px;border-radius:8px;border:1px solid var(--border);
   background:transparent;cursor:pointer;font-size:18px;color:var(--gr);
 }
-label{display:block;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-  color:var(--gr-light);margin:14px 0 6px}
-input{
-  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;
-  background:var(--bg);color:var(--gr);font-size:15px;font-family:inherit;
+.lead{
+  font-size:15px;line-height:1.5;color:var(--gr);margin-bottom:18px;
 }
-input:focus{outline:2px solid var(--cy);outline-offset:1px}
-.hint{font-size:12px;color:var(--gr-light);margin-top:6px;line-height:1.4}
-.btn{
-  width:100%;margin-top:20px;padding:13px 16px;border:none;border-radius:8px;
-  background:#153244;color:var(--am);font-weight:700;letter-spacing:.5px;
-  text-transform:uppercase;font-size:13px;cursor:pointer;
+.lead strong{color:#153244}
+html[data-theme="dark"] .lead strong{color:#f2f5f7}
+
+.btn-google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:14px 16px;border-radius:10px;border:1px solid #dadce0;
+  background:#fff;color:#3c4043;font-size:15px;font-weight:600;
+  cursor:pointer;text-decoration:none;transition:box-shadow .2s,background .15s;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
 }
-.btn:hover{background:#1a3d54}
+.btn-google:hover{background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.btn-google:disabled{opacity:.55;cursor:not-allowed}
+.btn-google .g-icon{
+  width:22px;height:22px;flex-shrink:0;
+}
+.btn-google b{color:#1a73e8}
+
+.divider{
+  display:flex;align-items:center;gap:12px;margin:22px 0 14px;
+  color:var(--gr-light);font-size:11px;letter-spacing:.6px;text-transform:uppercase;
+}
+.divider::before,.divider::after{
+  content:"";flex:1;height:1px;background:var(--border);
+}
+
+.help-links{display:flex;flex-direction:column;gap:8px}
+.help-links a{
+  display:block;text-align:center;padding:10px 12px;border-radius:8px;
+  background:#153244;color:#fff;text-decoration:none;font-size:12px;font-weight:700;
+  letter-spacing:.3px;
+}
+.help-links a:hover{background:#1a3d54}
+
+.config-note{
+  display:none;margin-top:14px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.45;
+  background:rgba(255,204,0,.15);border:1px solid rgba(255,204,0,.45);color:var(--gr);
+}
+.config-note.visible{display:block}
+.config-note code{font-size:11px}
+
 .error{
   display:none;margin-top:14px;padding:10px 12px;border-radius:8px;
   background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);
@@ -73,6 +104,7 @@ input:focus{outline:2px solid var(--cy);outline-offset:1px}
 }
 .error.visible{display:block}
 .footer-note{margin-top:18px;font-size:11px;color:var(--gr-light);text-align:center;line-height:1.5}
+#googleBtnHost{min-height:44px;display:flex;justify-content:center}
 </style>
 </head>
 <body>
@@ -80,25 +112,41 @@ input:focus{outline:2px solid var(--cy);outline-offset:1px}
     <div class="brand">
       <div>
         <h1>Portal COREAP</h1>
-        <p>Ingreso con cuenta @bue.edu.ar</p>
+        <p>Acceso a la plataforma</p>
       </div>
       <button type="button" class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
     </div>
 
-    <form id="loginForm" autocomplete="on">
-      <label for="email">Mail institucional</label>
-      <input id="email" name="email" type="email" placeholder="nombre.apellido@bue.edu.ar" required>
-      <p class="hint">Solo usuarios precargados con dominio @bue.edu.ar</p>
+    <p class="lead">¡Ingresá con tu cuenta para continuar!<br>
+      Solo usuarios <strong>precargados</strong> con cuenta <strong>@bue.edu.ar</strong>.</p>
 
-      <label for="dni">DNI</label>
-      <input id="dni" name="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" placeholder="Sin puntos" required>
-      <p class="hint">Debe coincidir con el DNI cargado por el administrador</p>
+    <button type="button" class="btn-google" id="btnGoogle" disabled>
+      <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.5-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.9 26.8 37 24 37c-5.2 0-9.6-3.3-11.2-7.9l-6.5 5C9.1 39.5 16 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.5l.1.1 6.2 5.2C39.2 37.3 44 33 44 24c0-1.3-.1-2.5-.4-3.5z"/>
+      </svg>
+      <span>Ingresá con tu cuenta <b>@bue.edu.ar</b></span>
+    </button>
 
-      <button class="btn" type="submit">Ingresar</button>
-      <div class="error" id="errorBox"></div>
-    </form>
+    <div id="googleBtnHost" hidden></div>
 
-    <p class="footer-note">Dirección de Carrera Docente · GCBA</p>
+    <div class="config-note" id="configNote">
+      Para habilitar Google Sign-In, configurá el <code>googleClientId</code> en <code>auth-config.js</code>
+      (OAuth Client ID de Google Cloud, orígenes autorizados = URL del portal).
+    </div>
+
+    <div class="error" id="errorBox"></div>
+
+    <div class="divider">Ayuda cuenta @BUE</div>
+    <div class="help-links">
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSdawlJCfrruBFqblB0dvcf71tGVeuGWLSaM9wGkvUtHzApMiw/viewform" target="_blank" rel="noopener">Solicitar Cuenta @BUE</a>
+      <a href="https://cuentas.bue.edu.ar/recupero/cuenta" target="_blank" rel="noopener">No recuerdo mi cuenta @BUE</a>
+      <a href="https://cuentas.bue.edu.ar/recupero/verificacion" target="_blank" rel="noopener">No recuerdo la clave de mi cuenta @BUE</a>
+    </div>
+
+    <p class="footer-note">Dirección de Carrera Docente · GCBA<br>Mismo tipo de ingreso que Acto Público en línea</p>
   </div>
 
 <script>
@@ -109,6 +157,23 @@ input:focus{outline:2px solid var(--cy);outline-offset:1px}
   if (existing) {
     location.replace('index.html');
     return;
+  }
+
+  var errorBox = document.getElementById('errorBox');
+  var configNote = document.getElementById('configNote');
+  var btnGoogle = document.getElementById('btnGoogle');
+  var clientId = PortalAuth.getGoogleClientId();
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('visible');
+  }
+
+  function goNext() {
+    var params = new URLSearchParams(location.search);
+    var next = params.get('next') || 'index.html';
+    if (!/^[A-Za-z0-9._-]+\.html$/.test(next)) next = 'index.html';
+    location.replace(next);
   }
 
   function currentTheme() {
@@ -135,25 +200,71 @@ input:focus{outline:2px solid var(--cy);outline-offset:1px}
     setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   });
 
-  var form = document.getElementById('loginForm');
-  var errorBox = document.getElementById('errorBox');
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
+  function handleCredential(response) {
     errorBox.classList.remove('visible');
-    var email = document.getElementById('email').value;
-    var dni = document.getElementById('dni').value;
-    var result = PortalAuth.login(email, dni);
-    if (!result.ok) {
-      errorBox.textContent = result.error;
-      errorBox.classList.add('visible');
+    if (!response || !response.credential) {
+      showError('No se recibió la credencial de Google.');
       return;
     }
-    var params = new URLSearchParams(location.search);
-    var next = params.get('next') || 'index.html';
-    if (!/^[A-Za-z0-9._-]+\.html$/.test(next)) next = 'index.html';
-    location.replace(next);
-  });
+    btnGoogle.disabled = true;
+    PortalAuth.loginWithGoogleIdToken(response.credential).then(function (result) {
+      btnGoogle.disabled = false;
+      if (!result.ok) {
+        showError(result.error);
+        return;
+      }
+      goNext();
+    });
+  }
+
+  function initGoogle() {
+    if (!clientId) {
+      configNote.classList.add('visible');
+      btnGoogle.disabled = true;
+      btnGoogle.title = 'Configurá auth-config.js';
+      return;
+    }
+
+    if (!window.google || !google.accounts || !google.accounts.id) {
+      // GIS aún no cargó
+      setTimeout(initGoogle, 150);
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      // Restringe el selector a cuentas del dominio Workspace cuando aplica
+      hosted_domain: PortalAuth.ALLOWED_DOMAIN,
+      context: 'signin'
+    });
+
+    btnGoogle.disabled = false;
+    btnGoogle.addEventListener('click', function () {
+      errorBox.classList.remove('visible');
+      // Prompt One Tap / account chooser
+      google.accounts.id.prompt(function (notification) {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // Fallback: render botón oficial oculto y disparar click simulado vía renderButton
+          var host = document.getElementById('googleBtnHost');
+          host.hidden = false;
+          host.innerHTML = '';
+          google.accounts.id.renderButton(host, {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            width: 360,
+            locale: 'es'
+          });
+        }
+      });
+    });
+  }
+
+  initGoogle();
 })();
 </script>
 </body>
