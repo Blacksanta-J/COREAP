@@ -65,7 +65,7 @@
     nombre: 'Jonathan',
     apellido: 'Perez',
     fechaNacimiento: '',
-    reparticion: ''
+    reparticion: 'Sistemas'
   };
 
   var REPARTICIONES = [
@@ -316,6 +316,54 @@
     return u;
   }
 
+  function getSeedAdminUser() {
+    var seedEmail = normalizeEmail(SEED_ADMIN.email);
+    var pub = getPublishedUsers().find(function (u) {
+      return normalizeEmail(u.email) === seedEmail;
+    });
+    var admin = pub ? Object.assign({}, pub) : hydratePublishedUser(SEED_ADMIN);
+    admin.id = userDocId(seedEmail);
+    admin.email = seedEmail;
+    admin.role = ROLES.admin;
+    admin.active = true;
+    migrateUserShape(admin);
+    return admin;
+  }
+
+  /** Garantiza que el admin semilla esté en la lista (activo, rol admin). */
+  function mergeUsersKeepingSeedAdmin(users) {
+    var list = (users || []).slice();
+    var seedEmail = normalizeEmail(SEED_ADMIN.email);
+    var idx = list.findIndex(function (u) {
+      return normalizeEmail(u.email) === seedEmail;
+    });
+    if (idx === -1) {
+      list.push(getSeedAdminUser());
+      return list;
+    }
+    if (list[idx].active === false) list[idx].active = true;
+    if (list[idx].role !== ROLES.admin) list[idx].role = ROLES.admin;
+    return list;
+  }
+
+  function firestoreHasSeedAdmin(snap) {
+    if (!snap) return false;
+    var seedEmail = normalizeEmail(SEED_ADMIN.email);
+    var found = false;
+    snap.forEach(function (doc) {
+      var email = normalizeEmail((doc.data() && doc.data().email) || doc.id);
+      if (email === seedEmail) found = true;
+    });
+    return found;
+  }
+
+  function ensureSeedAdminInFirestore() {
+    if (!initFirebase() || !_firestore) return Promise.resolve();
+    var admin = getSeedAdminUser();
+    return _firestore.collection('users').doc(userDocId(admin.email))
+      .set(toFirestorePayload(admin), { merge: true });
+  }
+
   function syncFromFirestore() {
     if (!initFirebase()) {
       return Promise.resolve(ensureSeedLocal());
@@ -325,10 +373,13 @@
       snap.forEach(function (doc) {
         users.push(fromFirestoreDoc(doc));
       });
-      if (users.length) {
-        writeUsers(users);
-      } else {
-        ensureSeedLocal();
+      var hadSeed = firestoreHasSeedAdmin(snap);
+      users = mergeUsersKeepingSeedAdmin(users);
+      writeUsers(users);
+      if (!hadSeed) {
+        return ensureSeedAdminInFirestore().then(function () {
+          return getUsers();
+        });
       }
       return getUsers();
     }).catch(function (err) {
@@ -344,16 +395,14 @@
     }
 
     var metaRef = _firestore.collection('_meta').doc('users_reset');
-    var adminPayload = toFirestorePayload(hydratePublishedUser(SEED_ADMIN));
-    adminPayload.id = userDocId(SEED_ADMIN.email);
+    var admin = getSeedAdminUser();
+    var adminPayload = toFirestorePayload(admin);
     adminPayload.updatedAt = new Date().toISOString();
 
     return metaRef.get().then(function (metaSnap) {
       var already = metaSnap.exists && metaSnap.data() && metaSnap.data().version === USERS_RESET_VERSION;
       if (already) {
-        // Asegurar que el admin exista aunque el reset ya corrió
-        return _firestore.collection('users').doc(userDocId(SEED_ADMIN.email))
-          .set(adminPayload, { merge: true });
+        return ensureSeedAdminInFirestore();
       }
 
       return _firestore.collection('users').get().then(function (snap) {
@@ -377,8 +426,6 @@
         return batch.commit();
       });
     }).then(function () {
-      // Cache local: solo admin
-      writeUsers([Object.assign({}, adminPayload, { id: userDocId(SEED_ADMIN.email) })]);
       return syncFromFirestore();
     }).catch(function (err) {
       console.error('Firestore bootstrap/reset error', err);
@@ -868,6 +915,10 @@
     var saved;
 
     if (existing) {
+      if (normalizeEmail(existing.email) === normalizeEmail(SEED_ADMIN.email)) {
+        role = ROLES.admin;
+        active = true;
+      }
       if (existing.role === ROLES.admin && role !== ROLES.admin) {
         var otherAdmins = users.filter(function (u) {
           return u.id !== existing.id && u.role === ROLES.admin && u.active;
@@ -937,6 +988,8 @@
 
       return chain.then(function () {
         return ref.set(toFirestorePayload(saved), { merge: true });
+      }).then(function () {
+        return ensureSeedAdminInFirestore();
       }).then(function () {
         return syncFromFirestore();
       }).then(function () {
