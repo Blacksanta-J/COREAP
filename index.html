@@ -4,21 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Inicio</title>
-<script>
-(function () {
-  try {
-    var saved = localStorage.getItem('portal-theme')
-      || localStorage.getItem('elevador-theme')
-      || localStorage.getItem('procesador-theme');
-    var theme = (saved === 'light' || saved === 'dark')
-      ? saved
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-})();
-</script>
+<script src="portal-theme.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -85,7 +72,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 
 /* ── Page shell (sticky footer layout) ─────────── */
 .page-shell{
-  max-width:1380px;width:100%;margin:0 auto;padding:0;
+  max-width:none;width:100%;margin:0;padding:0;
   display:flex;flex-direction:column;flex:1;
 }
 
@@ -588,37 +575,8 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     location.replace('login.html');
   });
 
-  function currentTheme() {
-    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  }
-
-  function syncThemeToggle() {
-    var btn = document.getElementById('themeToggle');
-    if (!btn) return;
-    var dark = currentTheme() === 'dark';
-    btn.textContent = dark ? '☀️' : '🌙';
-    btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
-    btn.setAttribute('aria-label', btn.title);
-  }
-
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem('portal-theme', theme);
-      localStorage.setItem('elevador-theme', theme);
-      localStorage.setItem('procesador-theme', theme);
-    } catch (e) {}
-    syncThemeToggle();
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
-    syncThemeToggle();
-    var btn = document.getElementById('themeToggle');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
-      });
-    }
+    PortalTheme.initThemeToggle('themeToggle');
   });
   });
 })();
