@@ -312,18 +312,65 @@ body {
 
 .user-menu-actions {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-menu-action {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background .15s, border-color .15s;
 }
 
-.user-menu-actions .topbar-link {
-  flex: 1 1 auto;
-  text-align: center;
+.user-menu-action:hover {
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .22);
 }
 
-.user-menu-actions .theme-toggle {
+.user-menu-action .user-menu-action-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--portal-toggle-border);
+  background: var(--portal-toggle-bg);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.user-menu-action-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-menu-action-text strong {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  line-height: 1.2;
+}
+
+.user-menu-action-text small {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .55);
+  line-height: 1.3;
 }
 
 /* ── Layout herramientas (Elevadores, admin, etc.) ── */
