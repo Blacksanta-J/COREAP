@@ -17,33 +17,33 @@
 <script src="users-data.js?v=20260823-fbauth"></script>
 <script src="auth.js?v=20260823-fbadmin"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--gr-light:#6b6b6a;
-  --bg:#f0f2f4;--surface:#ffffff;--border:#e2e6ea;--error:#b91c1c;--ok:#166534;
+  --az:#1d3343;--am:#FFCC00;--cy:#009688;--gr:#08202f;--gr-light:#6d6d6d;
+  --bg:#f3f6f9;--surface:#ffffff;--border:#e6ebf0;--error:#b91c1c;--ok:#166534;
   --shadow:0 4px 12px rgba(0,0,0,.08);--overlay:rgba(17,24,39,.45);
-  font-family:'Source Sans 3',sans-serif;color-scheme:light;
+  font-family:'Open Sans',sans-serif;color-scheme:light;
 }
 html[data-theme="dark"]{
-  --az:#8DE2D6;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
+  --az:#009688;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
   --border:#2a3d4a;--error:#f87171;--ok:#4ade80;--shadow:0 8px 24px rgba(0,0,0,.4);
   --overlay:rgba(0,0,0,.65);color-scheme:dark;
 }
 body{background:var(--bg);color:var(--gr);min-height:100vh}
 .topbar{
-  background:#153244;color:#fff;padding:14px 28px;display:flex;align-items:center;
+  background:#1d3343;color:#fff;padding:14px 28px;display:flex;align-items:center;
   justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
 .topbar a{color:var(--am);text-decoration:none;font-weight:700;font-size:13px}
 .topbar-title{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
-.topbar-title span{display:block;font-weight:400;color:#8DE2D6;font-size:11px;margin-top:2px}
+.topbar-title span{display:block;font-weight:400;color:#009688;font-size:11px;margin-top:2px}
 .wrap{max-width:none;width:100%;margin:0;padding:28px 40px 40px}
 .panel{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
   box-shadow:var(--shadow);padding:22px;
 }
-h1{font-family:'Source Serif 4',Georgia,serif;font-size:28px;color:#153244;margin-bottom:6px}
+h1{font-family:'Archivo',Georgia,serif;font-size:28px;color:#1d3343;margin-bottom:6px}
 html[data-theme="dark"] h1{color:#f2f5f7}
 .lead{color:var(--gr-light);font-size:14px;margin-bottom:18px;line-height:1.5}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -62,7 +62,7 @@ button{
   border:none;border-radius:8px;padding:10px 14px;font-weight:700;font-size:12px;
   letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
 }
-.btn-primary{background:#153244;color:var(--am)}
+.btn-primary{background:#1d3343;color:var(--am)}
 .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--gr)}
 .btn-danger{background:transparent;border:1px solid rgba(185,28,28,.35);color:var(--error)}
 .msg{display:none;margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600}
@@ -80,7 +80,7 @@ th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;ver
 th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-light)}
 .badge{
   display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;
-  letter-spacing:.3px;text-transform:uppercase;background:#eef1f4;color:#153244;
+  letter-spacing:.3px;text-transform:uppercase;background:#eef1f4;color:#1d3343;
 }
 html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 .badge.admin{background:rgba(255,204,0,.25)}
@@ -98,7 +98,7 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 }
 .modal.wide{max-width:640px}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
-.modal-head h2{font-size:18px;color:#153244;margin:0}
+.modal-head h2{font-size:18px;color:#1d3343;margin:0}
 html[data-theme="dark"] .modal-head h2{color:#f2f5f7}
 .modal-close{
   width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
@@ -112,7 +112,7 @@ code{font-size:11px}
 }
 html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 </style>
-</head>
+<link rel="stylesheet" href="portal-obelisco.css"></head>
 <body class="portal-tool-body">
   <div class="page-shell">
   <header id="portal-header"></header>

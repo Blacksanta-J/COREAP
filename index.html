@@ -16,24 +16,24 @@
 <script src="users-data.js"></script>
 <script src="auth.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --az:#153244;
-  --az-hover:#1a3d54;
+  --az:#1d3343;
+  --az-hover:#152636;
   --am:#FFCC00;
   --am-light:#fff8cc;
-  --cy:#8DE2D6;
-  --cy-light:#e8f9f7;
-  --cy-mid:#c5f0eb;
-  --gr:#3C3C3B;
-  --gr-light:#6b6b6a;
+  --cy:#009688;
+  --cy-light:#e0f5f3;
+  --cy-mid:#b2e6e1;
+  --gr:#08202f;
+  --gr-light:#6d6d6d;
   --wh:#FCFCFC;
-  --bg:#f0f2f4;
+  --bg:#f3f6f9;
   --surface:#ffffff;
-  --border:#e2e6ea;
-  --border-strong:#c8cdd3;
+  --border:#e6ebf0;
+  --border-strong:#d1d8e0;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
   --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
   --shadow-lg:0 10px 30px rgba(21,50,68,.12),0 4px 10px rgba(21,50,68,.06);
@@ -42,7 +42,7 @@
   --toggle-border:rgba(255,255,255,.18);
   --eyebrow-fg:#0a4a42;
   --hero-accent:rgba(141,226,214,.28);
-  font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
+  font-family:'Open Sans','Archivo',system-ui,sans-serif;
   color-scheme:light;
 }
 html[data-theme="dark"]{
@@ -50,7 +50,7 @@ html[data-theme="dark"]{
   --az-hover:#a8ebe2;
   --am:#FFCC00;
   --am-light:#3d3500;
-  --cy:#8DE2D6;
+  --cy:#009688;
   --cy-light:#14353a;
   --cy-mid:#1a454c;
   --gr:#e8eaed;
@@ -81,7 +81,7 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 
 /* ── Topbar ─────────────────────────────────── */
 .portal-topbar{
-  background:#153244;
+  background:#1d3343;
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 40px;
   box-shadow:0 2px 8px rgba(0,0,0,.18);
@@ -95,9 +95,9 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 .portal-title{
   font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
   letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans','Archivo',system-ui,sans-serif;
 }
-.portal-title span{display:block;color:#8DE2D6;font-weight:400;letter-spacing:.4px}
+.portal-title span{display:block;color:#009688;font-weight:400;letter-spacing:.4px}
 
 /* ── Main (content wrapper) ─────────────────── */
 .index-main{
@@ -132,13 +132,13 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
   margin-bottom:14px;
 }
 .hero h1{
-  font-family:'Source Serif 4',Georgia,serif;
-  font-size:42px;font-weight:600;color:#153244;
+  font-family:'Archivo','Open Sans',system-ui,sans-serif;
+  font-size:42px;font-weight:600;color:#1d3343;
   line-height:1.15;letter-spacing:-.5px;margin-bottom:12px;
 }
 html[data-theme="dark"] .hero h1{color:#f2f5f7}
 .hero h1 em{
-  font-style:normal;color:#153244;
+  font-style:normal;color:#1d3343;
   background:linear-gradient(180deg,transparent 60%,rgba(255,204,0,.35) 60%);
   padding:0 4px;
 }
@@ -153,17 +153,17 @@ html[data-theme="dark"] .hero h1 em{color:#FFCC00;background:linear-gradient(180
   display:flex;gap:28px;flex-wrap:wrap;
   font-size:12px;color:var(--gr-light);letter-spacing:.3px;
 }
-.hero-meta strong{color:#153244;font-weight:700}
+.hero-meta strong{color:#1d3343;font-weight:700}
 html[data-theme="dark"] .hero-meta strong{color:#f2f5f7}
 
 /* ── Section label ──────────────────────────── */
 .section-label{
   display:flex;align-items:center;gap:14px;
   font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
-  color:#153244;
+  color:#1d3343;
   margin-bottom:4px;
 }
-html[data-theme="dark"] .section-label{color:#8DE2D6}
+html[data-theme="dark"] .section-label{color:#009688}
 .section-label::before{
   content:"";width:28px;height:2px;background:var(--am);
 }
@@ -210,16 +210,16 @@ html[data-theme="dark"] .section-label{color:#8DE2D6}
 }
 .card-icon svg{
   width:28px;height:28px;display:block;
-  color:#153244;
+  color:#1d3343;
 }
-html[data-theme="dark"] .card-icon svg{color:#8DE2D6}
+html[data-theme="dark"] .card-icon svg{color:#009688}
 .section-card:hover .card-icon{
   background:var(--cy-mid);
   transform:rotate(-4deg) scale(1.05);
 }
 .card-title{
-  font-family:'Source Serif 4',Georgia,serif;
-  font-size:22px;font-weight:600;color:#153244;
+  font-family:'Archivo','Open Sans',system-ui,sans-serif;
+  font-size:22px;font-weight:600;color:#1d3343;
   margin-bottom:8px;line-height:1.2;
 }
 html[data-theme="dark"] .card-title{color:#f2f5f7}
@@ -232,7 +232,7 @@ html[data-theme="dark"] .card-title{color:#f2f5f7}
 }
 .card-tag{
   font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-  background:#eef1f4;color:#153244;
+  background:#eef1f4;color:#1d3343;
   border:1px solid var(--border-strong);
   padding:3px 9px;border-radius:4px;
 }
@@ -244,20 +244,20 @@ html[data-theme="dark"] .card-tag{
   padding-top:14px;
   border-top:1px solid var(--border);
   font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
-  color:#153244;
+  color:#1d3343;
 }
-html[data-theme="dark"] .card-cta{color:#8DE2D6}
+html[data-theme="dark"] .card-cta{color:#009688}
 .card-arrow{
   width:28px;height:28px;border-radius:50%;
-  background:#153244;color:var(--am);
+  background:#1d3343;color:var(--am);
   display:flex;align-items:center;justify-content:center;
   font-size:12px;font-weight:700;
   transition:transform .25s,background .2s;
 }
-html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
+html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#1d3343}
 .section-card:hover .card-arrow{
   transform:translateX(4px);
-  background:var(--am);color:#153244;
+  background:var(--am);color:#1d3343;
 }
 
 /* ── Estatuto banner ────────────────────────── */
@@ -283,10 +283,10 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 }
 .estatuto-text p{
   color:#fff;font-size:15px;line-height:1.5;
-  font-family:'Source Serif 4',Georgia,serif;font-weight:400;
+  font-family:'Archivo','Open Sans',system-ui,sans-serif;font-weight:400;
 }
 .estatuto-btn{
-  background:var(--am);color:#153244;
+  background:var(--am);color:#1d3343;
   padding:14px 22px;border-radius:8px;
   font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
   text-decoration:none;
@@ -303,12 +303,12 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 
 /* ── Footer ─────────────────────────────────── */
 .portal-footer{
-  background:#153244;
+  background:#1d3343;
   border-top:3px solid var(--am);
   padding:16px 40px;
   display:flex;align-items:center;justify-content:space-between;
   font-size:12px;color:rgba(255,255,255,.5);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans','Archivo',system-ui,sans-serif;
 }
 .footer-brand{display:flex;align-items:center;gap:12px}
 .footer-brand-text{display:flex;flex-direction:column;gap:2px}
@@ -337,7 +337,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
   .portal-footer{flex-direction:column;gap:8px;text-align:center}
 }
 </style>
-</head>
+<link rel="stylesheet" href="portal-obelisco.css"></head>
 <body>
 <div class="page-shell">
 

@@ -1,0 +1,223 @@
+/**
+ * Portal COREAP — tokens alineados a Obelisco V2 (GCBA).
+ * Fuentes: https://gcba.github.io/estandares/ · https://gcba.github.io/Obelisco-V2/
+ *
+ * No se importa el CSS completo de Obelisco/Bootstrap (rompe el layout actual);
+ * se adoptan color, tipografía y jerarquía del sistema de diseño.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+:root,
+html {
+  /* Obelisco V2 — colores principales */
+  --ob-primary: #1d3343;
+  --ob-secondary: #035c80;
+  --ob-tertiary: #009688;
+  --ob-success: #00642f;
+  --ob-danger: #cb3232;
+  --ob-warning: #e88700;
+  --ob-info: #00769a;
+  --ob-light: #edf4ff;
+  --ob-dark: #002230;
+  --ob-body: #08202f;
+  --ob-bg: #f3f6f9;
+  --ob-neutral: #e6ebf0;
+  --ob-muted: #d1d8e0;
+  --ob-white: #ffffff;
+  --ob-gray-600: #6d6d6d;
+  --ob-gray-700: #565656;
+
+  /* Acento GCBA / COREAP (CTA, estados activos) */
+  --ob-accent: #ffcc00;
+
+  /* Tipografía Obelisco */
+  --ob-font-heading: 'Archivo', 'Open Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ob-font-body: 'Open Sans', 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Map → tokens del portal */
+  --portal-az: var(--ob-primary);
+  --portal-az-hover: #152636;
+  --portal-am: var(--ob-accent);
+  --portal-am-light: #fff8cc;
+  --portal-cy: var(--ob-tertiary);
+  --portal-cy-light: #e0f5f3;
+  --portal-cy-mid: #b2e6e1;
+  --portal-gr: var(--ob-body);
+  --portal-gr-light: var(--ob-gray-600);
+  --portal-wh: var(--ob-white);
+  --portal-bg: var(--ob-bg);
+  --portal-surface: var(--ob-white);
+  --portal-border: var(--ob-neutral);
+  --portal-border-strong: var(--ob-muted);
+  --portal-shadow: 0 1px 3px rgba(8, 32, 47, .08), 0 1px 2px rgba(8, 32, 47, .05);
+  --portal-shadow-md: 0 4px 12px rgba(8, 32, 47, .1), 0 2px 4px rgba(8, 32, 47, .06);
+  --portal-topbar-bg: var(--ob-primary);
+  --portal-heading: var(--ob-primary);
+  --portal-text: var(--ob-body);
+  --portal-muted: var(--ob-gray-600);
+  --portal-input-bg: var(--ob-white);
+  --portal-overlay: rgba(8, 32, 47, .45);
+  --portal-toggle-bg: rgba(255, 255, 255, .12);
+  --portal-toggle-hover: rgba(255, 255, 255, .2);
+  --portal-toggle-border: rgba(255, 255, 255, .18);
+  --portal-success: var(--ob-success);
+  --portal-error: var(--ob-danger);
+
+  /* Alias usados por manuales / admin / index */
+  --az: var(--ob-primary);
+  --az-hover: #152636;
+  --am: var(--ob-accent);
+  --am-light: #fff8cc;
+  --cy: var(--ob-tertiary);
+  --cy-light: #e0f5f3;
+  --cy-mid: #b2e6e1;
+  --gr: var(--ob-body);
+  --gr-light: var(--ob-gray-600);
+  --wh: var(--ob-white);
+  --bg: var(--ob-bg);
+  --surface: var(--ob-white);
+  --border: var(--ob-neutral);
+  --border-strong: var(--ob-muted);
+  --shadow: var(--portal-shadow);
+  --shadow-md: var(--portal-shadow-md);
+  --error: var(--ob-danger);
+  --ok: var(--ob-success);
+  --eyebrow-fg: #10413a;
+  --hero-accent: rgba(0, 150, 136, .22);
+  --toggle-bg: rgba(255, 255, 255, .12);
+  --toggle-hover: rgba(255, 255, 255, .2);
+  --toggle-border: rgba(255, 255, 255, .18);
+
+  font-family: var(--ob-font-body);
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  --ob-bg: #0a1620;
+  --ob-white: #122433;
+  --ob-body: #e8eaed;
+  --ob-neutral: #2a3d4a;
+  --ob-muted: #3d5566;
+  --ob-gray-600: #a8b0b8;
+  --ob-gray-700: #c5ccd3;
+  --ob-light: #14353a;
+  --ob-accent: #ffcc00;
+
+  --portal-heading: #f2f5f7;
+  --portal-text: #e8eaed;
+  --portal-muted: #a8b0b8;
+  --portal-input-bg: #0f1a22;
+  --portal-surface: #122433;
+  --portal-bg: #0a1620;
+  --portal-border: #2a3d4a;
+  --portal-border-strong: #3d5566;
+  --portal-am-light: #3d3500;
+  --portal-cy-light: #14353a;
+  --portal-cy-mid: #1a454c;
+  --portal-shadow: 0 1px 3px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
+  --portal-shadow-md: 0 4px 12px rgba(0, 0, 0, .4), 0 2px 4px rgba(0, 0, 0, .3);
+  --portal-overlay: rgba(0, 0, 0, .65);
+  --portal-success: #4ade80;
+  --portal-error: #f87171;
+
+  --az: #8de2d6;
+  --gr: #e8eaed;
+  --gr-light: #a8b0b8;
+  --bg: var(--portal-bg);
+  --surface: var(--portal-surface);
+  --border: var(--portal-border);
+  --border-strong: var(--portal-border-strong);
+  --am-light: var(--portal-am-light);
+  --cy-light: var(--portal-cy-light);
+  --cy-mid: var(--portal-cy-mid);
+  --eyebrow-fg: #8de2d6;
+  --hero-accent: rgba(0, 150, 136, .14);
+  color-scheme: dark;
+}
+
+/* Tipografía base Obelisco */
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--ob-font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--portal-text);
+  background: var(--portal-bg);
+}
+
+h1, h2, h3, h4, h5, h6,
+.page-intro h1,
+.portal-tool-panel h2,
+.portal-tool-panel h3,
+.card-title,
+.hero h1,
+.sec-head {
+  font-family: var(--ob-font-heading);
+  font-weight: 600;
+  color: var(--portal-heading);
+  letter-spacing: -0.01em;
+}
+
+h1, .hero h1, .page-intro h1 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+p, .card-desc, .page-intro p, .hero-lead, .desc, .lead {
+  font-family: var(--ob-font-body);
+  line-height: 1.5;
+}
+
+.portal-title,
+.topbar-title,
+.sidebar,
+.nav-link,
+.nav-btn-home,
+.nav-btn-estatuto,
+.portal-home-link,
+.topbar-link,
+.user-menu-toggle,
+.footer-brand-name,
+.footer-brand-sub {
+  font-family: var(--ob-font-body);
+}
+
+/* Botones primarios al estilo Obelisco (primary navy + texto claro / accent) */
+.portal-tool-panel button.btn-primary,
+.portal-tool-panel button:not(.theme-toggle):not(.info-close):not(.processor-tabs button):not(.user-menu-action):not(.user-menu-toggle),
+.btn-primary {
+  background: var(--ob-primary);
+  color: var(--ob-accent);
+  border-radius: 8px;
+  font-family: var(--ob-font-body);
+  font-weight: 600;
+}
+
+.btn-primary:hover,
+.portal-tool-panel button.btn-primary:hover {
+  background: var(--portal-az-hover);
+}
+
+/* Cards / paneles con borde y radio Obelisco-friendly */
+.section-card,
+.portal-tool-panel,
+.portal-tool-card,
+.panel,
+.page-intro,
+.hero {
+  border-radius: 8px;
+}
+
+/* Focus visible accesible (WCAG) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ob-secondary);
+  outline-offset: 2px;
+}

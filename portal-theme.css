@@ -1,34 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
-/* ── Tokens compartidos (estilo manuales Acto Público) ── */
+/* ── Tokens compartidos (Obelisco V2 / GCBA) ── */
 :root {
-  --portal-az: #153244;
-  --portal-az-hover: #1a3d54;
+  --portal-az: #1d3343;
+  --portal-az-hover: #152636;
   --portal-am: #FFCC00;
   --portal-am-light: #fff8cc;
-  --portal-cy: #8DE2D6;
-  --portal-cy-light: #e8f9f7;
-  --portal-cy-mid: #c5f0eb;
-  --portal-gr: #3C3C3B;
-  --portal-gr-light: #6b6b6a;
-  --portal-wh: #FCFCFC;
-  --portal-bg: #f0f2f4;
+  --portal-cy: #009688;
+  --portal-cy-light: #e0f5f3;
+  --portal-cy-mid: #b2e6e1;
+  --portal-gr: #08202f;
+  --portal-gr-light: #6d6d6d;
+  --portal-wh: #ffffff;
+  --portal-bg: #f3f6f9;
   --portal-surface: #ffffff;
-  --portal-border: #e2e6ea;
-  --portal-border-strong: #c8cdd3;
-  --portal-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
-  --portal-shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
-  --portal-topbar-bg: #153244;
-  --portal-heading: #153244;
-  --portal-text: #3C3C3B;
-  --portal-muted: #6b6b6a;
+  --portal-border: #e6ebf0;
+  --portal-border-strong: #d1d8e0;
+  --portal-shadow: 0 1px 3px rgba(8,32,47,.08), 0 1px 2px rgba(8,32,47,.05);
+  --portal-shadow-md: 0 4px 12px rgba(8,32,47,.1), 0 2px 4px rgba(8,32,47,.06);
+  --portal-topbar-bg: #1d3343;
+  --portal-heading: #1d3343;
+  --portal-text: #08202f;
+  --portal-muted: #6d6d6d;
   --portal-input-bg: #ffffff;
-  --portal-overlay: rgba(17, 24, 39, 0.45);
+  --portal-overlay: rgba(8, 32, 47, 0.45);
   --portal-toggle-bg: rgba(255,255,255,.12);
   --portal-toggle-hover: rgba(255,255,255,.2);
   --portal-toggle-border: rgba(255,255,255,.18);
-  --portal-success: #166534;
-  --portal-error: #b91c1c;
+  --portal-success: #00642f;
+  --portal-error: #cb3232;
+  --portal-font-heading: 'Archivo', 'Open Sans', system-ui, sans-serif;
+  --portal-font-body: 'Open Sans', 'Archivo', system-ui, sans-serif;
   color-scheme: light;
 }
 
@@ -134,7 +136,7 @@ body {
   text-transform: uppercase;
   text-align: right;
   line-height: 1.5;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .portal-title span,
@@ -380,7 +382,7 @@ body {
   flex-direction: column;
   background: var(--portal-bg);
   color: var(--portal-text);
-  font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Open Sans', 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 .portal-tool-main {
@@ -410,7 +412,7 @@ body {
 .portal-tool-panel h3,
 .page-intro h1 {
   color: var(--portal-heading);
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Archivo', 'Open Sans', system-ui, sans-serif;
 }
 
 .portal-tool-panel p,
@@ -502,7 +504,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   justify-content: space-between;
   font-size: 12px;
   color: rgba(255,255,255,.5);
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .footer-brand {
@@ -943,7 +945,7 @@ html[data-theme="dark"] .processor-note.pending {
   color: var(--portal-az);
   border: none;
   border-radius: 6px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .6px;
@@ -993,7 +995,7 @@ html[data-theme="dark"] .processor-note.pending {
   color: var(--portal-az);
   border: none;
   border-radius: 6px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .5px;
