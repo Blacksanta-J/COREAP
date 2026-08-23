@@ -6,6 +6,7 @@
     <title>Portal COREAP · Eleves de Concursos</title>
     <script src="portal-theme.js"></script>
     <script src="portal-nav.js"></script>
+    <script src="portal-sidebar.js"></script>
     <link rel="stylesheet" href="portal-theme.css">
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -147,6 +148,9 @@
     </div>
 </div>
 
+<div class="layout">
+<aside id="portal-sidebar"></aside>
+<div class="content portal-tool-content">
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Source Serif 4',Georgia,serif;">Eleves de Concursos</h1>
@@ -172,6 +176,8 @@
     <div id="status"></div>
 </div>
 </main>
+</div>
+</div>
 
 <div class="portal-footer">
     <span>Dirección de Carrera Docente · GCBA</span>
