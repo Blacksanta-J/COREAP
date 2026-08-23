@@ -29,11 +29,12 @@ service cloud.firestore {
 
     match /users/{userEmail} {
       allow read: if isBue();
-
-      // Primer arranque: el admin semilla puede crear docs si aún no es admin en FS
       allow create: if isAdmin() || isSeedAdmin();
+      allow update, delete: if isAdmin() || isSeedAdmin();
+    }
 
-      allow update, delete: if isAdmin();
+    match /_meta/{docId} {
+      allow read, write: if isSeedAdmin() || isAdmin();
     }
   }
 }
