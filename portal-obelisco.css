@@ -448,3 +448,129 @@ html[data-theme='dark'] .sidebar .nav-link:hover,
 html[data-theme='dark'] .sidebar .nav-link.active {
   color: #ffcc00;
 }
+
+/* OTROS TÍTULOS — filas y leyenda legibles (no texto claro sobre fondo claro) */
+html[data-theme='dark'] .ot-wrap,
+html[data-theme='dark'] .clasi-scope .ot-wrap {
+  background: #1a2733 !important;
+  border-color: #3a4f5e !important;
+  color: #f2f5f7 !important;
+}
+
+html[data-theme='dark'] .ot-table tbody td,
+html[data-theme='dark'] .ot-table tbody tr td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody tr:nth-child(odd) td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody tr:nth-child(even) td {
+  background: #1a2733 !important;
+  color: #f2f5f7 !important;
+  border-color: #3a4f5e !important;
+}
+
+html[data-theme='dark'] .ot-table tbody tr:nth-child(even) td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody tr:nth-child(even) td,
+html[data-theme='dark'] .ot-table tbody tr.ot-row-habilitante td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody tr.ot-row-habilitante td {
+  background: #15202b !important;
+}
+
+html[data-theme='dark'] .ot-table tbody tr:hover td,
+html[data-theme='dark'] .clasi-scope .ot-table tbody tr:hover td {
+  background: #243746 !important;
+}
+
+html[data-theme='dark'] .ot-tipo,
+html[data-theme='dark'] .ot-tipo strong,
+html[data-theme='dark'] .clasi-scope .ot-tipo,
+html[data-theme='dark'] .clasi-scope .ot-tipo strong,
+html[data-theme='dark'] .ot-legend-item,
+html[data-theme='dark'] .ot-legend-item span,
+html[data-theme='dark'] .ot-legend-item strong,
+html[data-theme='dark'] .clasi-scope .ot-legend-item,
+html[data-theme='dark'] .clasi-scope .ot-legend-item strong {
+  color: #f2f5f7 !important;
+}
+
+html[data-theme='dark'] .ot-table .badge-tb,
+html[data-theme='dark'] .clasi-scope .ot-table .badge-tb {
+  background: #ffcc00 !important;
+  color: #1d3343 !important;
+}
+
+html[data-theme='dark'] .ot-table .badge-ot,
+html[data-theme='dark'] .ot-table .badge-ot-sec,
+html[data-theme='dark'] .clasi-scope .ot-table .badge-ot,
+html[data-theme='dark'] .clasi-scope .ot-table .badge-ot-sec {
+  background: #21555c !important;
+  color: #ffffff !important;
+  border-color: #5ee0d0 !important;
+}
+
+/* Highlight boxes (AÑOS 2015/2016, VIGENCIA, etc.) */
+html[data-theme='dark'] .highlight-box,
+html[data-theme='dark'] .clasi-scope .highlight-box {
+  background: linear-gradient(135deg, #1a454c 0%, #21555c 100%) !important;
+  border-color: #5ee0d0 !important;
+  color: #f2f5f7 !important;
+}
+
+html[data-theme='dark'] .highlight-box h4,
+html[data-theme='dark'] .clasi-scope .highlight-box h4,
+html[data-theme='dark'] .highlight-box p,
+html[data-theme='dark'] .clasi-scope .highlight-box p,
+html[data-theme='dark'] .highlight-box strong,
+html[data-theme='dark'] .clasi-scope .highlight-box strong,
+html[data-theme='dark'] .highlight-box li,
+html[data-theme='dark'] .clasi-scope .highlight-box li,
+html[data-theme='dark'] .highlight-box span,
+html[data-theme='dark'] .clasi-scope .highlight-box span {
+  color: #f2f5f7 !important;
+  background: transparent !important;
+}
+
+html[data-theme='dark'] .highlight-box i,
+html[data-theme='dark'] .clasi-scope .highlight-box i {
+  color: #ffcc00 !important;
+}
+
+/* Alerts amarillos también en dark */
+html[data-theme='dark'] .alert,
+html[data-theme='dark'] .clasi-scope .alert {
+  background: #3d3500 !important;
+  border-left-color: #ffcc00 !important;
+  color: #fff3c4 !important;
+}
+
+html[data-theme='dark'] .alert strong {
+  background: #ffcc00 !important;
+  color: #1d3343 !important;
+}
+
+/* Info cards / ref tables en clasificación */
+html[data-theme='dark'] .info-card,
+html[data-theme='dark'] .ref-table,
+html[data-theme='dark'] .clasi-scope .wrap {
+  background: transparent;
+}
+
+html[data-theme='dark'] .info-card {
+  background: #1a2733 !important;
+  border-color: #3a4f5e !important;
+}
+
+html[data-theme='dark'] .info-card-label {
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .info-card-value {
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .criteria-list li {
+  color: #e8f1f6 !important;
+  border-color: #3a4f5e !important;
+}
+
+html[data-theme='dark'] .def-head:hover {
+  background: #243746 !important;
+}

@@ -171,7 +171,7 @@ td{
   font-size:13px;
 }
 tr:last-child td{border-bottom:none}
-tr:nth-child(even) td{background:#f7f9fb}
+tr:nth-child(even) td{background:var(--bg)}
 tr:hover td{background:#f0f4f8;transition:background .1s}
 
 /* ── Badges ──────────────────────────────────── */
@@ -548,23 +548,9 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
 @media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;min-height:auto;position:static;border-right:none;border-bottom:3px solid var(--am)}.content{padding:24px 20px}.portal-topbar,.portal-footer{padding:16px 20px}.page-intro h1{font-size:22px}}
 .clasi-scope 400;500;600;700&family=Source+Serif+4:opsz, .clasi-scope wght@8..60, .clasi-scope 400;600&display=swap');
 
-*{box-sizing:border-box;margin:0;padding:0}.clasi-scope{
-  --az:#1d3343;
-  --az-hover:#152636;
-  --am:#FFCC00;
-  --am-light:#fff8cc;
-  --cy:#009688;
-  --cy-light:#e0f5f3;
-  --cy-mid:#b2e6e1;
-  --gr:#08202f;
-  --gr-light:#6d6d6d;
-  --wh:#FCFCFC;
-  --bg:#f3f6f9;
-  --surface:#ffffff;
-  --border:#e6ebf0;
-  --border-strong:#c8cdd3;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
-  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+*{box-sizing:border-box;margin:0;padding:0}
+/* No redefinir tokens aquí: deben heredar de :root / html[data-theme] para dark mode */
+.clasi-scope{
   font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;
 }.clasi-scope{background:var(--bg);color:var(--gr);padding:40px}.clasi-scope .wrap{max-width:1280px;margin:0 auto;background:var(--surface);padding:40px;border-radius:12px;box-shadow:var(--shadow-md)}.clasi-scope /* ── Header ─────────────────────────────────── */
 .page-header{
@@ -681,7 +667,7 @@ table{
   line-height:1.6;
   color:var(--gr);
   font-size:13px;
-}.clasi-scope tr:last-child td{border-bottom:none}.clasi-scope tr:nth-child(even) td{background:#f7f9fb}.clasi-scope tr:hover td{background:#f0f4f8;transition:background .1s}.clasi-scope /* ── Badges ──────────────────────────────────── */
+}.clasi-scope tr:last-child td{border-bottom:none}.clasi-scope tr:nth-child(even) td{background:var(--bg)}.clasi-scope tr:hover td{background:color-mix(in srgb, var(--az) 6%, var(--surface));transition:background .1s}.clasi-scope /* ── Badges ──────────────────────────────────── */
 .badge{
   display:inline-block;
   padding:2px 8px;
@@ -1015,7 +1001,7 @@ ul.criteria-list{
   vertical-align:middle;
 }
 .ot-table tbody tr:last-child td{border-bottom:none}
-.ot-table tbody tr:hover td{background:#fafbfc}
+.ot-table tbody tr:hover td{background:color-mix(in srgb, var(--az) 6%, var(--surface))}
 
 .ot-tipo{
   text-align:left !important;
