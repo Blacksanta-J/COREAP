@@ -108,14 +108,13 @@
     var mount = document.getElementById('portal-sidebar');
     if (!mount) return;
 
-    function doRender() {
-      renderSidebar(mount);
-    }
+    // Pintar al instante para evitar el "pop" de ~1s; refiltrar cuando auth esté listo.
+    renderSidebar(mount);
 
     if (global.PortalAuth && typeof global.PortalAuth.ready === 'function') {
-      global.PortalAuth.ready().then(doRender).catch(doRender);
-    } else {
-      doRender();
+      global.PortalAuth.ready().then(function () {
+        renderSidebar(mount);
+      }).catch(function () {});
     }
   }
 
