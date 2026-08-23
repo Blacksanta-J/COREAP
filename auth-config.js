@@ -12,5 +12,5 @@
  * El flujo es el mismo patrón que actopublico.bue.edu.ar (Google + dominio bue.edu.ar).
  */
 window.PORTAL_AUTH_CONFIG = {
-  googleClientId: ''
+  googleClientId: '396980167437-7h9dp4952g0bvg0dkbtpee4728bmj48e.apps.googleusercontent.com'
 };
