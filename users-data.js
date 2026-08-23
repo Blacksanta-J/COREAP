@@ -1,10 +1,8 @@
 /**
- * Usuarios publicados del portal (fuente compartida).
- * Cualquier alta nueva debe incluirse acá (o exportarse desde Usuarios)
- * y publicarse en el repo para que puedan ingresar desde otra PC/navegador.
- *
- * Campos: email, dni, role (admin|apel|usuarios), active, nombre, apellido,
- * fechaNacimiento (AAAA-MM-DD), reparticion.
+ * Semilla / respaldo de usuarios.
+ * Con Firebase configurado: el primer login del admin semilla carga estos
+ * usuarios en Firestore. Después las altas viven en la nube.
+ * Sin Firebase: se usan junto a localStorage (comportamiento anterior).
  */
 window.PORTAL_USERS = [
   {
