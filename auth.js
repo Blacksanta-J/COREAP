@@ -202,12 +202,80 @@
       }
       _firestore = firebase.firestore();
       _firebaseAuth = firebase.auth();
+      try {
+        _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      } catch (e) {}
       _firebaseAppReady = true;
       return true;
     } catch (e) {
       console.error('Firebase init error', e);
       return false;
     }
+  }
+
+  var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v1';
+
+  function saveGoogleIdToken(idToken) {
+    try {
+      if (idToken) sessionStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
+    } catch (e) {}
+  }
+
+  function clearGoogleIdToken() {
+    try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
+  }
+
+  function readGoogleIdToken() {
+    try { return sessionStorage.getItem(STORAGE_GOOGLE_TOKEN) || ''; } catch (e) { return ''; }
+  }
+
+  /** Espera a que Firebase Auth restaure la sesión persistida. */
+  function waitForFirebaseAuth(timeoutMs) {
+    timeoutMs = timeoutMs || 8000;
+    if (!initFirebase()) return Promise.resolve(null);
+    if (_firebaseAuth.currentUser) return Promise.resolve(_firebaseAuth.currentUser);
+
+    return new Promise(function (resolve) {
+      var settled = false;
+      var unsub = function () {};
+      var timer = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        try { unsub(); } catch (e) {}
+        resolve(_firebaseAuth.currentUser);
+      }, timeoutMs);
+
+      unsub = _firebaseAuth.onAuthStateChanged(function (user) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try { unsub(); } catch (e) {}
+        resolve(user || null);
+      });
+    });
+  }
+
+  /** Garantiza usuario Firebase Auth antes de escribir en Firestore. */
+  function ensureFirebaseAuthForWrite() {
+    if (!initFirebase()) return Promise.resolve(null);
+
+    return waitForFirebaseAuth().then(function (user) {
+      if (user) return user;
+      var token = readGoogleIdToken();
+      if (!token) {
+        return Promise.reject(new Error(
+          'Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.'
+        ));
+      }
+      return signInFirebaseWithGoogleIdToken(token).then(function (cred) {
+        return (cred && cred.user) || _firebaseAuth.currentUser;
+      });
+    }).then(function (user) {
+      if (user) return user;
+      return Promise.reject(new Error(
+        'Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.'
+      ));
+    });
   }
 
   function userDocId(email) {
@@ -468,8 +536,9 @@
       if (!initFirebase()) {
         return getUsers();
       }
-      // Si ya hay sesión Firebase, sincronizar; si no, usar cache/local hasta el login
-      return syncFromFirestore();
+      return waitForFirebaseAuth().then(function () {
+        return syncFromFirestore();
+      });
     });
     return _readyPromise;
   }
@@ -669,19 +738,31 @@
       provider: 'google'
     };
 
-    return signInFirebaseWithGoogleIdToken(idToken).then(function () {
+    if (!isFirebaseEnabled()) {
+      return Promise.resolve(acceptPreloadedUser(payload.email, extras));
+    }
+
+    saveGoogleIdToken(idToken);
+
+    return signInFirebaseWithGoogleIdToken(idToken).then(function (cred) {
+      if (!cred || !cred.user) {
+        return Promise.reject(new Error('No se pudo iniciar sesión en Firebase Auth.'));
+      }
       return bootstrapFirestoreIfNeeded(payload.email);
     }).then(function () {
-      if (isFirebaseEnabled() && _firebaseAppReady) {
-        return syncFromFirestore();
-      }
-      return getUsers();
+      return syncFromFirestore();
     }).then(function () {
       return acceptPreloadedUser(payload.email, extras);
     }).catch(function (err) {
       console.error(err);
-      // Si Firebase Auth falla pero hay lista local/publicada, intentar igual
-      return acceptPreloadedUser(payload.email, extras);
+      clearGoogleIdToken();
+      var msg = (err && err.message) ? err.message : 'Error de Firebase';
+      var code = err && err.code ? ' (' + err.code + ')' : '';
+      return {
+        ok: false,
+        error: 'No se pudo conectar con Firebase' + code + '. ' + msg +
+          ' Revisá que Authentication → Google esté activo y el dominio autorizado.'
+      };
     });
   }
 
@@ -705,6 +786,7 @@
 
   function logout() {
     clearSession();
+    clearGoogleIdToken();
     if (_firebaseAuth) {
       try { _firebaseAuth.signOut(); } catch (e) {}
     }
@@ -841,30 +923,31 @@
       return Promise.resolve(okResult());
     }
 
-    if (!_firebaseAuth.currentUser) {
-      return fail('Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.');
-    }
+    return ensureFirebaseAuthForWrite().then(function () {
+      var renameFrom = '';
+      if (payloadId && String(payloadId).indexOf('@') !== -1 && userDocId(payloadId) !== userDocId(email)) {
+        renameFrom = userDocId(payloadId);
+      }
 
-    var renameFrom = '';
-    if (payloadId && String(payloadId).indexOf('@') !== -1 && userDocId(payloadId) !== userDocId(email)) {
-      renameFrom = userDocId(payloadId);
-    }
+      var ref = _firestore.collection('users').doc(userDocId(email));
+      var chain = Promise.resolve();
+      if (renameFrom) {
+        chain = _firestore.collection('users').doc(renameFrom).delete().catch(function () {});
+      }
 
-    var ref = _firestore.collection('users').doc(userDocId(email));
-    var chain = Promise.resolve();
-    if (renameFrom) {
-      chain = _firestore.collection('users').doc(renameFrom).delete().catch(function () {});
-    }
-
-    return chain.then(function () {
-      return ref.set(toFirestorePayload(saved), { merge: true });
-    }).then(function () {
-      return syncFromFirestore();
-    }).then(function () {
-      return okResult();
+      return chain.then(function () {
+        return ref.set(toFirestorePayload(saved), { merge: true });
+      }).then(function () {
+        return syncFromFirestore();
+      }).then(function () {
+        return okResult();
+      });
     }).catch(function (err) {
       console.error(err);
-      return { ok: false, error: 'No se pudo guardar en Firebase. ' + (err && err.message ? err.message : '') };
+      return {
+        ok: false,
+        error: (err && err.message) || 'No se pudo guardar en Firebase.'
+      };
     });
   }
 
@@ -973,15 +1056,17 @@
     if (!initFirebase()) {
       return Promise.resolve({ ok: true });
     }
-    if (!_firebaseAuth.currentUser) {
-      return fail('Sesión Firebase no activa. Cerrá sesión y volvé a ingresar con Google.');
-    }
-    return _firestore.collection('users').doc(userDocId(target.email)).delete()
+    return ensureFirebaseAuthForWrite().then(function () {
+      return _firestore.collection('users').doc(userDocId(target.email)).delete();
+    })
       .then(function () { return syncFromFirestore(); })
       .then(function () { return { ok: true }; })
       .catch(function (err) {
         console.error(err);
-        return { ok: false, error: 'No se pudo eliminar en Firebase. ' + (err && err.message ? err.message : '') };
+        return {
+          ok: false,
+          error: (err && err.message) || ('No se pudo eliminar en Firebase.')
+        };
       });
   }
 
