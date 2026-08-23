@@ -384,6 +384,7 @@ code{font-size:11px}
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var result = PortalAuth.upsertUser({
+      id: editId.value || undefined,
       email: document.getElementById('email').value,
       dni: document.getElementById('dni').value,
       nombre: document.getElementById('nombre').value,
@@ -399,8 +400,9 @@ code{font-size:11px}
       return;
     }
     user = PortalAuth.currentUser() || user;
-    renderUsers();
     closeModal('userModal');
+    resetForm();
+    renderUsers();
     showToast(result.created ? 'Usuario creado.' : 'Usuario actualizado.', true);
   });
 
