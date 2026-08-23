@@ -162,18 +162,24 @@ body {
 .portal-tool-main {
   flex: 1;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 32px 40px 48px;
+  box-sizing: border-box;
 }
 
 .portal-tool-panel,
 .portal-tool-card {
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: var(--portal-surface);
   border: 1px solid var(--portal-border);
   border-radius: 12px;
   box-shadow: var(--portal-shadow-md);
   padding: 28px 32px;
+  overflow-x: clip;
 }
 
 .portal-tool-panel h2,
@@ -502,6 +508,108 @@ html[data-theme="dark"] .tab-menu {
   animation: portalPaneIn .24s ease both;
 }
 
+.processor-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+  gap: 8px;
+  margin: 18px 0 16px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.processor-tabs button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--portal-border);
+  background: var(--portal-input-bg);
+  color: var(--portal-heading);
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.35;
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+}
+
+.processor-tabs button:hover {
+  background: var(--portal-border);
+}
+
+.processor-tabs button.active {
+  background: var(--portal-topbar-bg);
+  border-color: var(--portal-topbar-bg);
+  color: var(--portal-am);
+}
+
+.processor-badge {
+  display: inline-block;
+  margin-left: 4px;
+  margin-top: 2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, .18);
+  vertical-align: middle;
+}
+
+html[data-theme="light"] .processor-tabs button:not(.active) .processor-badge {
+  background: var(--portal-border);
+  color: var(--portal-muted);
+}
+
+.processor-panel {
+  display: none;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.processor-panel.active {
+  display: block;
+}
+
+.processor-panel h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.processor-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-border);
+  color: var(--portal-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.processor-note.pending {
+  border-color: #f59e0b;
+  color: var(--portal-text);
+}
+
+html[data-theme="dark"] .processor-note.pending {
+  border-color: #d97706;
+}
+
+#processorPanels {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 @keyframes portalPaneIn {
   from {
     opacity: 0;
@@ -513,16 +621,8 @@ html[data-theme="dark"] .tab-menu {
   }
 }
 
-.processor-tabs button {
-  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
-}
-
 .processor-tabs button:active {
   transform: scale(0.98);
-}
-
-.content {
-  scroll-behavior: smooth;
 }
 
 /* ── Sidebar compartido (portal-sidebar.js) ── */
@@ -538,6 +638,8 @@ html[data-theme="dark"] .tab-menu {
   align-items: flex-start;
   flex: 1;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .sidebar {
@@ -642,8 +744,12 @@ html[data-theme="dark"] .tab-menu {
 .content {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   background: var(--portal-bg);
   padding: 36px 40px;
+  box-sizing: border-box;
+  overflow-x: clip;
+  scroll-behavior: smooth;
 }
 
 .content.portal-tool-content {
@@ -659,6 +765,7 @@ html[data-theme="dark"] .tab-menu {
   max-width: none;
   width: 100%;
   margin: 0;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
@@ -707,5 +814,10 @@ html[data-theme="dark"] .tab-menu {
     margin: 8px 12px;
     padding: 10px 14px;
     font-size: 10px;
+  }
+
+  .processor-tabs {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+    gap: 6px;
   }
 }

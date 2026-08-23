@@ -27,76 +27,12 @@
             --overlay: var(--portal-overlay); --toggle-bg: var(--portal-cy-light);
         }
         body.portal-tool-body { margin: 0; }
-        .container { width: 100%; max-width: none; text-align: left; }
+        .container { width: 100%; max-width: 100%; min-width: 0; text-align: left; box-sizing: border-box; }
         
         .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
         .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
-
-        .processor-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin: 18px 0 16px;
-            justify-content: flex-start;
-        }
-        .processor-tabs button {
-            width: auto;
-            flex: 1 1 calc(50% - 6px);
-            min-width: 120px;
-            padding: 10px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: var(--input-bg);
-            color: var(--heading);
-            margin-top: 0;
-            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-        }
-        .processor-tabs button:hover { background: var(--btn-secondary); }
-        .processor-tabs button.active {
-            background: var(--portal-topbar-bg);
-            border-color: var(--portal-topbar-bg);
-            color: var(--portal-am);
-        }
-        .processor-badge {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 2px 7px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-            background: rgba(255,255,255,0.18);
-            vertical-align: middle;
-        }
-        html[data-theme="light"] .processor-tabs button:not(.active) .processor-badge {
-            background: var(--btn-secondary);
-            color: var(--muted);
-        }
-        .processor-panel { display: none; text-align: left; }
-        .processor-panel.active { display: block; }
-        .processor-panel h3 {
-            margin: 0 0 8px;
-            color: var(--heading);
-            font-size: 17px;
-            text-align: left;
-        }
-        .processor-note {
-            margin: 0 0 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.45;
-        }
-        .processor-note.pending { border-color: #f59e0b; color: var(--text); }
-        html[data-theme="dark"] .processor-note.pending { border-color: #d97706; }
         
-        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; }
+        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; min-width: 0; }
         p { color: var(--muted); text-align: left; font-size: 14px; margin-top: 10px;}
         
         button.theme-toggle, button.info-close {
