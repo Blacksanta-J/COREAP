@@ -245,13 +245,16 @@
             id: 'traslado',
             label: 'Traslado',
             suffix: 'TRASLADO',
-            enabled: false,
-            descripcion: 'Procesador para eleves de traslado. Permite unificar y formatear archivos de vacantes por traslado.',
-            pending: true,
+            enabled: true,
+            descripcion: 'Procesador para eleves de traslado. Unificá hojas del archivo base y aplicá el formato de vacantes por traslado.',
+            pending: false,
             reglas: [
-                'Procesador destinado a vacantes de <strong>Traslado</strong>.',
-                'Las reglas específicas de mapeo y campos fijos se configurarán en esta sección.',
-                'El archivo descargado incluirá el sufijo <strong>TRASLADO</strong> en el nombre.'
+                '<strong>Unificación:</strong> Se combinan todas las hojas del Excel base en una sola.',
+                '<strong>Estructura:</strong> Se genera una columna inicial vacía y se ordena según el formato del archivo resultado.',
+                '<strong>Mapeo de Áreas y Turnos:</strong> Igual que Control (códigos de área, Mañana/Tarde/NOCHE/Completo).',
+                '<strong>Campos fijos:</strong> Sit. Rev. = INTERINO; Base/Ascenso y Tipo de Listado = 3; Novedad mayor a 60 días = 2.',
+                '<strong>Nombrado:</strong> El archivo descargado incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
+                '<strong>Informe:</strong> Segunda hoja con conteo de vacantes por área y por cargo.'
             ]
         },
         {
