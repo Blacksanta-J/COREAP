@@ -19,6 +19,9 @@
   }
 })();
 </script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js"></script>
 <script src="auth.js"></script>
@@ -549,6 +552,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 </div>
 <script>
 (function () {
+  PortalAuth.ready().then(function () {
   var user = PortalAuth.requireAuth();
   if (!user) return;
 
@@ -615,6 +619,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
         setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
       });
     }
+  });
   });
 })();
 </script>

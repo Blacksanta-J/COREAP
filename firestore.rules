@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email is string;
+    }
+
+    function isBue() {
+      return signedIn()
+        && request.auth.token.email.matches('.*@bue\\.edu\\.ar$');
+    }
+
+    function userDocPath(email) {
+      return /databases/$(database)/documents/users/$(email);
+    }
+
+    function isAdmin() {
+      return isBue()
+        && exists(userDocPath(request.auth.token.email))
+        && get(userDocPath(request.auth.token.email)).data.role == 'admin'
+        && get(userDocPath(request.auth.token.email)).data.active != false;
+    }
+
+    function isSeedAdmin() {
+      return isBue()
+        && request.auth.token.email == 'jonathanalejandro.perez@bue.edu.ar';
+    }
+
+    match /users/{userEmail} {
+      allow read: if isBue();
+
+      // Primer arranque: el admin semilla puede crear docs si aún no es admin en FS
+      allow create: if isAdmin() || isSeedAdmin();
+
+      allow update, delete: if isAdmin();
+    }
+  }
+}

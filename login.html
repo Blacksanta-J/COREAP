@@ -19,6 +19,9 @@
   }
 })();
 </script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260823-shared"></script>
 <script src="auth.js?v=20260823-shared"></script>
@@ -84,17 +87,14 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
 
 <script>
 (function () {
-  PortalAuth.ensureSeed();
-
-  var existing = PortalAuth.currentUser();
-  if (existing) {
-    location.replace('index.html');
-    return;
-  }
-
   var errorBox = document.getElementById('errorBox');
   var clientId = PortalAuth.getGoogleClientId();
   var tries = 0;
+
+  function showBootError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('visible');
+  }
 
   function showError(msg) {
     errorBox.textContent = msg;
@@ -187,7 +187,18 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     });
   }
 
-  initGoogle();
+  PortalAuth.ready().then(function () {
+    var existing = PortalAuth.currentUser();
+    if (existing) {
+      location.replace('index.html');
+      return;
+    }
+    initGoogle();
+  }).catch(function (err) {
+    console.error(err);
+    showBootError('No se pudo inicializar el acceso. Reintentá.');
+    initGoogle();
+  });
 })();
 </script>
 </body>

@@ -20,8 +20,12 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="users-data.js?v=20260823-shared"></script>
-<script src="auth.js?v=20260823-shared"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260823-firebase"></script>
+<script src="auth.js?v=20260823-firebase"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -133,9 +137,9 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     <p class="lead">Alta, edición e importación de usuarios precargados (@bue.edu.ar + DNI). El ingreso es con Google.</p>
 
     <div class="callout" id="publishHint">
-      Las altas en este panel quedan en <strong>este navegador</strong>.
-      Para que una cuenta pueda ingresar desde otra PC, descargá <code>users-data.js</code>
-      y reemplazá ese archivo en el sitio (repo / GitHub Pages).
+      Con <strong>Firebase</strong> configurado en <code>auth-config.js</code>, las altas se guardan en la nube
+      y el usuario puede ingresar desde cualquier PC al instante.
+      Si Firebase aún no está configurado, usá “Descargar users-data.js” como respaldo.
     </div>
 
     <div class="toast" id="pageToast"></div>
@@ -255,8 +259,15 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 
 <script>
 (function () {
+  PortalAuth.ready().then(function () {
   var user = PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_usuarios });
   if (!user) return;
+
+  var fbOn = PortalAuth.isFirebaseEnabled && PortalAuth.isFirebaseEnabled();
+  var hint = document.getElementById('publishHint');
+  if (hint && fbOn) {
+    hint.innerHTML = 'Firebase activo: las altas se publican en la nube y aplican en todos los navegadores.';
+  }
 
   document.getElementById('adminEmail').textContent = user.email;
   document.getElementById('logoutBtn').addEventListener('click', function (e) {
@@ -475,7 +486,8 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       return;
     }
 
-    var result = PortalAuth.upsertUser({
+    document.getElementById('saveBtn').disabled = true;
+    PortalAuth.upsertUser({
       id: editId.value || undefined,
       email: emailValue,
       dni: dniValue,
@@ -485,21 +497,26 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       reparticion: reparticionValue,
       role: document.getElementById('role').value,
       active: document.getElementById('active').checked
-    }, user);
-
-    if (!result.ok) {
-      showFormMsg(result.error, false);
-      return;
-    }
-    user = PortalAuth.currentUser() || user;
-    closeModal('userModal');
-    resetForm();
-    renderUsers();
-    if (result.created) {
-      showToast('Usuario creado en este navegador. Descargá users-data.js y publicarlo para que pueda ingresar desde otra PC.', true);
-    } else {
-      showToast('Usuario actualizado.', true);
-    }
+    }, user).then(function (result) {
+      document.getElementById('saveBtn').disabled = false;
+      if (!result.ok) {
+        showFormMsg(result.error, false);
+        return;
+      }
+      user = PortalAuth.currentUser() || user;
+      closeModal('userModal');
+      resetForm();
+      renderUsers();
+      if (result.created) {
+        showToast(fbOn ? 'Usuario creado. Ya puede ingresar con Google desde cualquier PC.' : 'Usuario creado localmente. Configurá Firebase o exportá users-data.js.', true);
+      } else {
+        showToast('Usuario actualizado.', true);
+      }
+    }).catch(function (err) {
+      document.getElementById('saveBtn').disabled = false;
+      console.error(err);
+      showFormMsg('Error al guardar.', false);
+    });
   });
 
   document.getElementById('usersBody').addEventListener('click', function (e) {
@@ -527,13 +544,14 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     }
     if (del) {
       if (!confirm('¿Eliminar este usuario?')) return;
-      var res = PortalAuth.removeUser(del, user);
-      if (!res.ok) {
-        showToast(res.error, false);
-        return;
-      }
-      renderUsers();
-      showToast('Usuario eliminado.', true);
+      PortalAuth.removeUser(del, user).then(function (res) {
+        if (!res.ok) {
+          showToast(res.error, false);
+          return;
+        }
+        renderUsers();
+        showToast('Usuario eliminado.', true);
+      });
     }
   });
 
@@ -556,10 +574,9 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
         var data = new Uint8Array(ev.target.result);
         var workbook = XLSX.read(data, { type: 'array' });
         var rows = rowsFromSheet(workbook);
-        var result = PortalAuth.importUsers(rows, user, {
+        PortalAuth.importUsers(rows, user, {
           overwrite: document.getElementById('importOverwrite').checked
-        });
-
+        }).then(function (result) {
         var summary = 'Creados: ' + result.created +
           ' · Actualizados: ' + result.updated +
           ' · Omitidos: ' + result.skipped;
@@ -577,6 +594,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
         renderUsers();
         closeModal('importModal');
         showToast(summary.replace(/\n/g, ' | '), result.errors.length === 0);
+        });
       } catch (err) {
         console.error(err);
         showImportMsg('No se pudo leer el archivo. Verificá el formato.', false);
@@ -586,6 +604,10 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   });
 
   renderUsers();
+  }).catch(function (err) {
+    console.error(err);
+    alert('No se pudo cargar usuarios. Reintentá.');
+  });
 })();
 </script>
 </body>
