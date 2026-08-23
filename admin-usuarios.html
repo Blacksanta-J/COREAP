@@ -262,12 +262,19 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     hint.innerHTML = 'Firebase activo: las altas se publican en la nube y aplican en todos los navegadores.';
   }
 
-  document.getElementById('adminEmail').textContent = user.email;
-  document.getElementById('logoutBtn').addEventListener('click', function (e) {
-    e.preventDefault();
-    PortalAuth.logout();
-    location.replace('login.html');
-  });
+  document.getElementById('adminEmail') && (document.getElementById('adminEmail').textContent = user.email);
+  var logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn && !logoutBtn.dataset.bound) {
+    logoutBtn.dataset.bound = '1';
+    logoutBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      PortalAuth.logout();
+      location.replace('login.html');
+    });
+  }
+  if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+    PortalHeader.fillUserMenu(user);
+  }
 
   var form = document.getElementById('userForm');
   var formMsg = document.getElementById('formMsg');

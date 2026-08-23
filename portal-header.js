@@ -1,12 +1,15 @@
 /**
- * Portal COREAP — header compartido (estilo actopublico_final.html).
- * Se monta en todas las vistas excepto index.html y login.html.
+ * Portal COREAP — header compartido con menú de usuario.
+ * Se monta en todas las vistas excepto login.html.
  */
 (function (global) {
   'use strict';
 
-  var SKIP_PAGES = { 'index.html': true, 'login.html': true, '': true };
-  var SUBTITLE = 'Dirección de Carrera Docente · GCBA';
+  var SKIP_PAGES = { 'login.html': true, '': true };
+  var DEFAULT_SUBTITLE = 'Dirección de Carrera Docente · GCBA';
+  var PAGE_SUBTITLES = {
+    'index.html': 'Comisión de Registro y Evaluación de Antecedentes Profesionales.'
+  };
   var BA_LOGO =
     '<svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
     + '<g clip-path="url(#clip0_portal_ba)">'
@@ -21,35 +24,161 @@
     return page || 'index.html';
   }
 
-  function extraActions(page) {
-    if (page !== 'admin-usuarios.html') return '';
+  function subtitleFor(page) {
+    return PAGE_SUBTITLES[page] || DEFAULT_SUBTITLE;
+  }
+
+  function userMenuHtml() {
     return ''
-      + '<span class="portal-header-email" id="adminEmail"></span>'
-      + '<a class="portal-home-link" href="#" id="logoutBtn">Salir</a>';
+      + '<div class="user-menu" id="userMenu" hidden>'
+      + '<button type="button" class="user-menu-toggle" id="userMenuToggle" aria-expanded="false" aria-haspopup="true" aria-controls="userMenuPanel">'
+      + '<span class="user-menu-name" id="userName"></span>'
+      + '<span class="user-menu-caret" aria-hidden="true">▾</span>'
+      + '</button>'
+      + '<div class="user-menu-panel" id="userMenuPanel" role="menu">'
+      + '<div class="user-menu-meta">'
+      + '<span class="user-menu-email" id="userEmail"></span>'
+      + '<span class="role-pill" id="userRole"></span>'
+      + '</div>'
+      + '<div class="user-menu-actions">'
+      + '<a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden role="menuitem">Usuarios</a>'
+      + '<button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema" role="menuitem">🌙</button>'
+      + '<button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión" role="menuitem">⎋</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
   }
 
   function headerHtml(page) {
+    var homeLink = page === 'index.html'
+      ? ''
+      : '<a class="portal-home-link" href="index.html">Inicio</a>';
+
     return ''
       + '<div class="topbar-logo">' + BA_LOGO + '</div>'
       + '<div class="topbar-right">'
-      + '<div class="portal-title">PORTAL COREAP<span>' + SUBTITLE + '</span></div>'
+      + '<div class="portal-title">PORTAL COREAP<span>' + subtitleFor(page) + '</span></div>'
       + '<div class="portal-topbar-actions">'
-      + '<a class="portal-home-link" href="index.html">Inicio</a>'
-      + '<button type="button" class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>'
-      + extraActions(page)
+      + homeLink
+      + userMenuHtml()
       + '</div>'
       + '</div>';
+  }
+
+  function setMenuOpen(menu, toggle, open) {
+    if (!menu || !toggle) return;
+    menu.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function bindUserMenu(root) {
+    var menu = root.querySelector('#userMenu');
+    var toggle = root.querySelector('#userMenuToggle');
+    if (!menu || !toggle || toggle.dataset.bound === '1') return;
+    toggle.dataset.bound = '1';
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setMenuOpen(menu, toggle, !menu.classList.contains('open'));
+    });
+    document.addEventListener('click', function (e) {
+      if (!menu.contains(e.target)) setMenuOpen(menu, toggle, false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setMenuOpen(menu, toggle, false);
+    });
+  }
+
+  function fillUserMenu(user) {
+    if (!user) return;
+    var menu = document.getElementById('userMenu');
+    if (!menu) return;
+
+    var nameEl = document.getElementById('userName');
+    var emailEl = document.getElementById('userEmail');
+    var roleEl = document.getElementById('userRole');
+    var adminLink = document.getElementById('adminLink');
+    var logoutBtn = document.getElementById('logoutBtn');
+
+    var displayName = user.nombre || (global.PortalAuth && PortalAuth.roleLabel
+      ? PortalAuth.roleLabel(user.role)
+      : user.role);
+    if (nameEl) nameEl.textContent = displayName;
+    if (emailEl) emailEl.textContent = user.email || '';
+    if (roleEl) {
+      roleEl.textContent = global.PortalAuth && PortalAuth.roleLabel
+        ? PortalAuth.roleLabel(user.role)
+        : (user.role || '');
+    }
+
+    if (adminLink) {
+      var canAdmin = false;
+      if (global.PortalAuth && PortalAuth.MODULES && typeof PortalAuth.canAccess === 'function') {
+        canAdmin = PortalAuth.canAccess(PortalAuth.MODULES.admin_usuarios, user);
+      } else if (user.role === 'admin') {
+        canAdmin = true;
+      }
+      adminLink.hidden = !canAdmin;
+    }
+
+    if (logoutBtn && logoutBtn.dataset.bound !== '1') {
+      logoutBtn.dataset.bound = '1';
+      logoutBtn.addEventListener('click', function () {
+        if (global.PortalAuth && typeof PortalAuth.logout === 'function') {
+          PortalAuth.logout();
+        }
+        location.replace('login.html');
+      });
+    }
+
+    menu.hidden = false;
+  }
+
+  function readSessionFallback() {
+    try {
+      var raw = sessionStorage.getItem('portal-session-v1');
+      if (!raw) return null;
+      var session = JSON.parse(raw);
+      if (!session || !session.email) return null;
+      return {
+        email: session.email,
+        role: session.role,
+        nombre: session.nombre || ''
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function hydrateUser() {
+    function apply() {
+      var user = null;
+      if (global.PortalAuth && typeof PortalAuth.currentUser === 'function') {
+        user = PortalAuth.currentUser();
+      }
+      if (!user) user = readSessionFallback();
+      if (user) fillUserMenu(user);
+    }
+
+    if (global.PortalAuth && typeof PortalAuth.ready === 'function') {
+      PortalAuth.ready().then(apply).catch(apply);
+    } else {
+      apply();
+    }
   }
 
   function renderHeader(el) {
     if (!el) return;
     var page = currentPage();
     el.className = 'portal-topbar';
+    el.id = el.id || 'portal-header';
     el.setAttribute('role', 'banner');
     el.innerHTML = headerHtml(page);
+    bindUserMenu(el);
     if (global.PortalTheme && typeof global.PortalTheme.initThemeToggle === 'function') {
       global.PortalTheme.initThemeToggle('themeToggle');
     }
+    hydrateUser();
   }
 
   function ensureHeaderMount() {
@@ -82,5 +211,9 @@
     init();
   }
 
-  global.PortalHeader = { init: init, render: renderHeader };
+  global.PortalHeader = {
+    init: init,
+    render: renderHeader,
+    fillUserMenu: fillUserMenu
+  };
 })(window);
