@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  var SKIP_PAGES = { 'index.html': true, 'login.html': true, '': true };
+  var SKIP_PAGES = { 'login.html': true, '': true };
   var JAYJAY_URL = 'https://www.youtube.com/watch?v=EgWb3WhBnpA&list=RDEgWb3WhBnpA&start_radio=1';
 
   function currentPage() {
