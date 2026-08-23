@@ -55,7 +55,9 @@
     dni: '00000000',
     role: ROLES.admin,
     active: true,
-    nombre: 'Jonathan Perez'
+    nombre: 'Jonathan',
+    apellido: 'Perez',
+    fechaNacimiento: ''
   };
 
   function getGoogleClientId() {
@@ -69,6 +71,52 @@
 
   function normalizeDni(dni) {
     return String(dni || '').replace(/\D/g, '');
+  }
+
+  function normalizeBirthDate(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    // YYYY-MM-DD (input date)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    // DD/MM/YYYY or DD-MM-YYYY
+    var m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+      var d = m[1].padStart(2, '0');
+      var mo = m[2].padStart(2, '0');
+      return m[3] + '-' + mo + '-' + d;
+    }
+    return '';
+  }
+
+  function formatBirthDateDisplay(iso) {
+    var v = normalizeBirthDate(iso);
+    if (!v) return '—';
+    var parts = v.split('-');
+    if (parts.length !== 3) return v;
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+  }
+
+  function displayName(user) {
+    if (!user) return '';
+    var full = [user.nombre, user.apellido].filter(Boolean).join(' ').trim();
+    if (full) return full;
+    return user.nombre || user.email || '';
+  }
+
+  function migrateUserShape(u) {
+    if (!u || typeof u !== 'object') return u;
+    if (u.apellido === undefined || (u.apellido === '' && String(u.nombre || '').trim().indexOf(' ') !== -1)) {
+      var parts = String(u.nombre || '').trim().split(/\s+/).filter(Boolean);
+      if (parts.length > 1 && !u.apellido) {
+        u.nombre = parts[0];
+        u.apellido = parts.slice(1).join(' ');
+      } else if (u.apellido === undefined) {
+        u.apellido = '';
+      }
+    }
+    if (u.fechaNacimiento === undefined) u.fechaNacimiento = '';
+    else u.fechaNacimiento = normalizeBirthDate(u.fechaNacimiento);
+    return u;
   }
 
   function isBueEmail(email) {
@@ -97,7 +145,16 @@
 
   function ensureSeed() {
     var users = readUsers();
-    if (users && users.length) return users;
+    if (users && users.length) {
+      var changed = false;
+      users.forEach(function (u) {
+        var before = JSON.stringify(u);
+        migrateUserShape(u);
+        if (JSON.stringify(u) !== before) changed = true;
+      });
+      if (changed) writeUsers(users);
+      return users;
+    }
 
     users = [{
       id: uid(),
@@ -106,6 +163,8 @@
       role: SEED_ADMIN.role,
       active: true,
       nombre: SEED_ADMIN.nombre,
+      apellido: SEED_ADMIN.apellido,
+      fechaNacimiento: SEED_ADMIN.fechaNacimiento || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }];
@@ -142,7 +201,7 @@
       id: user.id,
       email: user.email,
       role: user.role,
-      nombre: extra.nombre || user.nombre || '',
+      nombre: extra.nombre || displayName(user),
       picture: extra.picture || '',
       provider: extra.provider || 'local',
       at: new Date().toISOString()
@@ -167,7 +226,9 @@
       id: user.id,
       email: user.email,
       role: user.role,
-      nombre: session.nombre || user.nombre || '',
+      nombre: session.nombre || displayName(user),
+      apellido: user.apellido || '',
+      fechaNacimiento: user.fechaNacimiento || '',
       dni: user.dni,
       picture: session.picture || '',
       provider: session.provider || 'local'
@@ -200,11 +261,14 @@
       return { ok: false, error: 'Usuario desactivado. Contactá al administrador.' };
     }
 
+    // Actualizar nombre desde Google si viene y el local está vacío
     if (extras.nombre && extras.nombre.trim()) {
       var users = ensureSeed();
       var idx = users.findIndex(function (u) { return u.id === user.id; });
-      if (idx !== -1 && (!users[idx].nombre || users[idx].email === normalizeEmail(SEED_ADMIN.email))) {
-        users[idx].nombre = extras.nombre.trim();
+      if (idx !== -1 && (!users[idx].nombre || !users[idx].apellido)) {
+        var parts = extras.nombre.trim().split(/\s+/);
+        if (!users[idx].nombre) users[idx].nombre = parts[0] || '';
+        if (!users[idx].apellido && parts.length > 1) users[idx].apellido = parts.slice(1).join(' ');
         users[idx].updatedAt = new Date().toISOString();
         writeUsers(users);
         user = users[idx];
@@ -212,7 +276,7 @@
     }
 
     var session = setSession(user, {
-      nombre: extras.nombre || user.nombre,
+      nombre: extras.nombre || displayName(user),
       picture: extras.picture || '',
       provider: extras.provider || 'google'
     });
@@ -361,15 +425,26 @@
 
     var email = normalizeEmail(payload.email);
     var dni = normalizeDni(payload.dni);
-    var role = payload.role;
+    var role = payload.role || ROLES.usuarios;
     var nombre = String(payload.nombre || '').trim();
+    var apellido = String(payload.apellido || '').trim();
+    var fechaNacimiento = normalizeBirthDate(payload.fechaNacimiento);
     var active = payload.active !== false;
 
+    if (!nombre) {
+      return { ok: false, error: 'El nombre es obligatorio.' };
+    }
+    if (!apellido) {
+      return { ok: false, error: 'El apellido es obligatorio.' };
+    }
     if (!isBueEmail(email)) {
       return { ok: false, error: 'El mail debe ser @' + ALLOWED_DOMAIN + '.' };
     }
     if (dni.length < 7 || dni.length > 8) {
       return { ok: false, error: 'El DNI debe tener 7 u 8 dígitos.' };
+    }
+    if (payload.fechaNacimiento && !fechaNacimiento) {
+      return { ok: false, error: 'Fecha de nacimiento inválida. Usá DD/MM/AAAA o AAAA-MM-DD.' };
     }
     if (!ROLE_PERMISSIONS[role]) {
       return { ok: false, error: 'Rol inválido.' };
@@ -405,6 +480,8 @@
       existing.dni = dni;
       existing.role = role;
       existing.nombre = nombre;
+      existing.apellido = apellido;
+      existing.fechaNacimiento = fechaNacimiento;
       existing.active = active;
       existing.updatedAt = new Date().toISOString();
       writeUsers(users);
@@ -417,6 +494,8 @@
       dni: dni,
       role: role,
       nombre: nombre,
+      apellido: apellido,
+      fechaNacimiento: fechaNacimiento,
       active: active,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -424,6 +503,77 @@
     users.push(created);
     writeUsers(users);
     return { ok: true, user: created, created: true };
+  }
+
+  /**
+   * Importa usuarios en lote. Cada fila: email, dni, nombre, apellido,
+   * fechaNacimiento (opcional), role (opcional), active (opcional).
+   * Por defecto no sobrescribe existentes salvo overwrite=true.
+   */
+  function importUsers(rows, actor, options) {
+    options = options || {};
+    if (!actor || actor.role !== ROLES.admin) {
+      return { ok: false, error: 'Solo Admin puede importar usuarios.' };
+    }
+    if (!Array.isArray(rows) || !rows.length) {
+      return { ok: false, error: 'No hay filas para importar.' };
+    }
+
+    var created = 0;
+    var updated = 0;
+    var skipped = 0;
+    var errors = [];
+
+    rows.forEach(function (row, index) {
+      var line = index + 2; // + header
+      var email = normalizeEmail(row.email || row.mail || row.correo);
+      if (!email) {
+        errors.push('Fila ' + line + ': falta mail.');
+        return;
+      }
+
+      var existing = findUserByEmail(email);
+      if (existing && !options.overwrite) {
+        skipped += 1;
+        return;
+      }
+
+      var roleRaw = String(row.role || row.rol || 'usuarios').trim().toLowerCase();
+      if (roleRaw === 'usuario') roleRaw = 'usuarios';
+      if (roleRaw === 'administrador') roleRaw = 'admin';
+
+      var activeRaw = row.active !== undefined ? row.active : row.activo;
+      var active = true;
+      if (activeRaw !== undefined && activeRaw !== null && String(activeRaw).trim() !== '') {
+        var s = String(activeRaw).trim().toLowerCase();
+        active = !(s === '0' || s === 'false' || s === 'no' || s === 'inactivo');
+      }
+
+      var result = upsertUser({
+        email: email,
+        dni: row.dni || row.documento,
+        nombre: row.nombre || row.name || row.firstname,
+        apellido: row.apellido || row.lastname || row.surname,
+        fechaNacimiento: row.fechaNacimiento || row.fecha_nacimiento || row.nacimiento || row.birthdate,
+        role: roleRaw,
+        active: active
+      }, actor);
+
+      if (!result.ok) {
+        errors.push('Fila ' + line + ' (' + email + '): ' + result.error);
+        return;
+      }
+      if (result.created) created += 1;
+      else updated += 1;
+    });
+
+    return {
+      ok: errors.length === 0 || created + updated > 0,
+      created: created,
+      updated: updated,
+      skipped: skipped,
+      errors: errors
+    };
   }
 
   function removeUser(userId, actor) {
@@ -476,6 +626,9 @@
     getGoogleClientId: getGoogleClientId,
     normalizeEmail: normalizeEmail,
     normalizeDni: normalizeDni,
+    normalizeBirthDate: normalizeBirthDate,
+    formatBirthDateDisplay: formatBirthDateDisplay,
+    displayName: displayName,
     isBueEmail: isBueEmail,
     getUsers: getUsers,
     findUserByEmail: findUserByEmail,
@@ -488,6 +641,7 @@
     canAccess: canAccess,
     permissionsFor: permissionsFor,
     upsertUser: upsertUser,
+    importUsers: importUsers,
     removeUser: removeUser,
     roleLabel: roleLabel,
     describePermissions: describePermissions,
