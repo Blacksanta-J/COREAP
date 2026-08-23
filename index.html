@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Inicio</title>
 <script src="portal-theme.js"></script>
+<script src="portal-nav.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -573,10 +574,6 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
   document.getElementById('logoutBtn').addEventListener('click', function () {
     PortalAuth.logout();
     location.replace('login.html');
-  });
-
-  document.addEventListener('DOMContentLoaded', function () {
-    PortalTheme.initThemeToggle('themeToggle');
   });
   });
 })();

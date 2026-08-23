@@ -412,3 +412,86 @@ html[data-theme="dark"] .info-nav button.active {
     padding-right: 20px !important;
   }
 }
+
+/* ── Navegación fluida entre paneles (manuales) ── */
+.section-switcher {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--portal-bg, var(--bg, #f0f2f4));
+  padding: 12px 0 14px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--portal-border, var(--border, #e2e6ea));
+  backdrop-filter: blur(6px);
+}
+
+.tab-menu {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--portal-bg, var(--bg, #f0f2f4));
+  padding: 12px 0 14px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--portal-border, var(--border, #e2e6ea));
+  backdrop-filter: blur(6px);
+}
+
+html[data-theme="dark"] .section-switcher,
+html[data-theme="dark"] .tab-menu {
+  background: rgba(15, 26, 34, 0.92);
+}
+
+.section-switcher .switch-btn {
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+}
+
+.section-switcher .switch-btn:active {
+  transform: scale(0.98);
+}
+
+.section-pane {
+  animation: portalPaneIn .28s ease both;
+}
+
+.tab-pane.active {
+  animation: portalPaneIn .28s ease both;
+}
+
+.processor-panel.active {
+  animation: portalPaneIn .24s ease both;
+}
+
+@keyframes portalPaneIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.processor-tabs button {
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+}
+
+.processor-tabs button:active {
+  transform: scale(0.98);
+}
+
+.sidebar .nav-link {
+  transition: color .15s ease, background .15s ease, border-color .15s ease, padding-left .15s ease;
+}
+
+.sidebar .nav-link:hover {
+  padding-left: 22px;
+}
+
+.section-card {
+  scroll-margin-top: 80px;
+}
+
+.content {
+  scroll-behavior: smooth;
+}
