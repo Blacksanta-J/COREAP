@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal COREAP · Inicio</title>
 <script src="portal-theme.js"></script>
+<script src="portal-header.js"></script>
 <script src="portal-nav.js"></script>
 <script src="portal-footer.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
@@ -91,103 +92,12 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 .topbar-right{
   display:flex;align-items:center;gap:16px;
 }
-.user-chip{
-  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
-  font-size:11px;color:rgba(255,255,255,.75);line-height:1.3;text-align:right;
-}
-.user-chip strong{color:#fff;font-weight:700}
-.user-chip .role-pill{
-  display:inline-block;margin-top:2px;padding:1px 7px;border-radius:999px;
-  background:rgba(255,204,0,.2);color:var(--am);font-size:9px;font-weight:700;
-  letter-spacing:.4px;text-transform:uppercase;
-}
-.topbar-actions{display:flex;align-items:center;gap:8px}
-.topbar-link{
-  color:rgba(255,255,255,.9);text-decoration:none;font-size:11px;font-weight:700;
-  letter-spacing:.4px;text-transform:uppercase;padding:8px 10px;border-radius:8px;
-  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
-}
-.topbar-link:hover{background:rgba(255,255,255,.16)}
-
-/* ── User menu (compact dropdown) ───────────── */
-.user-menu{
-  position:relative;
-  flex-shrink:0;
-}
-.user-menu[hidden]{display:none!important}
-.user-menu-toggle{
-  display:inline-flex;align-items:center;gap:8px;
-  max-width:min(280px,52vw);
-  padding:8px 12px;
-  border-radius:8px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.08);
-  color:#fff;
-  font:inherit;
-  font-size:12px;font-weight:700;
-  letter-spacing:.2px;
-  cursor:pointer;
-  transition:background .15s,border-color .15s;
-}
-.user-menu-toggle:hover,
-.user-menu.open .user-menu-toggle{
-  background:rgba(255,255,255,.14);
-  border-color:rgba(255,255,255,.28);
-}
-.user-menu-toggle:focus-visible{
-  outline:2px solid var(--am);outline-offset:2px;
-}
-.user-menu-name{
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  text-align:left;
-}
-.user-menu-caret{
-  font-size:10px;opacity:.8;transition:transform .2s ease;flex-shrink:0;
-}
-.user-menu.open .user-menu-caret{transform:rotate(180deg)}
-.user-menu-panel{
-  position:absolute;top:calc(100% + 8px);right:0;z-index:40;
-  min-width:240px;width:max-content;max-width:min(320px,92vw);
-  padding:12px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.14);
-  background:#153244;
-  box-shadow:0 12px 28px rgba(0,0,0,.35);
-  display:none;
-  flex-direction:column;gap:10px;
-}
-.user-menu.open .user-menu-panel{display:flex}
-.user-menu-meta{
-  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
-  padding:2px 4px 8px;
-  border-bottom:1px solid rgba(255,255,255,.1);
-}
-.user-menu-email{
-  font-size:11px;color:rgba(255,255,255,.7);line-height:1.35;
-  word-break:break-all;
-}
-.user-menu-actions{
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-}
-.user-menu-actions .topbar-link{flex:1 1 auto;text-align:center}
-.user-menu-actions .theme-toggle{flex-shrink:0}
 .portal-title{
   font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
   letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
   font-family:'Source Sans 3',sans-serif;
 }
 .portal-title span{display:block;color:#8DE2D6;font-weight:400;letter-spacing:.4px}
-.theme-toggle{
-  width:40px;height:40px;min-width:40px;padding:0;
-  border-radius:8px;border:1px solid var(--toggle-border);
-  background:var(--toggle-bg);color:#fff;
-  font-size:18px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .2s,transform .15s;
-}
-.theme-toggle:hover{background:var(--toggle-hover)}
-.theme-toggle:active{transform:scale(.96)}
-.theme-toggle:focus-visible{outline:2px solid var(--am);outline-offset:2px}
 
 /* ── Main (content wrapper) ─────────────────── */
 .index-main{
@@ -431,31 +341,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 <body>
 <div class="page-shell">
 
-  <div class="portal-topbar">
-    <div class="topbar-logo">
-      <svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0)"><path d="M73.6406 31.6806L59.3778 4.12091C58.1475 1.67445 55.627 0 52.7012 0H52.6941C49.7717 0 47.2477 1.67445 46.0175 4.12091L35.9778 23.5199C34.8568 21.5246 33.0695 19.9595 30.9121 19.1134C33.3198 17.372 34.8885 14.5342 34.8885 11.3334C34.8885 7.6214 32.7805 4.40998 29.6995 2.8166C26.9851 1.38891 23.8865 0.581651 20.601 0.581651H5.58386C2.49581 0.581651 0 3.07746 0 6.15846V34.1059C0 37.1869 2.49581 39.6827 5.58386 39.6827H21.8243C24.9546 39.6827 27.9334 39.0341 30.6372 37.8778L31.6665 37.3808C31.7229 37.3526 31.7793 37.3244 31.8357 37.2962C32.8122 38.9142 34.5783 40.0035 36.6123 40.0035C38.872 40.0035 40.8178 38.664 41.6956 36.7286C42.1327 35.7064 43.1198 34.9837 44.2831 34.9273H61.1087C62.2755 34.9837 63.259 35.7064 63.6961 36.7286C64.5704 38.664 66.5198 40.0035 68.7794 40.0035C71.8639 40.0035 74.3598 37.5007 74.3598 34.4302C74.3598 33.4291 74.1024 32.4914 73.6371 31.6841" fill="#FFFFFF"/></g><defs><clipPath id="clip0"><rect width="74.3633" height="40" fill="white"/></clipPath></defs></svg>
-    </div>
-    <div class="topbar-right">
-      <div class="portal-title">PORTAL COREAP<span> Comisión de Registro y Evaluación de Antecedentes Profesionales.</span></div>
-      <div class="user-menu" id="userMenu" hidden>
-        <button type="button" class="user-menu-toggle" id="userMenuToggle" aria-expanded="false" aria-haspopup="true" aria-controls="userMenuPanel">
-          <span class="user-menu-name" id="userName"></span>
-          <span class="user-menu-caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="user-menu-panel" id="userMenuPanel" role="menu">
-          <div class="user-menu-meta">
-            <span class="user-menu-email" id="userEmail"></span>
-            <span class="role-pill" id="userRole"></span>
-          </div>
-          <div class="user-menu-actions">
-            <a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden role="menuitem">Usuarios</a>
-            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema" role="menuitem">🌙</button>
-            <button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión" role="menuitem">⎋</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <header id="portal-header"></header>
 
   <main class="index-main">
 
@@ -626,35 +512,9 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     history.replaceState({}, '', 'index.html');
   }
 
-  document.getElementById('userMenu').hidden = false;
-  document.getElementById('userName').textContent = user.nombre || PortalAuth.roleLabel(user.role);
-  document.getElementById('userEmail').textContent = user.email;
-  document.getElementById('userRole').textContent = PortalAuth.roleLabel(user.role);
-  if (PortalAuth.canAccess(PortalAuth.MODULES.admin_usuarios, user)) {
-    document.getElementById('adminLink').hidden = false;
+  if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+    PortalHeader.fillUserMenu(user);
   }
-
-  var menu = document.getElementById('userMenu');
-  var toggle = document.getElementById('userMenuToggle');
-  function setMenuOpen(open) {
-    menu.classList.toggle('open', open);
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  }
-  toggle.addEventListener('click', function (e) {
-    e.stopPropagation();
-    setMenuOpen(!menu.classList.contains('open'));
-  });
-  document.addEventListener('click', function (e) {
-    if (!menu.contains(e.target)) setMenuOpen(false);
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') setMenuOpen(false);
-  });
-
-  document.getElementById('logoutBtn').addEventListener('click', function () {
-    PortalAuth.logout();
-    location.replace('login.html');
-  });
   });
 })();
 </script>

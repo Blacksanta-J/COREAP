@@ -202,6 +202,130 @@ body {
   outline-offset: 2px;
 }
 
+/* ── User menu (nombre + dropdown) ── */
+.user-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.user-menu[hidden] {
+  display: none !important;
+}
+
+.user-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(280px, 52vw);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.user-menu-toggle:hover,
+.user-menu.open .user-menu-toggle {
+  background: rgba(255, 255, 255, .14);
+  border-color: rgba(255, 255, 255, .28);
+}
+
+.user-menu-toggle:focus-visible {
+  outline: 2px solid var(--portal-am);
+  outline-offset: 2px;
+}
+
+.user-menu-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.user-menu-caret {
+  font-size: 10px;
+  opacity: .8;
+  transition: transform .2s ease;
+  flex-shrink: 0;
+}
+
+.user-menu.open .user-menu-caret {
+  transform: rotate(180deg);
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 240px;
+  width: max-content;
+  max-width: min(320px, 92vw);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: var(--portal-topbar-bg);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-menu.open .user-menu-panel {
+  display: flex;
+}
+
+.user-menu-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 2px 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+
+.user-menu-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .7);
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.role-pill {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 204, 0, .2);
+  color: var(--portal-am);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.user-menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-menu-actions .topbar-link {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.user-menu-actions .theme-toggle {
+  flex-shrink: 0;
+}
+
 /* ── Layout herramientas (Elevadores, admin, etc.) ── */
 .portal-tool-body {
   min-height: 100vh;
