@@ -6,12 +6,12 @@
 window.PORTAL_USERS = [
   {
     email: 'jonathanalejandro.perez@bue.edu.ar',
-    dni: '00000000',
+    dni: '36729167',
     role: 'admin',
     active: true,
     nombre: 'Jonathan',
     apellido: 'Perez',
-    fechaNacimiento: '',
+    fechaNacimiento: '1992-03-19',
     reparticion: 'Sistemas'
   }
 ];

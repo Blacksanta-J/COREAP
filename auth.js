@@ -59,12 +59,12 @@
 
   var SEED_ADMIN = {
     email: 'jonathanalejandro.perez@bue.edu.ar',
-    dni: '00000000',
+    dni: '36729167',
     role: ROLES.admin,
     active: true,
     nombre: 'Jonathan',
     apellido: 'Perez',
-    fechaNacimiento: '',
+    fechaNacimiento: '1992-03-19',
     reparticion: 'Sistemas'
   };
 
@@ -359,9 +359,19 @@
 
   function ensureSeedAdminInFirestore() {
     if (!initFirebase() || !_firestore) return Promise.resolve();
-    var admin = getSeedAdminUser();
-    return _firestore.collection('users').doc(userDocId(admin.email))
-      .set(toFirestorePayload(admin), { merge: true });
+    var seedEmail = normalizeEmail(SEED_ADMIN.email);
+    var docRef = _firestore.collection('users').doc(userDocId(seedEmail));
+    return docRef.get().then(function (snap) {
+      if (snap.exists) {
+        return docRef.set({
+          email: seedEmail,
+          role: ROLES.admin,
+          active: true
+        }, { merge: true });
+      }
+      var admin = getSeedAdminUser();
+      return docRef.set(toFirestorePayload(admin), { merge: true });
+    });
   }
 
   function syncFromFirestore() {
@@ -989,7 +999,9 @@
       return chain.then(function () {
         return ref.set(toFirestorePayload(saved), { merge: true });
       }).then(function () {
-        return ensureSeedAdminInFirestore();
+        if (normalizeEmail(saved.email) !== normalizeEmail(SEED_ADMIN.email)) {
+          return ensureSeedAdminInFirestore();
+        }
       }).then(function () {
         return syncFromFirestore();
       }).then(function () {
