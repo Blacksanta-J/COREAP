@@ -19,6 +19,7 @@
   }
 })();
 </script>
+<script src="auth.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 
@@ -96,6 +97,23 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
 .topbar-right{
   display:flex;align-items:center;gap:16px;
 }
+.user-chip{
+  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
+  font-size:11px;color:rgba(255,255,255,.75);line-height:1.3;text-align:right;
+}
+.user-chip strong{color:#fff;font-weight:700}
+.user-chip .role-pill{
+  display:inline-block;margin-top:2px;padding:1px 7px;border-radius:999px;
+  background:rgba(255,204,0,.2);color:var(--am);font-size:9px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase;
+}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.topbar-link{
+  color:rgba(255,255,255,.9);text-decoration:none;font-size:11px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase;padding:8px 10px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
+}
+.topbar-link:hover{background:rgba(255,255,255,.16)}
 .portal-title{
   font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
   letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
@@ -186,8 +204,7 @@ html[data-theme="dark"] .section-label{color:#8DE2D6}
 /* ── Cards grid ─────────────────────────────── */
 .cards-grid{
   display:grid;
-  /* 4 módulos activos (Seguimiento desactivado) */
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
   gap:20px;
 }
 .section-card{
@@ -363,7 +380,16 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     </div>
     <div class="topbar-right">
       <div class="portal-title">PORTAL COREAP<span>Dirección de Carrera Docente · GCBA</span></div>
-      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
+      <div class="user-chip" id="userChip" hidden>
+        <strong id="userName"></strong>
+        <span id="userEmail"></span>
+        <span class="role-pill" id="userRole"></span>
+      </div>
+      <div class="topbar-actions">
+        <a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden>Usuarios</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
+        <button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+      </div>
     </div>
   </div>
 
@@ -390,7 +416,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     <section class="cards-grid">
 
       <!-- Acto Público -->
-      <a class="section-card" href="actopublico_final.html">
+      <a class="section-card" href="actopublico_final.html" data-module="acto_publico">
         <div class="card-icon">📋</div>
         <h2 class="card-title">Acto Público</h2>
         <p class="card-desc">Manual operativo con las reglas de designación docente: orden por área, prioridades, proporciones (4 a 1, 2 a 1, 50/50), criterios de ordenamiento, ascenso y escalafones integrados por nivel y modalidad.</p>
@@ -398,6 +424,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
           <span class="card-tag">Reglas</span>
           <span class="card-tag">Prioridades</span>
           <span class="card-tag">Escalafones</span>
+          <span class="card-tag">Manual</span>
         </div>
         <div class="card-cta">
           <span>Abrir módulo</span>
@@ -423,7 +450,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
       -->
 
       <!-- Clasificación -->
-      <a class="section-card" href="clasificacion_final.html">
+      <a class="section-card" href="clasificacion_final.html" data-module="clasificacion">
         <div class="card-icon">🗂️</div>
         <h2 class="card-title">Clasificación</h2>
         <p class="card-desc">Información sobre clasificación docente: puntajes, título base, mérito, antigüedad y criterios aplicados en la construcción de los listados oficiales utilizados en el Acto Público.</p>
@@ -431,6 +458,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
           <span class="card-tag">Puntajes</span>
           <span class="card-tag">Listados</span>
           <span class="card-tag">Mérito</span>
+          <span class="card-tag">Manual</span>
         </div>
         <div class="card-cta">
           <span>Abrir módulo</span>
@@ -439,7 +467,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
       </a>
       
       <!-- Eleves Acto Publico -->
-      <a class="section-card" href="Elevador.html">
+      <a class="section-card" href="Elevador.html" data-module="eleves_acto">
         <div class="card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="1.8"/>
@@ -461,7 +489,7 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
       </a>
 
       <!-- Eleves Concursos -->
-      <a class="section-card" href="Elevador-Control.html">
+      <a class="section-card" href="Elevador-Control.html" data-module="eleves_concursos">
         <div class="card-icon">📁</div>
         <h2 class="card-title">Eleves Concursos</h2>
         <p class="card-desc">Procesamiento y unificación de archivos para eleves de concursos.</p>
@@ -475,10 +503,25 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
         </div>
       </a>
 
+      <!-- Admin usuarios -->
+      <a class="section-card" href="admin-usuarios.html" data-module="admin_usuarios">
+        <div class="card-icon">👤</div>
+        <h2 class="card-title">Usuarios</h2>
+        <p class="card-desc">Alta de usuarios @bue.edu.ar y asignación de permisos (Admin, APEL, Usuarios).</p>
+        <div class="card-tags">
+          <span class="card-tag">Admin</span>
+          <span class="card-tag">Permisos</span>
+        </div>
+        <div class="card-cta">
+          <span>Abrir módulo</span>
+          <span class="card-arrow">→</span>
+        </div>
+      </a>
+
     </section>
 
     <!-- Estatuto -->
-    <section class="estatuto-banner">
+    <section class="estatuto-banner" data-module="estatuto">
       <div class="estatuto-text">
         <h3>Consulta normativa</h3>
         <p>Accedé al Estatuto Docente completo en un entorno de consulta asistida por IA.</p>
@@ -504,6 +547,41 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
 </div>
 <script>
 (function () {
+  var user = PortalAuth.requireAuth();
+  if (!user) return;
+
+  // Visibilidad por permisos
+  document.querySelectorAll('[data-module]').forEach(function (el) {
+    var mod = el.getAttribute('data-module');
+    el.style.display = PortalAuth.canAccess(mod, user) ? '' : 'none';
+  });
+
+  var visibleCards = Array.prototype.filter.call(
+    document.querySelectorAll('.cards-grid .section-card'),
+    function (el) { return el.style.display !== 'none'; }
+  ).length;
+  var metaCount = document.querySelector('.hero-meta strong');
+  if (metaCount) metaCount.textContent = String(visibleCards);
+
+  var params = new URLSearchParams(location.search);
+  if (params.get('denied') === '1') {
+    alert('No tenés permiso para acceder a ese módulo.');
+    history.replaceState({}, '', 'index.html');
+  }
+
+  document.getElementById('userChip').hidden = false;
+  document.getElementById('userName').textContent = user.nombre || PortalAuth.roleLabel(user.role);
+  document.getElementById('userEmail').textContent = user.email;
+  document.getElementById('userRole').textContent = PortalAuth.roleLabel(user.role);
+  if (PortalAuth.canAccess(PortalAuth.MODULES.admin_usuarios, user)) {
+    document.getElementById('adminLink').hidden = false;
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', function () {
+    PortalAuth.logout();
+    location.replace('login.html');
+  });
+
   function currentTheme() {
     return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   }

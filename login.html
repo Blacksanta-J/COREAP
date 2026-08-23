@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Ingreso</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('portal-theme')
+      || localStorage.getItem('elevador-theme')
+      || localStorage.getItem('procesador-theme');
+    var theme = (saved === 'light' || saved === 'dark')
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+<script src="auth.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--gr-light:#6b6b6a;
+  --bg:#f0f2f4;--surface:#ffffff;--border:#e2e6ea;--error:#b91c1c;
+  --shadow:0 10px 30px rgba(21,50,68,.12);
+  font-family:'Source Sans 3',sans-serif;color-scheme:light;
+}
+html[data-theme="dark"]{
+  --az:#8DE2D6;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
+  --border:#2a3d4a;--error:#f87171;--shadow:0 10px 30px rgba(0,0,0,.45);color-scheme:dark;
+}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at top right,rgba(141,226,214,.18),transparent 40%),
+             radial-gradient(circle at bottom left,rgba(255,204,0,.12),transparent 35%),
+             var(--bg);
+  color:var(--gr);padding:24px;
+}
+.card{
+  width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;box-shadow:var(--shadow);padding:32px 28px;border-top:4px solid var(--am);
+}
+.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px}
+.brand h1{font-family:'Source Serif 4',Georgia,serif;font-size:26px;color:#153244;line-height:1.2}
+html[data-theme="dark"] .brand h1{color:#f2f5f7}
+.brand p{font-size:12px;color:var(--gr-light);margin-top:4px;letter-spacing:.3px}
+.theme-toggle{
+  width:40px;height:40px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;cursor:pointer;font-size:18px;color:var(--gr);
+}
+label{display:block;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--gr-light);margin:14px 0 6px}
+input{
+  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--gr);font-size:15px;font-family:inherit;
+}
+input:focus{outline:2px solid var(--cy);outline-offset:1px}
+.hint{font-size:12px;color:var(--gr-light);margin-top:6px;line-height:1.4}
+.btn{
+  width:100%;margin-top:20px;padding:13px 16px;border:none;border-radius:8px;
+  background:#153244;color:var(--am);font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;font-size:13px;cursor:pointer;
+}
+.btn:hover{background:#1a3d54}
+.error{
+  display:none;margin-top:14px;padding:10px 12px;border-radius:8px;
+  background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);
+  color:var(--error);font-size:13px;font-weight:600;
+}
+.error.visible{display:block}
+.footer-note{margin-top:18px;font-size:11px;color:var(--gr-light);text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div>
+        <h1>Portal COREAP</h1>
+        <p>Ingreso con cuenta @bue.edu.ar</p>
+      </div>
+      <button type="button" class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
+    </div>
+
+    <form id="loginForm" autocomplete="on">
+      <label for="email">Mail institucional</label>
+      <input id="email" name="email" type="email" placeholder="nombre.apellido@bue.edu.ar" required>
+      <p class="hint">Solo usuarios precargados con dominio @bue.edu.ar</p>
+
+      <label for="dni">DNI</label>
+      <input id="dni" name="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" placeholder="Sin puntos" required>
+      <p class="hint">Debe coincidir con el DNI cargado por el administrador</p>
+
+      <button class="btn" type="submit">Ingresar</button>
+      <div class="error" id="errorBox"></div>
+    </form>
+
+    <p class="footer-note">Dirección de Carrera Docente · GCBA</p>
+  </div>
+
+<script>
+(function () {
+  PortalAuth.ensureSeed();
+
+  var existing = PortalAuth.currentUser();
+  if (existing) {
+    location.replace('index.html');
+    return;
+  }
+
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function syncThemeToggle() {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    var dark = currentTheme() === 'dark';
+    btn.textContent = dark ? '☀️' : '🌙';
+    btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+  }
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('portal-theme', theme);
+      localStorage.setItem('elevador-theme', theme);
+      localStorage.setItem('procesador-theme', theme);
+    } catch (e) {}
+    syncThemeToggle();
+  }
+  syncThemeToggle();
+  document.getElementById('themeToggle').addEventListener('click', function () {
+    setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+  });
+
+  var form = document.getElementById('loginForm');
+  var errorBox = document.getElementById('errorBox');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errorBox.classList.remove('visible');
+    var email = document.getElementById('email').value;
+    var dni = document.getElementById('dni').value;
+    var result = PortalAuth.login(email, dni);
+    if (!result.ok) {
+      errorBox.textContent = result.error;
+      errorBox.classList.add('visible');
+      return;
+    }
+    var params = new URLSearchParams(location.search);
+    var next = params.get('next') || 'index.html';
+    if (!/^[A-Za-z0-9._-]+\.html$/.test(next)) next = 'index.html';
+    location.replace(next);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Usuarios</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('portal-theme')
+      || localStorage.getItem('elevador-theme')
+      || localStorage.getItem('procesador-theme');
+    var theme = (saved === 'light' || saved === 'dark')
+      ? saved
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+<script src="auth.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#153244;--am:#FFCC00;--cy:#8DE2D6;--gr:#3C3C3B;--gr-light:#6b6b6a;
+  --bg:#f0f2f4;--surface:#ffffff;--border:#e2e6ea;--error:#b91c1c;--ok:#166534;
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  font-family:'Source Sans 3',sans-serif;color-scheme:light;
+}
+html[data-theme="dark"]{
+  --az:#8DE2D6;--gr:#e8eaed;--gr-light:#a8b0b8;--bg:#0f1a22;--surface:#172832;
+  --border:#2a3d4a;--error:#f87171;--ok:#4ade80;--shadow:0 8px 24px rgba(0,0,0,.4);color-scheme:dark;
+}
+body{background:var(--bg);color:var(--gr);min-height:100vh}
+.topbar{
+  background:#153244;color:#fff;padding:14px 28px;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.topbar a{color:var(--am);text-decoration:none;font-weight:700;font-size:13px}
+.topbar-title{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.topbar-title span{display:block;font-weight:400;color:#8DE2D6;font-size:11px;margin-top:2px}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 40px}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:20px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);padding:22px;
+}
+h1{font-family:'Source Serif 4',Georgia,serif;font-size:28px;color:#153244;margin-bottom:6px}
+html[data-theme="dark"] h1{color:#f2f5f7}
+.lead{color:var(--gr-light);font-size:14px;margin-bottom:18px;line-height:1.5}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--gr-light);margin:12px 0 6px}
+input,select{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--gr);font:inherit;font-size:14px;
+}
+.row-check{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:14px}
+.row-check input{width:auto}
+.actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+button{
+  border:none;border-radius:8px;padding:10px 14px;font-weight:700;font-size:12px;
+  letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
+}
+.btn-primary{background:#153244;color:var(--am)}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--gr)}
+.btn-danger{background:transparent;border:1px solid rgba(185,28,28,.35);color:var(--error)}
+.msg{display:none;margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600}
+.msg.visible{display:block}
+.msg.ok{background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.25);color:var(--ok)}
+.msg.err{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);color:var(--error)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-light)}
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;
+  letter-spacing:.3px;text-transform:uppercase;background:#eef1f4;color:#153244;
+}
+html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
+.badge.admin{background:rgba(255,204,0,.25)}
+.badge.apel{background:rgba(141,226,214,.3)}
+.muted{color:var(--gr-light);font-size:12px}
+.perms{font-size:11px;color:var(--gr-light);margin-top:4px;line-height:1.4}
+.user-actions{display:flex;gap:6px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-title">Gestión de usuarios<span id="adminEmail"></span></div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <a href="index.html">← Volver al portal</a>
+      <a href="#" id="logoutBtn">Salir</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1>Usuarios y permisos</h1>
+    <p class="lead">Altas con mail @bue.edu.ar + DNI. Roles: <strong>Admin</strong> (todo + permisos), <strong>APEL</strong> (Acto Público, Eleves Acto Público y Manuales), <strong>Usuarios</strong> (solo Manuales).</p>
+
+    <div class="grid">
+      <section class="panel">
+        <h2 style="font-size:16px;margin-bottom:4px" id="formTitle">Nuevo usuario</h2>
+        <p class="muted" id="formHint">Completá mail institucional y DNI.</p>
+        <form id="userForm">
+          <input type="hidden" id="editId" value="">
+          <label for="nombre">Nombre (opcional)</label>
+          <input id="nombre" type="text" placeholder="Nombre y apellido">
+
+          <label for="email">Mail @bue.edu.ar</label>
+          <input id="email" type="email" required placeholder="nombre.apellido@bue.edu.ar">
+
+          <label for="dni">DNI</label>
+          <input id="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" required placeholder="Sin puntos">
+
+          <label for="role">Rol / permisos</label>
+          <select id="role" required>
+            <option value="usuarios">Usuarios — solo Manuales</option>
+            <option value="apel">APEL — Acto Público + Eleves Acto Público + Manuales</option>
+            <option value="admin">Admin — todo + asignar permisos</option>
+          </select>
+
+          <label class="row-check"><input type="checkbox" id="active" checked> Usuario activo</label>
+
+          <div class="actions">
+            <button type="submit" class="btn-primary" id="saveBtn">Guardar</button>
+            <button type="button" class="btn-secondary" id="resetBtn">Limpiar</button>
+          </div>
+          <div class="msg" id="formMsg"></div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2 style="font-size:16px;margin-bottom:12px">Base de usuarios</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>DNI</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var user = PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_usuarios });
+  if (!user) return;
+
+  document.getElementById('adminEmail').textContent = user.email;
+
+  document.getElementById('logoutBtn').addEventListener('click', function (e) {
+    e.preventDefault();
+    PortalAuth.logout();
+    location.replace('login.html');
+  });
+
+  var form = document.getElementById('userForm');
+  var formMsg = document.getElementById('formMsg');
+  var editId = document.getElementById('editId');
+
+  function showMsg(text, ok) {
+    formMsg.textContent = text;
+    formMsg.className = 'msg visible ' + (ok ? 'ok' : 'err');
+  }
+
+  function resetForm() {
+    editId.value = '';
+    form.reset();
+    document.getElementById('active').checked = true;
+    document.getElementById('email').readOnly = false;
+    document.getElementById('formTitle').textContent = 'Nuevo usuario';
+    document.getElementById('saveBtn').textContent = 'Guardar';
+    formMsg.className = 'msg';
+  }
+
+  function fillForm(u) {
+    editId.value = u.id;
+    document.getElementById('nombre').value = u.nombre || '';
+    document.getElementById('email').value = u.email;
+    document.getElementById('email').readOnly = true;
+    document.getElementById('dni').value = u.dni;
+    document.getElementById('role').value = u.role;
+    document.getElementById('active').checked = !!u.active;
+    document.getElementById('formTitle').textContent = 'Editar usuario';
+    document.getElementById('saveBtn').textContent = 'Actualizar';
+    formMsg.className = 'msg';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderUsers() {
+    var tbody = document.getElementById('usersBody');
+    var users = PortalAuth.getUsers();
+    tbody.innerHTML = users.map(function (u) {
+      var perms = PortalAuth.describePermissions(u.role).join(' · ');
+      return (
+        '<tr>' +
+          '<td><strong>' + (u.nombre || '—') + '</strong><div class="muted">' + u.email + '</div>' +
+            '<div class="perms">' + perms + '</div></td>' +
+          '<td>' + u.dni + '</td>' +
+          '<td><span class="badge ' + u.role + '">' + PortalAuth.roleLabel(u.role) + '</span></td>' +
+          '<td>' + (u.active ? 'Activo' : 'Inactivo') + '</td>' +
+          '<td><div class="user-actions">' +
+            '<button type="button" class="btn-secondary" data-edit="' + u.id + '">Editar</button>' +
+            (u.email === PortalAuth.SEED_ADMIN_EMAIL
+              ? ''
+              : '<button type="button" class="btn-danger" data-del="' + u.id + '">Eliminar</button>') +
+          '</div></td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var result = PortalAuth.upsertUser({
+      email: document.getElementById('email').value,
+      dni: document.getElementById('dni').value,
+      role: document.getElementById('role').value,
+      nombre: document.getElementById('nombre').value,
+      active: document.getElementById('active').checked
+    }, user);
+
+    if (!result.ok) {
+      showMsg(result.error, false);
+      return;
+    }
+    showMsg(result.created ? 'Usuario creado.' : 'Usuario actualizado.', true);
+    user = PortalAuth.currentUser() || user;
+    renderUsers();
+    if (result.created) resetForm();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+  document.getElementById('usersBody').addEventListener('click', function (e) {
+    var edit = e.target.getAttribute('data-edit');
+    var del = e.target.getAttribute('data-del');
+    if (edit) {
+      var u = PortalAuth.getUsers().find(function (x) { return x.id === edit; });
+      if (u) fillForm(u);
+      return;
+    }
+    if (del) {
+      if (!confirm('¿Eliminar este usuario?')) return;
+      var res = PortalAuth.removeUser(del, user);
+      if (!res.ok) {
+        alert(res.error);
+        return;
+      }
+      renderUsers();
+      resetForm();
+    }
+  });
+
+  renderUsers();
+})();
+</script>
+</body>
+</html>
