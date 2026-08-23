@@ -50,7 +50,7 @@
     var html = '';
     var sectionIndex = 0;
 
-    html += '<a class="nav-btn-home" href="index.html"><span class="nav-icon">🏠</span>Home</a>';
+    html += '<a class="nav-btn-home" href="index.html"><span class="nav-icon">🏠</span>HOME</a>';
     html += '<div class="nav-divider"></div>';
 
     NAV_SECTIONS.forEach(function (section) {

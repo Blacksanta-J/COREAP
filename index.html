@@ -108,6 +108,69 @@ body{background:var(--bg);color:var(--gr);min-height:100vh;display:flex;flex-dir
   border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
 }
 .topbar-link:hover{background:rgba(255,255,255,.16)}
+
+/* ── User menu (compact dropdown) ───────────── */
+.user-menu{
+  position:relative;
+  flex-shrink:0;
+}
+.user-menu[hidden]{display:none!important}
+.user-menu-toggle{
+  display:inline-flex;align-items:center;gap:8px;
+  max-width:min(280px,52vw);
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font:inherit;
+  font-size:12px;font-weight:700;
+  letter-spacing:.2px;
+  cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.user-menu-toggle:hover,
+.user-menu.open .user-menu-toggle{
+  background:rgba(255,255,255,.14);
+  border-color:rgba(255,255,255,.28);
+}
+.user-menu-toggle:focus-visible{
+  outline:2px solid var(--am);outline-offset:2px;
+}
+.user-menu-name{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-align:left;
+}
+.user-menu-caret{
+  font-size:10px;opacity:.8;transition:transform .2s ease;flex-shrink:0;
+}
+.user-menu.open .user-menu-caret{transform:rotate(180deg)}
+.user-menu-panel{
+  position:absolute;top:calc(100% + 8px);right:0;z-index:40;
+  min-width:240px;width:max-content;max-width:min(320px,92vw);
+  padding:12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#153244;
+  box-shadow:0 12px 28px rgba(0,0,0,.35);
+  display:none;
+  flex-direction:column;gap:10px;
+}
+.user-menu.open .user-menu-panel{display:flex}
+.user-menu-meta{
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  padding:2px 4px 8px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.user-menu-email{
+  font-size:11px;color:rgba(255,255,255,.7);line-height:1.35;
+  word-break:break-all;
+}
+.user-menu-actions{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.user-menu-actions .topbar-link{flex:1 1 auto;text-align:center}
+.user-menu-actions .theme-toggle{flex-shrink:0}
 .portal-title{
   font-size:12px;font-weight:700;color:rgba(255,255,255,.92);
   letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;
@@ -374,15 +437,22 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     </div>
     <div class="topbar-right">
       <div class="portal-title">PORTAL COREAP<span> Comisión de Registro y Evaluación de Antecedentes Profesionales.</span></div>
-      <div class="user-chip" id="userChip" hidden>
-        <strong id="userName"></strong>
-        <span id="userEmail"></span>
-        <span class="role-pill" id="userRole"></span>
-      </div>
-      <div class="topbar-actions">
-        <a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden>Usuarios</a>
-        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
-        <button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+      <div class="user-menu" id="userMenu" hidden>
+        <button type="button" class="user-menu-toggle" id="userMenuToggle" aria-expanded="false" aria-haspopup="true" aria-controls="userMenuPanel">
+          <span class="user-menu-name" id="userName"></span>
+          <span class="user-menu-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="user-menu-panel" id="userMenuPanel" role="menu">
+          <div class="user-menu-meta">
+            <span class="user-menu-email" id="userEmail"></span>
+            <span class="role-pill" id="userRole"></span>
+          </div>
+          <div class="user-menu-actions">
+            <a class="topbar-link" id="adminLink" href="admin-usuarios.html" hidden role="menuitem">Usuarios</a>
+            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema" role="menuitem">🌙</button>
+            <button type="button" class="theme-toggle" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión" role="menuitem">⎋</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -556,13 +626,30 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#153244}
     history.replaceState({}, '', 'index.html');
   }
 
-  document.getElementById('userChip').hidden = false;
+  document.getElementById('userMenu').hidden = false;
   document.getElementById('userName').textContent = user.nombre || PortalAuth.roleLabel(user.role);
   document.getElementById('userEmail').textContent = user.email;
   document.getElementById('userRole').textContent = PortalAuth.roleLabel(user.role);
   if (PortalAuth.canAccess(PortalAuth.MODULES.admin_usuarios, user)) {
     document.getElementById('adminLink').hidden = false;
   }
+
+  var menu = document.getElementById('userMenu');
+  var toggle = document.getElementById('userMenuToggle');
+  function setMenuOpen(open) {
+    menu.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  toggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    setMenuOpen(!menu.classList.contains('open'));
+  });
+  document.addEventListener('click', function (e) {
+    if (!menu.contains(e.target)) setMenuOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') setMenuOpen(false);
+  });
 
   document.getElementById('logoutBtn').addEventListener('click', function () {
     PortalAuth.logout();
