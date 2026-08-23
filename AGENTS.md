@@ -18,10 +18,12 @@ Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS i
 
 ## Auth & roles
 
-- Only preloaded users with `@bue.edu.ar` email can log in (email + DNI).
+- Login with Google (same pattern as https://actopublico.bue.edu.ar/login): button **Ingresá con tu cuenta @bue.edu.ar**.
+- Only preloaded users with `@bue.edu.ar` email can enter after Google auth.
+- Configure `googleClientId` in `auth-config.js` (Google Cloud OAuth Web Client ID; add the portal URL as authorized JavaScript origin).
 - Roles: **Admin** (all + manage users), **APEL** (Acto Público, Eleves Acto Público, Manuales), **Usuarios** (Manuales only).
 - Manuales = Acto Público, Clasificación, Estatuto.
-- Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (change from Usuarios panel).
+- Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (DNI is for the user registry; change from Usuarios panel).
 - User store and session live in browser storage (`localStorage` / `sessionStorage`) — suitable for an internal static portal; not a hardened server-side auth system.
 
 ## Cursor Cloud specific instructions
