@@ -249,8 +249,27 @@
   }
 
   /**
+   * Decodifica el payload de un JWT (sin verificar firma; el token
+   * llega por GIS desde Google). Evita depender de tokeninfo (CORS).
+   */
+  function parseJwtPayload(idToken) {
+    try {
+      var parts = String(idToken || '').split('.');
+      if (parts.length < 2) return null;
+      var base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
+      var json = decodeURIComponent(atob(base64).split('').map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
    * Login con ID token de Google (mismo patrón que actopublico.bue.edu.ar).
-   * Verifica el token con Google, exige @bue.edu.ar y usuario precargado.
+   * Exige @bue.edu.ar y usuario precargado.
    */
   function loginWithGoogleIdToken(idToken) {
     var clientId = getGoogleClientId();
@@ -264,34 +283,55 @@
       return Promise.resolve({ ok: false, error: 'No se recibió credencial de Google.' });
     }
 
-    return fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken))
-      .then(function (res) {
-        if (!res.ok) throw new Error('token_invalid');
-        return res.json();
-      })
-      .then(function (payload) {
-        if (payload.aud !== clientId) {
-          return { ok: false, error: 'Credencial de Google inválida para esta app.' };
-        }
-        if (String(payload.email_verified) !== 'true' && payload.email_verified !== true) {
-          return { ok: false, error: 'El mail de Google no está verificado.' };
-        }
-        if (!isBueEmail(payload.email)) {
-          return { ok: false, error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.' };
-        }
-        if (payload.hd && normalizeEmail(payload.hd) !== ALLOWED_DOMAIN) {
-          return { ok: false, error: 'La cuenta no pertenece a @' + ALLOWED_DOMAIN + '.' };
-        }
+    var payload = parseJwtPayload(idToken);
+    if (!payload) {
+      return Promise.resolve({ ok: false, error: 'No se pudo leer la credencial de Google.' });
+    }
 
-        return acceptPreloadedUser(payload.email, {
-          nombre: payload.name || '',
-          picture: payload.picture || '',
-          provider: 'google'
-        });
-      })
-      .catch(function () {
-        return { ok: false, error: 'No se pudo validar la cuenta de Google. Reintentá.' };
-      });
+    var now = Math.floor(Date.now() / 1000);
+    if (payload.exp && Number(payload.exp) < now) {
+      return Promise.resolve({ ok: false, error: 'La sesión de Google expiró. Reintentá.' });
+    }
+    if (payload.aud !== clientId) {
+      return Promise.resolve({ ok: false, error: 'Credencial de Google inválida para esta app.' });
+    }
+    var iss = String(payload.iss || '');
+    if (iss !== 'https://accounts.google.com' && iss !== 'accounts.google.com') {
+      return Promise.resolve({ ok: false, error: 'Emisor de credencial no válido.' });
+    }
+    if (String(payload.email_verified) !== 'true' && payload.email_verified !== true) {
+      return Promise.resolve({ ok: false, error: 'El mail de Google no está verificado.' });
+    }
+    if (!isBueEmail(payload.email)) {
+      return Promise.resolve({ ok: false, error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.' });
+    }
+    if (payload.hd && normalizeEmail(payload.hd) !== ALLOWED_DOMAIN) {
+      return Promise.resolve({ ok: false, error: 'La cuenta no pertenece a @' + ALLOWED_DOMAIN + '.' });
+    }
+
+    return Promise.resolve(acceptPreloadedUser(payload.email, {
+      nombre: payload.name || '',
+      picture: payload.picture || '',
+      provider: 'google'
+    }));
+  }
+
+  /**
+   * Login con perfil obtenido vía OAuth access token (userinfo).
+   */
+  function loginWithGoogleProfile(profile) {
+    profile = profile || {};
+    if (!profile.email) {
+      return { ok: false, error: 'Google no devolvió el mail de la cuenta.' };
+    }
+    if (profile.email_verified === false) {
+      return { ok: false, error: 'El mail de Google no está verificado.' };
+    }
+    return acceptPreloadedUser(profile.email, {
+      nombre: profile.name || '',
+      picture: profile.picture || '',
+      provider: 'google'
+    });
   }
 
   function logout() {
@@ -442,6 +482,7 @@
     currentUser: currentUser,
     login: login,
     loginWithGoogleIdToken: loginWithGoogleIdToken,
+    loginWithGoogleProfile: loginWithGoogleProfile,
     logout: logout,
     requireAuth: requireAuth,
     canAccess: canAccess,
