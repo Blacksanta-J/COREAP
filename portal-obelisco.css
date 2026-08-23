@@ -26,15 +26,11 @@ html {
   --ob-white: #ffffff;
   --ob-gray-600: #6d6d6d;
   --ob-gray-700: #565656;
-
-  /* Acento GCBA / COREAP (CTA, estados activos) */
   --ob-accent: #ffcc00;
 
-  /* Tipografía Obelisco */
   --ob-font-heading: 'Archivo', 'Open Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ob-font-body: 'Open Sans', 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  /* Map → tokens del portal */
   --portal-az: var(--ob-primary);
   --portal-az-hover: #152636;
   --portal-am: var(--ob-accent);
@@ -63,7 +59,6 @@ html {
   --portal-success: var(--ob-success);
   --portal-error: var(--ob-danger);
 
-  /* Alias usados por manuales / admin / index */
   --az: var(--ob-primary);
   --az-hover: #152636;
   --am: var(--ob-accent);
@@ -93,49 +88,78 @@ html {
 }
 
 html[data-theme='dark'] {
-  --ob-bg: #0a1620;
-  --ob-white: #122433;
-  --ob-body: #e8eaed;
-  --ob-neutral: #2a3d4a;
-  --ob-muted: #3d5566;
-  --ob-gray-600: #a8b0b8;
-  --ob-gray-700: #c5ccd3;
-  --ob-light: #14353a;
+  /* Más contraste entre fondo de página y paneles */
+  --ob-bg: #0b1218;
+  --ob-body: #f2f5f7;
+  --ob-neutral: #3a4f5e;
+  --ob-muted: #526778;
+  --ob-gray-600: #c5d0d8;
+  --ob-gray-700: #dde4ea;
+  --ob-light: #1a454c;
   --ob-accent: #ffcc00;
+  --ob-primary: #1d3343;
+  --ob-secondary: #4db8e0;
+  --ob-tertiary: #5ee0d0;
+  --ob-white: #ffffff;
 
-  --portal-heading: #f2f5f7;
-  --portal-text: #e8eaed;
-  --portal-muted: #a8b0b8;
-  --portal-input-bg: #0f1a22;
-  --portal-surface: #122433;
-  --portal-bg: #0a1620;
-  --portal-border: #2a3d4a;
-  --portal-border-strong: #3d5566;
-  --portal-am-light: #3d3500;
-  --portal-cy-light: #14353a;
-  --portal-cy-mid: #1a454c;
-  --portal-shadow: 0 1px 3px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
-  --portal-shadow-md: 0 4px 12px rgba(0, 0, 0, .4), 0 2px 4px rgba(0, 0, 0, .3);
-  --portal-overlay: rgba(0, 0, 0, .65);
-  --portal-success: #4ade80;
-  --portal-error: #f87171;
+  --portal-topbar-bg: #1d3343;
+  --portal-heading: #ffffff;
+  --portal-text: #f2f5f7;
+  --portal-muted: #c5d0d8;
+  --portal-input-bg: #15202b;
+  --portal-surface: #1a2733;
+  --portal-bg: #0b1218;
+  --portal-border: #3a4f5e;
+  --portal-border-strong: #526778;
+  --portal-az: #1d3343;
+  --portal-az-hover: #274558;
+  --portal-am: #ffcc00;
+  --portal-am-light: #4a3f00;
+  --portal-cy: #5ee0d0;
+  --portal-cy-light: #1a454c;
+  --portal-cy-mid: #21555c;
+  --portal-gr: #f2f5f7;
+  --portal-gr-light: #c5d0d8;
+  --portal-wh: #ffffff;
+  --portal-shadow: 0 1px 3px rgba(0, 0, 0, .45), 0 1px 2px rgba(0, 0, 0, .3);
+  --portal-shadow-md: 0 8px 24px rgba(0, 0, 0, .5);
+  --portal-overlay: rgba(0, 0, 0, .7);
+  --portal-success: #6ee7a0;
+  --portal-error: #fb8a8a;
+  --portal-toggle-bg: rgba(255, 255, 255, .12);
+  --portal-toggle-hover: rgba(255, 255, 255, .2);
+  --portal-toggle-border: rgba(255, 255, 255, .22);
 
-  --az: #8de2d6;
-  --gr: #e8eaed;
-  --gr-light: #a8b0b8;
-  --bg: var(--portal-bg);
-  --surface: var(--portal-surface);
-  --border: var(--portal-border);
-  --border-strong: var(--portal-border-strong);
-  --am-light: var(--portal-am-light);
-  --cy-light: var(--portal-cy-light);
-  --cy-mid: var(--portal-cy-mid);
-  --eyebrow-fg: #8de2d6;
-  --hero-accent: rgba(0, 150, 136, .14);
+  /*
+   * --az / --wh se usan en chrome (topbar, sidebar, sec-head).
+   * No remapearlos a colores de texto o el contraste se rompe.
+   */
+  --az: #1d3343;
+  --az-hover: #274558;
+  --am: #ffcc00;
+  --am-light: #4a3f00;
+  --cy: #5ee0d0;
+  --cy-light: #1a454c;
+  --cy-mid: #21555c;
+  --gr: #f2f5f7;
+  --gr-light: #c5d0d8;
+  --wh: #ffffff;
+  --bg: #0b1218;
+  --surface: #1a2733;
+  --border: #3a4f5e;
+  --border-strong: #526778;
+  --shadow: var(--portal-shadow);
+  --shadow-md: var(--portal-shadow-md);
+  --error: #fb8a8a;
+  --ok: #6ee7a0;
+  --eyebrow-fg: #5ee0d0;
+  --hero-accent: rgba(94, 224, 208, .16);
+  --toggle-bg: rgba(255, 255, 255, .12);
+  --toggle-hover: rgba(255, 255, 255, .2);
+  --toggle-border: rgba(255, 255, 255, .22);
   color-scheme: dark;
 }
 
-/* Tipografía base Obelisco */
 html {
   font-size: 16px;
 }
@@ -154,11 +178,16 @@ h1, h2, h3, h4, h5, h6,
 .portal-tool-panel h2,
 .portal-tool-panel h3,
 .card-title,
-.hero h1,
-.sec-head {
+.hero h1 {
   font-family: var(--ob-font-heading);
   font-weight: 600;
   color: var(--portal-heading);
+  letter-spacing: -0.01em;
+}
+
+.sec-head {
+  font-family: var(--ob-font-heading);
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -186,7 +215,6 @@ p, .card-desc, .page-intro p, .hero-lead, .desc, .lead {
   font-family: var(--ob-font-body);
 }
 
-/* Botones primarios al estilo Obelisco (primary navy + texto claro / accent) */
 .portal-tool-panel button.btn-primary,
 .portal-tool-panel button:not(.theme-toggle):not(.info-close):not(.processor-tabs button):not(.user-menu-action):not(.user-menu-toggle),
 .btn-primary {
@@ -202,7 +230,6 @@ p, .card-desc, .page-intro p, .hero-lead, .desc, .lead {
   background: var(--portal-az-hover);
 }
 
-/* Cards / paneles con borde y radio Obelisco-friendly */
 .section-card,
 .portal-tool-panel,
 .portal-tool-card,
@@ -212,7 +239,6 @@ p, .card-desc, .page-intro p, .hero-lead, .desc, .lead {
   border-radius: 8px;
 }
 
-/* Focus visible accesible (WCAG) */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -220,4 +246,205 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--ob-secondary);
   outline-offset: 2px;
+}
+
+/* ── Dark mode: contraste reforzado ── */
+html[data-theme='dark'] body {
+  background: var(--portal-bg);
+  color: var(--portal-text);
+}
+
+html[data-theme='dark'] .content,
+html[data-theme='dark'] .pane,
+html[data-theme='dark'] .index-main,
+html[data-theme='dark'] .wrap,
+html[data-theme='dark'] .portal-tool-main {
+  background: var(--portal-bg);
+  color: var(--portal-text);
+}
+
+html[data-theme='dark'] .hero,
+html[data-theme='dark'] .page-intro,
+html[data-theme='dark'] .section-card,
+html[data-theme='dark'] .portal-tool-panel,
+html[data-theme='dark'] .portal-tool-card,
+html[data-theme='dark'] .panel,
+html[data-theme='dark'] .def-block,
+html[data-theme='dark'] .modal,
+html[data-theme='dark'] table {
+  background: var(--portal-surface) !important;
+  border-color: var(--portal-border) !important;
+  color: var(--portal-text) !important;
+}
+
+html[data-theme='dark'] h1,
+html[data-theme='dark'] h2,
+html[data-theme='dark'] h3,
+html[data-theme='dark'] h4,
+html[data-theme='dark'] .page-intro h1,
+html[data-theme='dark'] .hero h1,
+html[data-theme='dark'] .card-title,
+html[data-theme='dark'] .portal-tool-panel h2,
+html[data-theme='dark'] .portal-tool-panel h3,
+html[data-theme='dark'] .brand h1,
+html[data-theme='dark'] .modal-head h2 {
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] p,
+html[data-theme='dark'] .desc,
+html[data-theme='dark'] .lead,
+html[data-theme='dark'] .card-desc,
+html[data-theme='dark'] .hero-lead,
+html[data-theme='dark'] .page-intro p,
+html[data-theme='dark'] td,
+html[data-theme='dark'] li,
+html[data-theme='dark'] label,
+html[data-theme='dark'] .muted,
+html[data-theme='dark'] .label-text {
+  color: #e8f1f6 !important;
+}
+
+html[data-theme='dark'] th {
+  color: #ffffff !important;
+  background: #243746 !important;
+  border-color: var(--portal-border) !important;
+}
+
+html[data-theme='dark'] .sec-head {
+  background: #1d3343 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .sub-head {
+  background: #21555c !important;
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .def-head,
+html[data-theme='dark'] .esc-sub-title {
+  background: #243746 !important;
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .def-body,
+html[data-theme='dark'] .esc-sub-body {
+  background: var(--portal-surface) !important;
+  color: #e8f1f6 !important;
+}
+
+html[data-theme='dark'] .b-base,
+html[data-theme='dark'] .b-cod,
+html[data-theme='dark'] .badge,
+html[data-theme='dark'] .card-tag {
+  background: #243746 !important;
+  color: #e8f1f6 !important;
+  border-color: var(--portal-border) !important;
+}
+
+html[data-theme='dark'] .prop-tab,
+html[data-theme='dark'] .section-switcher .switch-btn,
+html[data-theme='dark'] .processor-tabs button {
+  background: #15202b !important;
+  border-color: var(--portal-border) !important;
+  color: #e8f1f6 !important;
+}
+
+html[data-theme='dark'] .prop-tab:hover,
+html[data-theme='dark'] .section-switcher .switch-btn:hover,
+html[data-theme='dark'] .processor-tabs button:hover {
+  background: #243746 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .prop-tab.on,
+html[data-theme='dark'] .section-switcher .switch-btn.on,
+html[data-theme='dark'] .processor-tabs button.active {
+  background: #1d3343 !important;
+  color: #ffcc00 !important;
+  border-color: #ffcc00 !important;
+}
+
+html[data-theme='dark'] table tr:nth-child(even) td,
+html[data-theme='dark'] .clasi-scope tr:nth-child(even) td {
+  background: #15202b !important;
+}
+
+html[data-theme='dark'] table tr:hover td,
+html[data-theme='dark'] .clasi-scope tr:hover td,
+html[data-theme='dark'] tr:hover td {
+  background: #243746 !important;
+}
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] input[type='file'],
+html[data-theme='dark'] input[type='date'],
+html[data-theme='dark'] input[type='time'] {
+  background: #15202b !important;
+  color: #f2f5f7 !important;
+  border-color: var(--portal-border) !important;
+}
+
+html[data-theme='dark'] .card-cta,
+html[data-theme='dark'] .section-label {
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .hero-meta,
+html[data-theme='dark'] .hero-meta span {
+  color: #c5d0d8 !important;
+}
+
+html[data-theme='dark'] .hero-meta strong {
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .estatuto-banner {
+  background: linear-gradient(135deg, #1d3343 0%, #274558 100%) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .estatuto-banner p,
+html[data-theme='dark'] .estatuto-banner h2 {
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .nav-btn-estatuto,
+html[data-theme='dark'] .nav-btn-home,
+html[data-theme='dark'] .estatuto-btn {
+  background: #ffcc00 !important;
+  color: #1d3343 !important;
+}
+
+html[data-theme='dark'] .alert,
+html[data-theme='dark'] .callout,
+html[data-theme='dark'] .toast,
+html[data-theme='dark'] .processor-note {
+  background: #243746 !important;
+  color: #f2f5f7 !important;
+  border-color: var(--portal-border) !important;
+}
+
+html[data-theme='dark'] .step-box,
+html[data-theme='dark'] .info-nav,
+html[data-theme='dark'] .info-content {
+  background: #15202b !important;
+  color: #f2f5f7 !important;
+  border-color: var(--portal-border) !important;
+}
+
+html[data-theme='dark'] .card-arrow {
+  background: #5ee0d0 !important;
+  color: #1d3343 !important;
+}
+
+html[data-theme='dark'] .sidebar .nav-link {
+  color: rgba(255, 255, 255, .78);
+}
+
+html[data-theme='dark'] .sidebar .nav-link:hover,
+html[data-theme='dark'] .sidebar .nav-link.active {
+  color: #ffcc00;
 }
