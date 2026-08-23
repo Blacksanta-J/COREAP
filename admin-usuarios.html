@@ -193,7 +193,15 @@ code{font-size:11px}
         </div>
 
         <label for="reparticion">Repartición</label>
-        <input id="reparticion" type="text" placeholder="Ej: COREAP, Nivel Medio, etc.">
+        <select id="reparticion">
+          <option value="">Seleccioná una repartición</option>
+          <option value="Sistemas">Sistemas</option>
+          <option value="Administracion">Administracion</option>
+          <option value="RRHH">RRHH</option>
+          <option value="Listados">Listados</option>
+          <option value="APEL">APEL</option>
+          <option value="JUNTA">JUNTA</option>
+        </select>
 
         <label for="role">Rol / permisos</label>
         <select id="role" required>
@@ -223,7 +231,9 @@ code{font-size:11px}
       <p class="hint">
         Subí un CSV o Excel con columnas:
         <code>nombre, apellido, email, dni, fecha_nacimiento, reparticion, role, activo</code>.
-        Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>. Roles: <code>admin</code>, <code>apel</code>, <code>usuarios</code>.
+        Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>.
+        Repartición: <code>Sistemas, Administracion, RRHH, Listados, APEL, JUNTA</code>.
+        Roles: <code>admin</code>, <code>apel</code>, <code>usuarios</code>.
       </p>
       <label for="importFile">Archivo</label>
       <input id="importFile" type="file" accept=".csv,.xlsx,.xls">
@@ -308,7 +318,7 @@ code{font-size:11px}
     document.getElementById('email').readOnly = true;
     document.getElementById('dni').value = u.dni;
     document.getElementById('fechaNacimiento').value = PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
-    document.getElementById('reparticion').value = u.reparticion || '';
+    document.getElementById('reparticion').value = PortalAuth.normalizeReparticion(u.reparticion || '');
     document.getElementById('role').value = u.role;
     document.getElementById('active').checked = !!u.active;
     document.getElementById('userModalTitle').textContent = 'Editar usuario';
@@ -370,8 +380,8 @@ code{font-size:11px}
   document.getElementById('btnTemplate').addEventListener('click', function () {
     var csv = [
       'nombre,apellido,email,dni,fecha_nacimiento,reparticion,role,activo',
-      'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,COREAP,usuarios,si',
-      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,Nivel Medio,apel,si'
+      'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,Sistemas,usuarios,si',
+      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,APEL,apel,si'
     ].join('\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var a = document.createElement('a');
