@@ -2,27 +2,27 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script><script src="auth-config.js"></script>
 <script src="users-data.js"></script><script src="auth.js"></script><script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'clasificacion' }); });</script><style>
-@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --az:#153244;
-  --az-hover:#1a3d54;
+  --az:#1d3343;
+  --az-hover:#152636;
   --am:#FFCC00;
   --am-light:#fff8cc;
-  --cy:#8DE2D6;
-  --cy-light:#e8f9f7;
-  --cy-mid:#c5f0eb;
-  --gr:#3C3C3B;
-  --gr-light:#6b6b6a;
+  --cy:#009688;
+  --cy-light:#e0f5f3;
+  --cy-mid:#b2e6e1;
+  --gr:#08202f;
+  --gr-light:#6d6d6d;
   --wh:#FCFCFC;
-  --bg:#f0f2f4;
+  --bg:#f3f6f9;
   --surface:#ffffff;
-  --border:#e2e6ea;
+  --border:#e6ebf0;
   --border-strong:#c8cdd3;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
   --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
-  font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
+  font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;
 }
 
 body{background:var(--bg);color:var(--gr)}
@@ -45,7 +45,7 @@ body{background:var(--bg);color:var(--gr)}
 .topbar-title{
   font-size:12px;font-weight:600;color:rgba(255,255,255,.85);
   letter-spacing:.8px;text-transform:uppercase;text-align:right;line-height:1.7;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .topbar-title span{color:var(--cy);font-weight:300;letter-spacing:.3px}
 
@@ -69,12 +69,12 @@ body{background:var(--bg);color:var(--gr)}
 .nav-section-label{
   font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
   color:rgba(255,255,255,.3);padding:18px 20px 8px;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .nav-btn{
   background:none;border:none;
   padding:12px 20px;
-  font-family:'Source Sans 3',inherit;font-size:12px;font-weight:600;
+  font-family:'Open Sans',inherit;font-size:12px;font-weight:600;
   color:rgba(255,255,255,.6);
   cursor:pointer;letter-spacing:.3px;text-transform:uppercase;
   border-left:3px solid transparent;
@@ -95,7 +95,7 @@ body{background:var(--bg);color:var(--gr)}
   margin:16px 12px 0;padding:12px 16px;
   background:var(--am);color:var(--az);
   border:none;border-radius:6px;
-  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:700;
+  font-family:'Open Sans',sans-serif;font-size:11px;font-weight:700;
   letter-spacing:.5px;text-transform:uppercase;
   cursor:pointer;text-align:center;
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -118,7 +118,7 @@ body{background:var(--bg);color:var(--gr)}
   margin-bottom:22px;margin-top:36px;
   border-radius:6px;
   border-left:4px solid var(--am);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .sec-head:first-child{margin-top:0}
 
@@ -129,7 +129,7 @@ body{background:var(--bg);color:var(--gr)}
   margin-bottom:14px;margin-top:28px;
   border-radius:4px;
   border-left:3px solid var(--cy);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .sub-head:first-child{margin-top:0}
 
@@ -157,7 +157,7 @@ th{
   background:var(--az);color:var(--wh);
   padding:11px 14px;text-align:left;
   font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 th:first-child{border-radius:0}
 td{
@@ -186,7 +186,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
   text-align:center;font-size:11px;font-weight:700;
   padding:8px 10px;letter-spacing:.8px;text-transform:uppercase;
   border-radius:6px 6px 0 0;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 
 /* ── Def blocks (acordeones) ─────────────────── */
@@ -208,7 +208,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
   cursor:pointer;user-select:none;
   transition:background .15s;
   border-left:4px solid var(--az);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .def-head:hover{background:#f4f7fa}
 .def-head.open{
@@ -357,7 +357,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
   text-align:center;flex:1;min-width:80px;
   border-right:2px solid rgba(255,204,0,.4);
   transition:background .15s;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
   letter-spacing:.3px;
 }
 .step-box:last-child{border-right:none}
@@ -377,7 +377,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 .prop-tab{
   background:none;border:none;border-bottom:2px solid transparent;
   padding:9px 20px;margin-bottom:-2px;
-  font-family:'Source Sans 3',inherit;font-size:12px;font-weight:600;
+  font-family:'Open Sans',inherit;font-size:12px;font-weight:600;
   cursor:pointer;color:var(--gr-light);letter-spacing:.3px;
   transition:color .15s,border-color .15s;border-radius:4px 4px 0 0;
 }
@@ -392,7 +392,7 @@ tr:hover td{background:#f0f4f8;transition:background .1s}
 }
 
 /* ── Desc paragraph ─────────────────────────── */
-p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);font-family:'Source Sans 3',sans-serif;font-weight:400}
+p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);font-family:'Open Sans',sans-serif;font-weight:400}
 
 /* ── Escalafon nivel 1 ───────────────────────── */
 .esc-area{
@@ -407,7 +407,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   cursor:pointer;user-select:none;
   display:flex;justify-content:space-between;align-items:center;
   transition:background .15s;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .esc-area-title:hover{background:var(--az-hover)}
 .esc-area-title.open{background:#1d4a68;border-bottom:2px solid var(--am)}
@@ -434,7 +434,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   display:inline-block;padding:3px 9px;
   border-radius:4px;font-size:11px;font-weight:700;
   letter-spacing:.3px;white-space:nowrap;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 
 /* ── Footer strip ────────────────────────────── */
@@ -444,7 +444,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   padding:16px 40px;
   display:flex;align-items:center;justify-content:space-between;
   font-size:12px;color:rgba(255,255,255,.5);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .footer-brand{
   display:flex;align-items:center;gap:12px;
@@ -504,7 +504,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   cursor:pointer;user-select:none;
   display:flex;justify-content:space-between;align-items:center;
   transition:background .15s;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }
 .esc-sub-title:hover{background:#1e4a65}
 .esc-sub-title.open{background:#1e4a65;border-bottom:1px solid rgba(141,226,214,.4)}
@@ -521,7 +521,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
 
 .page-shell{max-width:1380px;margin:0 auto;padding:0}
 .portal-topbar{background:var(--az);display:flex;align-items:center;justify-content:space-between;padding:16px 40px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
-.portal-title{font-size:12px;font-weight:700;color:rgba(255,255,255,.92);letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;font-family:'Source Sans 3',sans-serif}
+.portal-title{font-size:12px;font-weight:700;color:rgba(255,255,255,.92);letter-spacing:1px;text-transform:uppercase;text-align:right;line-height:1.5;font-family:'Open Sans',sans-serif}
 .portal-title span{display:block;color:var(--cy);font-weight:400;letter-spacing:.4px}
 .layout{display:flex;align-items:flex-start}
 .sidebar{background:var(--az);display:flex;flex-direction:column;width:240px;flex-shrink:0;padding:24px 0 32px;min-height:calc(100vh - 72px);position:sticky;top:0;border-right:3px solid var(--am);gap:2px}
@@ -540,28 +540,28 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
 .section-switcher .switch-btn.on{background:var(--az);color:var(--am);border-color:var(--az)}
 .section-pane{display:none}
 .section-pane.on{display:block}
-.portal-footer{background:var(--az);border-top:3px solid var(--am);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.5);font-family:'Source Sans 3',sans-serif}
+.portal-footer{background:var(--az);border-top:3px solid var(--am);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.5);font-family:'Open Sans',sans-serif}
 @media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;min-height:auto;position:static;border-right:none;border-bottom:3px solid var(--am)}.content{padding:24px 20px}.portal-topbar,.portal-footer{padding:16px 20px}.page-intro h1{font-size:22px}}
 .clasi-scope 400;500;600;700&family=Source+Serif+4:opsz, .clasi-scope wght@8..60, .clasi-scope 400;600&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}.clasi-scope{
-  --az:#153244;
-  --az-hover:#1a3d54;
+  --az:#1d3343;
+  --az-hover:#152636;
   --am:#FFCC00;
   --am-light:#fff8cc;
-  --cy:#8DE2D6;
-  --cy-light:#e8f9f7;
-  --cy-mid:#c5f0eb;
-  --gr:#3C3C3B;
-  --gr-light:#6b6b6a;
+  --cy:#009688;
+  --cy-light:#e0f5f3;
+  --cy-mid:#b2e6e1;
+  --gr:#08202f;
+  --gr-light:#6d6d6d;
   --wh:#FCFCFC;
-  --bg:#f0f2f4;
+  --bg:#f3f6f9;
   --surface:#ffffff;
-  --border:#e2e6ea;
+  --border:#e6ebf0;
   --border-strong:#c8cdd3;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
   --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
-  font-family:'Source Sans 3','Helvetica Neue',Arial,sans-serif;
+  font-family:'Open Sans','Helvetica Neue',Arial,sans-serif;
 }.clasi-scope{background:var(--bg);color:var(--gr);padding:40px}.clasi-scope .wrap{max-width:1280px;margin:0 auto;background:var(--surface);padding:40px;border-radius:12px;box-shadow:var(--shadow-md)}.clasi-scope /* ── Header ─────────────────────────────────── */
 .page-header{
   text-align:center;
@@ -614,7 +614,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   margin-top:36px;
   border-radius:6px;
   border-left:4px solid var(--am);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }.clasi-scope .sec-head:first-child{margin-top:0}.clasi-scope .sub-head{
   background:var(--cy-mid);
   color:var(--az);
@@ -626,7 +626,7 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
   margin-top:28px;
   border-radius:4px;
   border-left:3px solid var(--cy);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }.clasi-scope /* ── Alert ───────────────────────────────────── */
 .alert{
   background:var(--am-light);
@@ -669,7 +669,7 @@ table{
   font-weight:600;
   letter-spacing:.4px;
   text-transform:uppercase;
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }.clasi-scope td{
   padding:9px 14px;
   border-bottom:1px solid var(--border);
@@ -707,7 +707,7 @@ table{
   user-select:none;
   transition:background .15s;
   border-left:4px solid var(--az);
-  font-family:'Source Sans 3',sans-serif;
+  font-family:'Open Sans',sans-serif;
 }.clasi-scope .def-head:hover{background:#f4f7fa}.clasi-scope .def-head.open{
   background:#f0f6fa;
   border-left-color:var(--cy);
@@ -1098,7 +1098,7 @@ ul.criteria-list{
   .ot-tipo{font-size:13px;padding-left:10px !important}
   .ot-table .badge{min-width:36px;height:26px;font-size:12px}
 }
-</style></head><body><div class="page-shell"><header id="portal-header"></header><div class="layout">
+</style><link rel="stylesheet" href="portal-obelisco.css"></head><body><div class="page-shell"><header id="portal-header"></header><div class="layout">
 <aside id="portal-sidebar"></aside>
 <div class="content"><div class="page-intro"><h1>Clasificación Docente</h1><p>Criterios, topes, referencias y requisitos de ascenso integrados en la misma experiencia visual del portal.</p></div><div class="clasi-scope"><div class="wrap">
 <!-- Info Cards -->
