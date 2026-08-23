@@ -56,7 +56,17 @@
     });
   }
 
+  function autoInitThemeToggle() {
+    initThemeToggle('themeToggle');
+  }
+
   bootstrapTheme();
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoInitThemeToggle);
+  } else {
+    autoInitThemeToggle();
+  }
 
   global.PortalTheme = {
     bootstrapTheme: bootstrapTheme,

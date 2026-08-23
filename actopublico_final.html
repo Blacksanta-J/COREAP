@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Portal COREAP - Acto Público</title><script src="portal-theme.js"></script><link rel="stylesheet" href="portal-theme.css"><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Portal COREAP - Acto Público</title><script src="portal-theme.js"></script><script src="portal-nav.js"></script><link rel="stylesheet" href="portal-theme.css"><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script><script src="auth-config.js"></script>
 <script src="users-data.js"></script><script src="auth.js"></script><script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'acto_publico' }); });</script><style>
@@ -1118,12 +1118,10 @@ p.desc{font-size:14px;line-height:1.75;margin-bottom:18px;color:var(--gr-light);
     </div>
   </div></div></div>
 <script>
-function switchSection(btn,id){document.querySelectorAll('.switch-btn').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.section-pane').forEach(p=>p.classList.remove('on'));btn.classList.add('on');document.getElementById(id).classList.add('on')}
 function tog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
 function etog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
 function stog(hd){hd.classList.toggle('open');hd.nextElementSibling.classList.toggle('open')}
 function ptab(btn,id){btn.parentElement.querySelectorAll('.prop-tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['p41','p21','p50'].forEach(i=>{var el=document.getElementById(i);if(el)el.style.display=i===id?'block':'none'})}
 function toggleAccordion(element){const body = element.nextElementSibling;element.classList.toggle('open');body.classList.toggle('open')}
-document.addEventListener('DOMContentLoaded',function(){PortalTheme.initThemeToggle('themeToggle');});
 </script>
 </body></html>

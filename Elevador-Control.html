@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal COREAP · Eleves de Concursos</title>
     <script src="portal-theme.js"></script>
+    <script src="portal-nav.js"></script>
     <link rel="stylesheet" href="portal-theme.css">
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -340,10 +341,19 @@
             btn.classList.toggle('active', btn.getAttribute('data-processor') === id);
         });
         document.querySelectorAll('.processor-panel').forEach(function (panel) {
-            panel.classList.toggle('active', panel.id === 'panel-' + id);
+            var isActive = panel.id === 'panel-' + id;
+            panel.classList.toggle('active', isActive);
+            if (isActive) {
+                panel.style.animation = 'none';
+                panel.offsetHeight;
+                panel.style.animation = '';
+            }
         });
         actualizarUiProcesador();
         actualizarInfoModal();
+        if (global.PortalNav && PortalNav.scrollToPanels) {
+            PortalNav.scrollToPanels();
+        }
     }
 
     function actualizarUiProcesador() {
@@ -375,7 +385,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        PortalTheme.initThemeToggle('themeToggle');
         renderProcessorTabs();
         actualizarUiProcesador();
         actualizarInfoModal();
