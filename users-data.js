@@ -1,8 +1,7 @@
 /**
  * Semilla / respaldo de usuarios.
- * Con Firebase configurado: el primer login del admin semilla carga estos
- * usuarios en Firestore. Después las altas viven en la nube.
- * Sin Firebase: se usan junto a localStorage (comportamiento anterior).
+ * Con Firebase: el primer login del admin limpia extras y deja solo este usuario.
+ * Después las altas viven en Firestore.
  */
 window.PORTAL_USERS = [
   {
@@ -14,15 +13,5 @@ window.PORTAL_USERS = [
     apellido: 'Perez',
     fechaNacimiento: '',
     reparticion: 'Sistemas'
-  },
-  {
-    email: 'vacantes.ap@bue.edu.ar',
-    dni: '00000001',
-    role: 'apel',
-    active: true,
-    nombre: 'Vacantes',
-    apellido: 'AP',
-    fechaNacimiento: '',
-    reparticion: 'APEL'
   }
 ];

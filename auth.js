@@ -6,9 +6,10 @@
 (function (global) {
   'use strict';
 
-  var STORAGE_USERS = 'portal-users-v1';
+  var STORAGE_USERS = 'portal-users-v2';
   var STORAGE_SESSION = 'portal-session-v1';
   var ALLOWED_DOMAIN = 'bue.edu.ar';
+  var USERS_RESET_VERSION = 'admin-only-20260823';
 
   var _firebaseAppReady = false;
   var _firestore = null;
@@ -273,21 +274,46 @@
     if (normalizeEmail(actorEmail) !== normalizeEmail(SEED_ADMIN.email)) {
       return Promise.resolve();
     }
-    return _firestore.collection('users').limit(1).get().then(function (snap) {
-      if (!snap.empty) return null;
-      var batch = _firestore.batch();
-      var now = new Date().toISOString();
-      getPublishedUsers().forEach(function (u) {
-        var payload = toFirestorePayload(u);
-        payload.createdAt = payload.createdAt || now;
-        payload.updatedAt = now;
-        batch.set(_firestore.collection('users').doc(userDocId(payload.email)), payload, { merge: true });
+
+    var metaRef = _firestore.collection('_meta').doc('users_reset');
+    var adminPayload = toFirestorePayload(hydratePublishedUser(SEED_ADMIN));
+    adminPayload.id = userDocId(SEED_ADMIN.email);
+    adminPayload.updatedAt = new Date().toISOString();
+
+    return metaRef.get().then(function (metaSnap) {
+      var already = metaSnap.exists && metaSnap.data() && metaSnap.data().version === USERS_RESET_VERSION;
+      if (already) {
+        // Asegurar que el admin exista aunque el reset ya corrió
+        return _firestore.collection('users').doc(userDocId(SEED_ADMIN.email))
+          .set(adminPayload, { merge: true });
+      }
+
+      return _firestore.collection('users').get().then(function (snap) {
+        var batch = _firestore.batch();
+        snap.forEach(function (doc) {
+          var email = normalizeEmail((doc.data() && doc.data().email) || doc.id);
+          if (email !== normalizeEmail(SEED_ADMIN.email)) {
+            batch.delete(doc.ref);
+          }
+        });
+        batch.set(
+          _firestore.collection('users').doc(userDocId(SEED_ADMIN.email)),
+          adminPayload,
+          { merge: true }
+        );
+        batch.set(metaRef, {
+          version: USERS_RESET_VERSION,
+          cleanedAt: new Date().toISOString(),
+          keptAdmin: normalizeEmail(SEED_ADMIN.email)
+        }, { merge: true });
+        return batch.commit();
       });
-      return batch.commit();
     }).then(function () {
+      // Cache local: solo admin
+      writeUsers([Object.assign({}, adminPayload, { id: userDocId(SEED_ADMIN.email) })]);
       return syncFromFirestore();
     }).catch(function (err) {
-      console.error('Firestore bootstrap error', err);
+      console.error('Firestore bootstrap/reset error', err);
     });
   }
 
