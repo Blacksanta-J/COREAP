@@ -57,7 +57,8 @@
     active: true,
     nombre: 'Jonathan',
     apellido: 'Perez',
-    fechaNacimiento: ''
+    fechaNacimiento: '',
+    reparticion: ''
   };
 
   function getGoogleClientId() {
@@ -116,6 +117,7 @@
     }
     if (u.fechaNacimiento === undefined) u.fechaNacimiento = '';
     else u.fechaNacimiento = normalizeBirthDate(u.fechaNacimiento);
+    if (u.reparticion === undefined) u.reparticion = '';
     return u;
   }
 
@@ -165,6 +167,7 @@
       nombre: SEED_ADMIN.nombre,
       apellido: SEED_ADMIN.apellido,
       fechaNacimiento: SEED_ADMIN.fechaNacimiento || '',
+      reparticion: SEED_ADMIN.reparticion || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }];
@@ -229,6 +232,7 @@
       nombre: session.nombre || displayName(user),
       apellido: user.apellido || '',
       fechaNacimiento: user.fechaNacimiento || '',
+      reparticion: user.reparticion || '',
       dni: user.dni,
       picture: session.picture || '',
       provider: session.provider || 'local'
@@ -429,6 +433,7 @@
     var nombre = String(payload.nombre || '').trim();
     var apellido = String(payload.apellido || '').trim();
     var fechaNacimiento = normalizeBirthDate(payload.fechaNacimiento);
+    var reparticion = String(payload.reparticion || '').trim();
     var active = payload.active !== false;
 
     if (!nombre) {
@@ -482,6 +487,7 @@
       existing.nombre = nombre;
       existing.apellido = apellido;
       existing.fechaNacimiento = fechaNacimiento;
+      existing.reparticion = reparticion;
       existing.active = active;
       existing.updatedAt = new Date().toISOString();
       writeUsers(users);
@@ -496,6 +502,7 @@
       nombre: nombre,
       apellido: apellido,
       fechaNacimiento: fechaNacimiento,
+      reparticion: reparticion,
       active: active,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -507,7 +514,7 @@
 
   /**
    * Importa usuarios en lote. Cada fila: email, dni, nombre, apellido,
-   * fechaNacimiento (opcional), role (opcional), active (opcional).
+   * fechaNacimiento (opcional), reparticion (opcional), role (opcional), active (opcional).
    * Por defecto no sobrescribe existentes salvo overwrite=true.
    */
   function importUsers(rows, actor, options) {
@@ -555,6 +562,7 @@
         nombre: row.nombre || row.name || row.firstname,
         apellido: row.apellido || row.lastname || row.surname,
         fechaNacimiento: row.fechaNacimiento || row.fecha_nacimiento || row.nacimiento || row.birthdate,
+        reparticion: row.reparticion || row.repartición || row.area || row.dependencia,
         role: roleRaw,
         active: active
       }, actor);

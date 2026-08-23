@@ -145,6 +145,7 @@ code{font-size:11px}
               <th>Mail</th>
               <th>DNI</th>
               <th>Nacimiento</th>
+              <th>Repartición</th>
               <th>Rol</th>
               <th>Estado</th>
               <th></th>
@@ -191,6 +192,9 @@ code{font-size:11px}
           </div>
         </div>
 
+        <label for="reparticion">Repartición</label>
+        <input id="reparticion" type="text" placeholder="Ej: COREAP, Nivel Medio, etc.">
+
         <label for="role">Rol / permisos</label>
         <select id="role" required>
           <option value="usuarios">Usuarios — solo Manuales</option>
@@ -218,7 +222,7 @@ code{font-size:11px}
       </div>
       <p class="hint">
         Subí un CSV o Excel con columnas:
-        <code>nombre, apellido, email, dni, fecha_nacimiento, role, activo</code>.
+        <code>nombre, apellido, email, dni, fecha_nacimiento, reparticion, role, activo</code>.
         Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>. Roles: <code>admin</code>, <code>apel</code>, <code>usuarios</code>.
       </p>
       <label for="importFile">Archivo</label>
@@ -304,6 +308,7 @@ code{font-size:11px}
     document.getElementById('email').readOnly = true;
     document.getElementById('dni').value = u.dni;
     document.getElementById('fechaNacimiento').value = PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
+    document.getElementById('reparticion').value = u.reparticion || '';
     document.getElementById('role').value = u.role;
     document.getElementById('active').checked = !!u.active;
     document.getElementById('userModalTitle').textContent = 'Editar usuario';
@@ -324,7 +329,7 @@ code{font-size:11px}
     var tbody = document.getElementById('usersBody');
     var users = PortalAuth.getUsers();
     if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="muted">No hay usuarios cargados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="muted">No hay usuarios cargados.</td></tr>';
       return;
     }
     tbody.innerHTML = users.map(function (u) {
@@ -336,6 +341,7 @@ code{font-size:11px}
             escapeHtml(PortalAuth.describePermissions(u.role).join(' · ')) + '</div></td>' +
           '<td>' + escapeHtml(u.dni) + '</td>' +
           '<td>' + escapeHtml(PortalAuth.formatBirthDateDisplay(u.fechaNacimiento)) + '</td>' +
+          '<td>' + escapeHtml(u.reparticion || '—') + '</td>' +
           '<td><span class="badge ' + u.role + '">' + PortalAuth.roleLabel(u.role) + '</span></td>' +
           '<td>' + (u.active ? 'Activo' : 'Inactivo') + '</td>' +
           '<td><div class="user-actions">' +
@@ -363,9 +369,9 @@ code{font-size:11px}
 
   document.getElementById('btnTemplate').addEventListener('click', function () {
     var csv = [
-      'nombre,apellido,email,dni,fecha_nacimiento,role,activo',
-      'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,usuarios,si',
-      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,apel,si'
+      'nombre,apellido,email,dni,fecha_nacimiento,reparticion,role,activo',
+      'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,COREAP,usuarios,si',
+      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,Nivel Medio,apel,si'
     ].join('\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var a = document.createElement('a');
@@ -383,6 +389,7 @@ code{font-size:11px}
       nombre: document.getElementById('nombre').value,
       apellido: document.getElementById('apellido').value,
       fechaNacimiento: document.getElementById('fechaNacimiento').value,
+      reparticion: document.getElementById('reparticion').value,
       role: document.getElementById('role').value,
       active: document.getElementById('active').checked
     }, user);
