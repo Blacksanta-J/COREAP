@@ -20,7 +20,7 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="auth.js?v=20260823-edit"></script>
+<script src="auth.js?v=20260823-edit2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -165,26 +165,26 @@ code{font-size:11px}
         <button type="button" class="modal-close" data-close="userModal" aria-label="Cerrar">✕</button>
       </div>
       <p class="hint" id="userModalHint">Completá los datos del usuario.</p>
-      <form id="userForm">
+      <form id="userForm" novalidate>
         <input type="hidden" id="editId" value="">
         <div class="grid-2">
           <div>
             <label for="nombre">Nombre</label>
-            <input id="nombre" type="text" required placeholder="Nombre">
+            <input id="nombre" type="text" required placeholder="Nombre" autocomplete="given-name">
           </div>
           <div>
             <label for="apellido">Apellido</label>
-            <input id="apellido" type="text" required placeholder="Apellido">
+            <input id="apellido" type="text" required placeholder="Apellido" autocomplete="family-name">
           </div>
         </div>
 
         <label for="email">Mail @bue.edu.ar</label>
-        <input id="email" type="email" required placeholder="nombre.apellido@bue.edu.ar">
+        <input id="email" type="email" required placeholder="nombre.apellido@bue.edu.ar" autocomplete="email">
 
         <div class="grid-2">
           <div>
             <label for="dni">DNI</label>
-            <input id="dni" type="text" inputmode="numeric" pattern="[0-9]{7,8}" maxlength="8" required placeholder="Sin puntos">
+            <input id="dni" type="text" inputmode="numeric" maxlength="8" required placeholder="Sin puntos" autocomplete="off">
           </div>
           <div>
             <label for="fechaNacimiento">Fecha de nacimiento</label>
@@ -339,14 +339,19 @@ code{font-size:11px}
     document.getElementById('apellido').value = u.apellido || '';
     document.getElementById('email').value = u.email || '';
     document.getElementById('email').readOnly = true;
-    document.getElementById('dni').value = u.dni || '';
+    document.getElementById('dni').value = PortalAuth.normalizeDni(u.dni || '');
     document.getElementById('fechaNacimiento').value =
       PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
-    reparticionSelect.value = normalizeReparticionLocal(u.reparticion || '');
+    var repa = normalizeReparticionLocal(u.reparticion || '');
+    reparticionSelect.value = repa;
     document.getElementById('role').value = u.role || 'usuarios';
     document.getElementById('active').checked = !!u.active;
     document.getElementById('userModalTitle').textContent = 'Editar usuario';
-    document.getElementById('userModalHint').textContent = 'Modificá los datos y guardá los cambios.';
+    var hint = 'Modificá los datos y guardá los cambios.';
+    if (u.reparticion && !repa) {
+      hint += ' La repartición anterior (“' + u.reparticion + '”) no está en la lista: elegí una opción.';
+    }
+    document.getElementById('userModalHint').textContent = hint;
     document.getElementById('saveBtn').textContent = 'Actualizar';
     formMsg.className = 'msg';
   }
@@ -419,14 +424,41 @@ code{font-size:11px}
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    formMsg.className = 'msg';
+
+    var dniValue = PortalAuth.normalizeDni(document.getElementById('dni').value);
+    document.getElementById('dni').value = dniValue;
+
+    var nombreValue = String(document.getElementById('nombre').value || '').trim();
+    var apellidoValue = String(document.getElementById('apellido').value || '').trim();
+    var emailValue = String(document.getElementById('email').value || '').trim();
+    var reparticionValue = document.getElementById('reparticion').value;
+
+    if (!nombreValue) {
+      showFormMsg('El nombre es obligatorio.', false);
+      return;
+    }
+    if (!apellidoValue) {
+      showFormMsg('El apellido es obligatorio.', false);
+      return;
+    }
+    if (!emailValue) {
+      showFormMsg('El mail es obligatorio.', false);
+      return;
+    }
+    if (dniValue.length < 7 || dniValue.length > 8) {
+      showFormMsg('El DNI debe tener 7 u 8 dígitos (sin puntos).', false);
+      return;
+    }
+
     var result = PortalAuth.upsertUser({
       id: editId.value || undefined,
-      email: document.getElementById('email').value,
-      dni: document.getElementById('dni').value,
-      nombre: document.getElementById('nombre').value,
-      apellido: document.getElementById('apellido').value,
+      email: emailValue,
+      dni: dniValue,
+      nombre: nombreValue,
+      apellido: apellidoValue,
       fechaNacimiento: document.getElementById('fechaNacimiento').value,
-      reparticion: document.getElementById('reparticion').value,
+      reparticion: reparticionValue,
       role: document.getElementById('role').value,
       active: document.getElementById('active').checked
     }, user);
