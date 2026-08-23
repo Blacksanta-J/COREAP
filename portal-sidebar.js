@@ -13,7 +13,7 @@
       label: 'Portal',
       items: [
         { href: 'actopublico_final.html', label: 'Acto Público', icon: '📋', module: 'acto_publico' },
-        { href: 'seguimiento_final.html', label: 'Seguimiento', icon: '📊' },
+        { href: 'seguimiento_final.html', label: 'Seguimiento', icon: '📊', disabled: true },
         { href: 'clasificacion_final.html', label: 'Clasificación', icon: '🗂️', module: 'clasificacion' }
       ]
     },
@@ -50,6 +50,9 @@
     var html = '';
     var sectionIndex = 0;
 
+    html += '<a class="nav-btn-home" href="index.html"><span class="nav-icon">🏠</span>Home</a>';
+    html += '<div class="nav-divider"></div>';
+
     NAV_SECTIONS.forEach(function (section) {
       var visible = section.items.filter(canShowItem);
       if (!visible.length) return;
@@ -57,6 +60,12 @@
       sectionIndex += 1;
       html += '<div class="sidebar-note">' + section.label + '</div>';
       visible.forEach(function (item) {
+        if (item.disabled) {
+          html += '<span class="nav-link disabled" aria-disabled="true" title="Próximamente">';
+          html += '<span class="nav-icon">' + item.icon + '</span>' + item.label;
+          html += '<span class="nav-soon">Pronto</span></span>';
+          return;
+        }
         var active = page === item.href ? ' active' : '';
         html += '<a class="nav-link' + active + '" href="' + item.href + '">';
         html += '<span class="nav-icon">' + item.icon + '</span>' + item.label + '</a>';
