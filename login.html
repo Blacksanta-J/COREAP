@@ -54,9 +54,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   width:40px;height:40px;border-radius:8px;border:1px solid var(--border);
   background:transparent;cursor:pointer;font-size:18px;color:var(--gr);
 }
-.lead{
-  font-size:15px;line-height:1.5;color:var(--gr);margin-bottom:18px;
-}
+.lead{font-size:15px;line-height:1.5;color:var(--gr);margin-bottom:18px}
 .lead strong{color:#153244}
 html[data-theme="dark"] .lead strong{color:#f2f5f7}
 
@@ -64,31 +62,32 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
   width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
   padding:14px 16px;border-radius:10px;border:1px solid #dadce0;
   background:#fff;color:#3c4043;font-size:15px;font-weight:600;
-  cursor:pointer;text-decoration:none;transition:box-shadow .2s,background .15s;
-  box-shadow:0 1px 2px rgba(0,0,0,.08);
+  cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08);
 }
 .btn-google:hover{background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,.12)}
 .btn-google:disabled{opacity:.55;cursor:not-allowed}
-.btn-google .g-icon{
-  width:22px;height:22px;flex-shrink:0;
-}
+.btn-google .g-icon{width:22px;height:22px;flex-shrink:0}
 .btn-google b{color:#1a73e8}
 
-.config-note{
+#googleBtnHost{
+  margin-top:12px;display:flex;justify-content:center;min-height:44px;
+}
+#googleBtnHost iframe{margin:0 auto !important}
+
+.config-note,.error{
   display:none;margin-top:14px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.45;
+}
+.config-note.visible,.error.visible{display:block}
+.config-note{
   background:rgba(255,204,0,.15);border:1px solid rgba(255,204,0,.45);color:var(--gr);
 }
-.config-note.visible{display:block}
 .config-note code{font-size:11px}
-
 .error{
-  display:none;margin-top:14px;padding:10px 12px;border-radius:8px;
   background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);
-  color:var(--error);font-size:13px;font-weight:600;
+  color:var(--error);font-weight:600;font-size:13px;
 }
-.error.visible{display:block}
 .footer-note{margin-top:18px;font-size:11px;color:var(--gr-light);text-align:center;line-height:1.5}
-#googleBtnHost{min-height:44px;display:flex;justify-content:center}
+.hint{margin-top:10px;font-size:12px;color:var(--gr-light);line-height:1.45;text-align:center}
 </style>
 </head>
 <body>
@@ -114,13 +113,12 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
       <span>Ingresá con tu cuenta <b>@bue.edu.ar</b></span>
     </button>
 
-    <div id="googleBtnHost" hidden></div>
+    <div id="googleBtnHost" aria-label="Botón oficial de Google"></div>
+    <p class="hint" id="originHint"></p>
 
     <div class="config-note" id="configNote">
-      Para habilitar Google Sign-In, configurá el <code>googleClientId</code> en <code>auth-config.js</code>
-      (OAuth Client ID de Google Cloud, orígenes autorizados = URL del portal).
+      Para habilitar Google Sign-In, configurá el <code>googleClientId</code> en <code>auth-config.js</code>.
     </div>
-
     <div class="error" id="errorBox"></div>
 
     <p class="footer-note">Dirección de Carrera Docente · GCBA</p>
@@ -139,7 +137,10 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
   var errorBox = document.getElementById('errorBox');
   var configNote = document.getElementById('configNote');
   var btnGoogle = document.getElementById('btnGoogle');
+  var originHint = document.getElementById('originHint');
   var clientId = PortalAuth.getGoogleClientId();
+  var tokenClient = null;
+  var tries = 0;
 
   function showError(msg) {
     errorBox.textContent = msg;
@@ -177,6 +178,22 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
     setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   });
 
+  if (location.protocol === 'file:') {
+    showError('No abras el portal con file://. Usá un servidor local, por ejemplo: python3 -m http.server 8000 y entrá a http://localhost:8000/login.html');
+  }
+
+  originHint.textContent = 'Origen actual: ' + location.origin +
+    ' — este valor debe estar en “Orígenes de JavaScript autorizados” del Client ID.';
+
+  function finishLogin(result) {
+    btnGoogle.disabled = false;
+    if (!result.ok) {
+      showError(result.error);
+      return;
+    }
+    goNext();
+  }
+
   function handleCredential(response) {
     errorBox.classList.remove('visible');
     if (!response || !response.credential) {
@@ -184,26 +201,49 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
       return;
     }
     btnGoogle.disabled = true;
-    PortalAuth.loginWithGoogleIdToken(response.credential).then(function (result) {
-      btnGoogle.disabled = false;
-      if (!result.ok) {
-        showError(result.error);
-        return;
+    PortalAuth.loginWithGoogleIdToken(response.credential).then(finishLogin);
+  }
+
+  function handleAccessToken(tokenResponse) {
+    errorBox.classList.remove('visible');
+    if (!tokenResponse || !tokenResponse.access_token) {
+      if (tokenResponse && tokenResponse.error) {
+        showError('Google: ' + tokenResponse.error);
+      } else {
+        showError('No se recibió el acceso de Google.');
       }
-      goNext();
-    });
+      return;
+    }
+    btnGoogle.disabled = true;
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('userinfo');
+        return res.json();
+      })
+      .then(function (profile) {
+        finishLogin(PortalAuth.loginWithGoogleProfile(profile));
+      })
+      .catch(function () {
+        btnGoogle.disabled = false;
+        showError('No se pudo obtener el perfil de Google. Revisá orígenes autorizados del Client ID.');
+      });
   }
 
   function initGoogle() {
     if (!clientId) {
       configNote.classList.add('visible');
       btnGoogle.disabled = true;
-      btnGoogle.title = 'Configurá auth-config.js';
       return;
     }
 
     if (!window.google || !google.accounts || !google.accounts.id) {
-      // GIS aún no cargó
+      tries += 1;
+      if (tries > 80) {
+        showError('No se pudo cargar Google Sign-In. Revisá la conexión o bloqueadores.');
+        return;
+      }
       setTimeout(initGoogle, 150);
       return;
     }
@@ -213,31 +253,45 @@ html[data-theme="dark"] .lead strong{color:#f2f5f7}
       callback: handleCredential,
       auto_select: false,
       cancel_on_tap_outside: true,
-      // Restringe el selector a cuentas del dominio Workspace cuando aplica
-      hosted_domain: PortalAuth.ALLOWED_DOMAIN,
-      context: 'signin'
+      ux_mode: 'popup',
+      context: 'signin',
+      // Preferir cuentas del dominio; si falla el picker, igual validamos @bue en auth.js
+      hosted_domain: PortalAuth.ALLOWED_DOMAIN
     });
+
+    // Botón oficial siempre visible (el método más confiable)
+    var host = document.getElementById('googleBtnHost');
+    host.innerHTML = '';
+    google.accounts.id.renderButton(host, {
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      width: Math.min(360, host.parentElement.clientWidth || 360),
+      locale: 'es'
+    });
+
+    // Botón custom: abre popup OAuth (alternativa al One Tap)
+    if (google.accounts.oauth2 && google.accounts.oauth2.initTokenClient) {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'openid email profile',
+        callback: handleAccessToken,
+        error_callback: function (err) {
+          showError((err && err.message) || 'No se pudo abrir el login de Google.');
+        }
+      });
+    }
 
     btnGoogle.disabled = false;
     btnGoogle.addEventListener('click', function () {
       errorBox.classList.remove('visible');
-      // Prompt One Tap / account chooser
-      google.accounts.id.prompt(function (notification) {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback: render botón oficial oculto y disparar click simulado vía renderButton
-          var host = document.getElementById('googleBtnHost');
-          host.hidden = false;
-          host.innerHTML = '';
-          google.accounts.id.renderButton(host, {
-            theme: 'outline',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            width: 360,
-            locale: 'es'
-          });
-        }
-      });
+      if (tokenClient) {
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        return;
+      }
+      // Fallback: One Tap / account chooser
+      google.accounts.id.prompt();
     });
   }
 
