@@ -597,7 +597,6 @@ html[data-theme='dark'] .alert strong {
 
 /* Info cards / ref tables en clasificación */
 html[data-theme='dark'] .info-card,
-html[data-theme='dark'] .ref-table,
 html[data-theme='dark'] .clasi-scope .wrap {
   background: transparent;
 }
@@ -615,9 +614,43 @@ html[data-theme='dark'] .info-card-value {
   color: #ffffff !important;
 }
 
+/* Cuadros ref (Antecedentes, Cargos de Base/Ascenso, etc.) */
+html[data-theme='dark'] .ref-table,
+html[data-theme='dark'] .clasi-scope .ref-table {
+  background: #1a2733 !important;
+  border-color: #3a4f5e !important;
+  color: #f2f5f7 !important;
+}
+
+html[data-theme='dark'] .ref-table h4,
+html[data-theme='dark'] .clasi-scope .ref-table h4 {
+  color: #ffffff !important;
+  border-bottom-color: #ffcc00 !important;
+}
+
+html[data-theme='dark'] .ref-item,
+html[data-theme='dark'] .clasi-scope .ref-item {
+  color: #e8f1f6 !important;
+}
+
+html[data-theme='dark'] .ref-item strong,
+html[data-theme='dark'] .clasi-scope .ref-item strong {
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .ref-item span,
+html[data-theme='dark'] .clasi-scope .ref-item span {
+  color: #e8f1f6 !important;
+}
+
 html[data-theme='dark'] .criteria-list li {
   color: #e8f1f6 !important;
   border-color: #3a4f5e !important;
+}
+
+html[data-theme='dark'] .criteria-list li strong,
+html[data-theme='dark'] .clasi-scope .criteria-list li strong {
+  color: #ffffff !important;
 }
 
 html[data-theme='dark'] .def-head:hover {
