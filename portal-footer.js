@@ -16,7 +16,7 @@
 
   function footerHtml() {
     return ''
-      + '<span>Dirección de Carrera Docente · GCBA</span>'
+      + '<span>COREAP — Comisión de Registro y Evaluación de Antecedentes Profesionales</span>'
       + '<div class="footer-brand">'
       + '<a href="' + JAYJAY_URL + '" target="_blank" rel="noopener noreferrer" title="Jay Jay the Jet Plane">'
       + '<img src="assets/footer-jayjay.png" alt="Jay Jay" class="footer-jayjay" width="64" height="64" loading="lazy" />'
