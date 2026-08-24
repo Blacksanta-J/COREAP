@@ -173,7 +173,7 @@
                 '<strong>Duplicados Id. POF:</strong> Se eliminan registros con el mismo <em>Id. POF</em> (se conserva la primera aparición; los vacíos no se agrupan).',
                 '<strong>Formato Nativo:</strong> Fechas de apertura, publicación, desde y hasta (31/12 del año actual) en formato serial Excel.',
                 '<strong>Nombrado:</strong> El archivo incluye el Área, la palabra "CONTROL" y la fecha de exportación.',
-                '<strong>Informe:</strong> Segunda hoja con conteo de vacantes por área y por cargo.'
+                '<strong>Informe:</strong> Segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
             ]
         },
         {
@@ -189,7 +189,7 @@
                 '<strong>Mapeo de Áreas y Turnos:</strong> Igual que Control (códigos de área, Mañana/Tarde/NOCHE/Completo).',
                 '<strong>Campos fijos:</strong> Sit. Rev. = INTERINO; Base/Ascenso y Tipo de Listado = 3; Novedad mayor a 60 días = 2.',
                 '<strong>Nombrado:</strong> El archivo descargado incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
-                '<strong>Informe:</strong> Segunda hoja con conteo de vacantes por área y por cargo.'
+                '<strong>Informe:</strong> Segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
             ]
         },
         {
@@ -495,107 +495,152 @@
         });
     }
 
-    function construirInformeVacantes(dataFinal) {
-        const porArea = {};
-        const porAreaCargo = {};
+    function stripHtmlInforme(html) {
+        return String(html || '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .trim();
+    }
 
-        dataFinal.forEach(fila => {
-            const area = String(fila["AREA"] || "").trim() || "(Sin área)";
-            const codCargo = String(fila["CODIGO CARGO"] || "").trim();
-            const descCargo = String(fila["DESCRIPCION CARGO"] || "").trim() || "(Sin cargo)";
-            const claveCargo = `${codCargo}||${descCargo}`;
+    /**
+     * Hoja Informe: texto del proceso + tabla dinámica
+     * (Área × Cargo × Asignatura × Especialidad → cantidad).
+     * Devuelve filas como matriz (AOA) para XLSX.utils.aoa_to_sheet.
+     */
+    function construirHojaInforme(dataFinal, options) {
+        options = options || {};
+        var proc = options.procesador || {};
+        var duplicadosEliminados = options.duplicadosEliminados || 0;
+        var totalGeneral = (dataFinal || []).length;
+        var filas = [];
+        var i;
 
-            porArea[area] = (porArea[area] || 0) + 1;
+        filas.push(['INFORME DEL PROCESAMIENTO']);
+        filas.push(['Procesador', proc.label || '']);
+        filas.push(['Fecha de exportación', new Date().toLocaleString('es-AR')]);
+        filas.push(['Vacantes en hoja Resultado', totalGeneral]);
+        if (proc.id === 'control') {
+            filas.push(['Registros eliminados por Id. POF duplicado', duplicadosEliminados]);
+        }
+        filas.push([]);
+        filas.push(['PROCESO REALIZADO']);
+        filas.push([proc.descripcion || '']);
+        filas.push([]);
+        (proc.reglas || []).forEach(function (regla, idx) {
+            filas.push([(idx + 1) + '. ' + stripHtmlInforme(regla)]);
+        });
+        if (proc.id === 'control') {
+            filas.push([
+                (proc.reglas && proc.reglas.length ? proc.reglas.length + 1 : 1) +
+                '. En esta corrida se eliminaron ' + duplicadosEliminados +
+                ' registro(s) con Id. POF duplicado (se conservó la primera aparición).'
+            ]);
+        }
+        filas.push([]);
+        filas.push(['TABLA DINÁMICA — Vacantes por Área / Cargo / Asignatura / Especialidad']);
+        filas.push([]);
 
-            if (!porAreaCargo[area]) porAreaCargo[area] = {};
-            if (!porAreaCargo[area][claveCargo]) {
-                porAreaCargo[area][claveCargo] = { codigo: codCargo, descripcion: descCargo, cantidad: 0 };
+        var headerRowIndex = filas.length; // 0-based for Excel sheet later
+        filas.push([
+            'AREA',
+            'CODIGO CARGO',
+            'DESCRIPCION CARGO',
+            'CODIGO ASIGNATURA',
+            'DESCRIPCION ASIGNATURA',
+            'CODIGO ESPECIALIDAD',
+            'DESCRIPCION ESPECIALIDAD',
+            'CANTIDAD VACANTES'
+        ]);
+
+        var agrupado = {};
+        var porArea = {};
+
+        (dataFinal || []).forEach(function (fila) {
+            var area = String(fila['AREA'] || '').trim() || '(Sin área)';
+            var codCargo = String(fila['CODIGO CARGO'] || '').trim();
+            var descCargo = String(fila['DESCRIPCION CARGO'] || '').trim() || '(Sin cargo)';
+            var codAsig = String(fila['CODIGO ASIGNATURA'] || '').trim();
+            var descAsig = String(fila['DESCRIPCION ASIGNATURA'] || '').trim() || '(Sin asignatura)';
+            var codEsp = String(fila['CODIGO ESPECIALIDAD'] || '').trim();
+            var descEsp = String(fila['DESCRIPCION ESPECIALIDAD'] || '').trim() || '(Sin especialidad)';
+            var clave = [area, codCargo, descCargo, codAsig, descAsig, codEsp, descEsp].join('||');
+
+            if (!agrupado[clave]) {
+                agrupado[clave] = {
+                    area: area,
+                    codCargo: codCargo,
+                    descCargo: descCargo,
+                    codAsig: codAsig,
+                    descAsig: descAsig,
+                    codEsp: codEsp,
+                    descEsp: descEsp,
+                    cantidad: 0
+                };
             }
-            porAreaCargo[area][claveCargo].cantidad += 1;
+            agrupado[clave].cantidad += 1;
+            porArea[area] = (porArea[area] || 0) + 1;
         });
 
-        const filas = [];
-        const areasOrdenadas = Object.keys(porArea).sort((a, b) => a.localeCompare(b, "es"));
-
-        filas.push({
-            "SECCIÓN": "RESUMEN POR ÁREA",
-            "AREA": "",
-            "CODIGO CARGO": "",
-            "DESCRIPCION CARGO": "",
-            "CANTIDAD VACANTES": ""
+        var items = Object.keys(agrupado).map(function (k) { return agrupado[k]; });
+        items.sort(function (a, b) {
+            var cmp = a.area.localeCompare(b.area, 'es');
+            if (cmp) return cmp;
+            cmp = a.descCargo.localeCompare(b.descCargo, 'es');
+            if (cmp) return cmp;
+            cmp = a.descAsig.localeCompare(b.descAsig, 'es');
+            if (cmp) return cmp;
+            return a.descEsp.localeCompare(b.descEsp, 'es');
         });
 
-        let totalGeneral = 0;
-        areasOrdenadas.forEach(area => {
-            filas.push({
-                "SECCIÓN": "",
-                "AREA": area,
-                "CODIGO CARGO": "",
-                "DESCRIPCION CARGO": "",
-                "CANTIDAD VACANTES": porArea[area]
+        var areasOrdenadas = Object.keys(porArea).sort(function (a, b) {
+            return a.localeCompare(b, 'es');
+        });
+
+        areasOrdenadas.forEach(function (area) {
+            items.filter(function (it) { return it.area === area; }).forEach(function (it) {
+                filas.push([
+                    it.area,
+                    it.codCargo,
+                    it.descCargo,
+                    it.codAsig,
+                    it.descAsig,
+                    it.codEsp,
+                    it.descEsp,
+                    it.cantidad
+                ]);
             });
-            totalGeneral += porArea[area];
+            filas.push([
+                'Subtotal ' + area,
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                porArea[area]
+            ]);
         });
 
-        filas.push({
-            "SECCIÓN": "",
-            "AREA": "TOTAL GENERAL",
-            "CODIGO CARGO": "",
-            "DESCRIPCION CARGO": "",
-            "CANTIDAD VACANTES": totalGeneral
-        });
+        filas.push([
+            'TOTAL GENERAL',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            totalGeneral
+        ]);
 
-        filas.push({
-            "SECCIÓN": "",
-            "AREA": "",
-            "CODIGO CARGO": "",
-            "DESCRIPCION CARGO": "",
-            "CANTIDAD VACANTES": ""
-        });
-
-        filas.push({
-            "SECCIÓN": "DETALLE POR ÁREA Y CARGO",
-            "AREA": "",
-            "CODIGO CARGO": "",
-            "DESCRIPCION CARGO": "",
-            "CANTIDAD VACANTES": ""
-        });
-
-        areasOrdenadas.forEach(area => {
-            const cargos = Object.values(porAreaCargo[area] || {}).sort((a, b) => {
-                const d = a.descripcion.localeCompare(b.descripcion, "es");
-                if (d !== 0) return d;
-                return String(a.codigo).localeCompare(String(b.codigo), "es");
-            });
-
-            cargos.forEach(cargo => {
-                filas.push({
-                    "SECCIÓN": "",
-                    "AREA": area,
-                    "CODIGO CARGO": cargo.codigo,
-                    "DESCRIPCION CARGO": cargo.descripcion,
-                    "CANTIDAD VACANTES": cargo.cantidad
-                });
-            });
-
-            filas.push({
-                "SECCIÓN": "",
-                "AREA": `Subtotal ${area}`,
-                "CODIGO CARGO": "",
-                "DESCRIPCION CARGO": "",
-                "CANTIDAD VACANTES": porArea[area]
-            });
-        });
-
-        filas.push({
-            "SECCIÓN": "",
-            "AREA": "TOTAL GENERAL",
-            "CODIGO CARGO": "",
-            "DESCRIPCION CARGO": "",
-            "CANTIDAD VACANTES": totalGeneral
-        });
-
-        return filas;
+        return {
+            aoa: filas,
+            headerRowIndex: headerRowIndex,
+            lastDataRowIndex: filas.length - 1
+        };
     }
 
     /** Control: deja una sola fila por Id. POF (primera aparición). IDs vacíos se conservan. */
@@ -826,17 +871,27 @@
 
                 XLSX.utils.book_append_sheet(wb, ws, "Resultado");
 
-                const informeFilas = construirInformeVacantes(dataFinal);
-                const wsInforme = XLSX.utils.json_to_sheet(informeFilas, {
-                    header: ["SECCIÓN", "AREA", "CODIGO CARGO", "DESCRIPCION CARGO", "CANTIDAD VACANTES"]
+                var informe = construirHojaInforme(dataFinal, {
+                    procesador: proc,
+                    duplicadosEliminados: duplicadosEliminados
                 });
-                wsInforme["!cols"] = [
+                var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+                wsInforme['!cols'] = [
                     { wch: 28 },
-                    { wch: 32 },
                     { wch: 14 },
-                    { wch: 40 },
+                    { wch: 36 },
+                    { wch: 16 },
+                    { wch: 36 },
+                    { wch: 16 },
+                    { wch: 36 },
                     { wch: 18 }
                 ];
+                /* Autofiltro sobre la tabla dinámica para filtrar/ordenar como pivot */
+                if (informe.lastDataRowIndex > informe.headerRowIndex) {
+                    var start = XLSX.utils.encode_cell({ r: informe.headerRowIndex, c: 0 });
+                    var end = XLSX.utils.encode_cell({ r: informe.lastDataRowIndex, c: 7 });
+                    wsInforme['!autofilter'] = { ref: start + ':' + end };
+                }
                 XLSX.utils.book_append_sheet(wb, wsInforme, "Informe");
                 
                 let nombreArchivo = areaDetectada + '_' + proc.suffix + '_' + formatearFechaHoraNombre() + '.xlsx';
