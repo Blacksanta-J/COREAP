@@ -608,18 +608,21 @@
         return getUsers();
       }
       return waitForFirebaseAuth().then(function (fbUser) {
-        /* Si hay Auth Firebase pero no sesión portal (p. ej. pestaña nueva), reconstruirla */
-        if (fbUser && fbUser.email && !getSession()) {
-          var portalUser = findUserByEmail(fbUser.email);
-          if (portalUser && portalUser.active) {
-            setSession(portalUser, {
-              nombre: fbUser.displayName || displayName(portalUser),
-              picture: fbUser.photoURL || '',
-              provider: 'google'
-            });
+        return syncFromFirestore().then(function () {
+          /* Auth Firebase persiste entre pestañas; la sesión portal no siempre.
+             Si hay usuario Firebase y no hay sesión portal, reconstruirla. */
+          if (fbUser && fbUser.email && !getSession()) {
+            var portalUser = findUserByEmail(fbUser.email);
+            if (portalUser && portalUser.active) {
+              setSession(portalUser, {
+                nombre: fbUser.displayName || displayName(portalUser),
+                picture: fbUser.photoURL || '',
+                provider: 'google'
+              });
+            }
           }
-        }
-        return syncFromFirestore();
+          return getUsers();
+        });
       });
     });
     return _readyPromise;
