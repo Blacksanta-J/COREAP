@@ -22,7 +22,7 @@
 window.PORTAL_AUTH_CONFIG = {
   googleClientId: '691135057707-64u4hv4k93ogmt9mv2hgg0pf656qeld5.apps.googleusercontent.com',
   /** URL de la presentación de Google Slides del cronograma COREAP */
-  cronogramaSlidesUrl: '',
+  cronogramaSlidesUrl: 'https://docs.google.com/presentation/d/1v_-sGar57nR3HIXD04-FdxELPJ-ugtK3/edit?usp=sharing',
   firebase: {
     apiKey: 'AIzaSyDLHYqb9yM_FWFoxsczkKEDpPns9OLUFtA',
     authDomain: 'portal-coreap.firebaseapp.com',
