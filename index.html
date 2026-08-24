@@ -520,6 +520,8 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#1d3343}
   if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
     PortalHeader.fillUserMenu(user);
   }
+  }).catch(function () {
+    PortalAuth.requireAuth();
   });
 })();
 </script>

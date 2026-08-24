@@ -653,7 +653,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   PortalTheme.initThemeToggle('themeToggle');
   }).catch(function (err) {
     console.error(err);
-    alert('No se pudo cargar usuarios. Reintentá.');
+    PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_usuarios });
   });
 })();
 </script>
