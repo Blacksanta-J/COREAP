@@ -1,7 +1,7 @@
 /**
  * Portal COREAP — autenticación y permisos (cliente).
  * Login Google con cuentas @bue.edu.ar + usuarios precargados (mail + DNI).
- * Roles: admin | apel | usuarios
+ * Roles: admin | apel | concursos | usuarios (un usuario puede tener varios).
  */
 (function (global) {
   'use strict';
@@ -20,14 +20,19 @@
   var ROLES = {
     admin: 'admin',
     apel: 'apel',
+    concursos: 'concursos',
     usuarios: 'usuarios'
   };
 
   var ROLE_LABELS = {
     admin: 'Admin',
     apel: 'APEL',
+    concursos: 'Concursos',
     usuarios: 'Usuarios'
   };
+
+  /** Orden de prioridad para el rol “principal” (legacy `role`). */
+  var ROLE_PRIORITY = [ROLES.admin, ROLES.apel, ROLES.concursos, ROLES.usuarios];
 
   var MODULES = {
     acto_publico: 'acto_publico',
@@ -54,6 +59,7 @@
       MODULES.admin_usuarios
     ],
     apel: MANUALES.concat([MODULES.eleves_acto]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos]),
     usuarios: MANUALES.slice()
   };
 
@@ -61,6 +67,7 @@
     email: 'jonathanalejandro.perez@bue.edu.ar',
     dni: '36729167',
     role: ROLES.admin,
+    roles: [ROLES.admin],
     active: true,
     nombre: 'Jonathan',
     apellido: 'Perez',
@@ -129,6 +136,69 @@
     return user.nombre || user.email || '';
   }
 
+  function normalizeRoleToken(raw) {
+    var role = String(raw || '').trim().toLowerCase();
+    if (role === 'usuario') role = ROLES.usuarios;
+    if (role === 'administrador') role = ROLES.admin;
+    if (role === 'concurso') role = ROLES.concursos;
+    if (!ROLE_PERMISSIONS[role]) return '';
+    return role;
+  }
+
+  /** Acepta string, lista o CSV ("admin,apel") → roles válidos únicos ordenados. */
+  function normalizeRoles(input) {
+    var list = [];
+    if (Array.isArray(input)) {
+      list = input;
+    } else if (input != null && String(input).trim() !== '') {
+      list = String(input).split(/[,|;/]+/);
+    }
+    var out = [];
+    var seen = {};
+    list.forEach(function (item) {
+      var role = normalizeRoleToken(item);
+      if (role && !seen[role]) {
+        seen[role] = true;
+        out.push(role);
+      }
+    });
+    if (!out.length) out = [ROLES.usuarios];
+    out.sort(function (a, b) {
+      return ROLE_PRIORITY.indexOf(a) - ROLE_PRIORITY.indexOf(b);
+    });
+    return out;
+  }
+
+  function userRoles(user) {
+    if (!user) return [ROLES.usuarios];
+    if (Array.isArray(user.roles) && user.roles.length) {
+      return normalizeRoles(user.roles);
+    }
+    if (user.role) return normalizeRoles(user.role);
+    return [ROLES.usuarios];
+  }
+
+  function primaryRole(userOrRoles) {
+    if (Array.isArray(userOrRoles)) return normalizeRoles(userOrRoles)[0] || ROLES.usuarios;
+    return userRoles(userOrRoles)[0] || ROLES.usuarios;
+  }
+
+  function applyRolesToUser(u, rolesInput) {
+    if (!u) return u;
+    var roles = normalizeRoles(rolesInput);
+    u.roles = roles;
+    u.role = roles[0];
+    return u;
+  }
+
+  function userHasRole(user, role) {
+    return userRoles(user).indexOf(role) !== -1;
+  }
+
+  function isAdminUser(user) {
+    return userHasRole(user, ROLES.admin);
+  }
+
   function migrateUserShape(u) {
     if (!u || typeof u !== 'object') return u;
     if (!u.id) u.id = uid();
@@ -148,10 +218,10 @@
     else u.fechaNacimiento = normalizeBirthDate(u.fechaNacimiento);
     if (u.reparticion === undefined) u.reparticion = '';
     else {
-      // Conservar vacío; si hay valor libre viejo, intentar mapear a la lista fija
       var mapped = normalizeReparticion(u.reparticion);
       if (mapped) u.reparticion = mapped;
     }
+    applyRolesToUser(u, (Array.isArray(u.roles) && u.roles.length) ? u.roles : u.role);
     return u;
   }
 
@@ -306,10 +376,12 @@
   }
 
   function toFirestorePayload(u) {
+    var roles = userRoles(u);
     return {
       email: normalizeEmail(u.email),
       dni: normalizeDni(u.dni),
-      role: u.role,
+      role: roles[0],
+      roles: roles,
       active: !!u.active,
       nombre: u.nombre || '',
       apellido: u.apellido || '',
@@ -327,6 +399,7 @@
       email: normalizeEmail(d.email || doc.id),
       dni: normalizeDni(d.dni),
       role: d.role || ROLES.usuarios,
+      roles: Array.isArray(d.roles) ? d.roles : (d.role ? [d.role] : [ROLES.usuarios]),
       active: d.active !== false,
       nombre: d.nombre || '',
       apellido: d.apellido || '',
@@ -348,6 +421,7 @@
     admin.id = userDocId(seedEmail);
     admin.email = seedEmail;
     admin.role = ROLES.admin;
+    admin.roles = [ROLES.admin];
     admin.active = true;
     migrateUserShape(admin);
     return admin;
@@ -365,7 +439,9 @@
       return list;
     }
     if (list[idx].active === false) list[idx].active = true;
-    if (list[idx].role !== ROLES.admin) list[idx].role = ROLES.admin;
+    var roles = userRoles(list[idx]);
+    if (roles.indexOf(ROLES.admin) === -1) roles.unshift(ROLES.admin);
+    applyRolesToUser(list[idx], roles);
     return list;
   }
 
@@ -389,6 +465,7 @@
         return docRef.set({
           email: seedEmail,
           role: ROLES.admin,
+          roles: [ROLES.admin],
           active: true
         }, { merge: true });
       }
@@ -474,17 +551,17 @@
   function hydratePublishedUser(raw) {
     var email = normalizeEmail(raw && raw.email);
     if (!email) return null;
-    var role = String((raw && raw.role) || ROLES.usuarios).trim().toLowerCase();
-    if (role === 'usuario') role = ROLES.usuarios;
-    if (role === 'administrador') role = ROLES.admin;
-    if (!ROLE_PERMISSIONS[role]) role = ROLES.usuarios;
+    var roles = normalizeRoles(
+      (raw && raw.roles) || (raw && raw.role) || ROLES.usuarios
+    );
     var active = true;
     if (raw && typeof raw.active === 'boolean') active = raw.active;
     return {
       id: (raw && raw.id) || uid(),
       email: email,
       dni: normalizeDni((raw && raw.dni) || ''),
-      role: role,
+      role: roles[0],
+      roles: roles,
       active: active,
       nombre: String((raw && raw.nombre) || '').trim(),
       apellido: String((raw && raw.apellido) || '').trim(),
@@ -562,10 +639,12 @@
   /** Genera el contenido de users-data.js a partir de la base actual. */
   function exportUsersDataJs(usersList) {
     var list = (usersList || ensureSeed()).map(function (u) {
+      var roles = userRoles(u);
       return {
         email: normalizeEmail(u.email),
         dni: normalizeDni(u.dni),
-        role: u.role,
+        role: roles[0],
+        roles: roles,
         active: !!u.active,
         nombre: u.nombre || '',
         apellido: u.apellido || '',
@@ -670,10 +749,12 @@
 
   function setSession(user, extra) {
     extra = extra || {};
+    var roles = userRoles(user);
     var session = {
       id: user.id,
       email: user.email,
-      role: user.role,
+      role: roles[0],
+      roles: roles,
       nombre: extra.nombre || displayName(user),
       picture: extra.picture || '',
       provider: extra.provider || 'local',
@@ -696,11 +777,12 @@
     ensureSeedLocal();
     var user = findUserByEmail(session.email);
     if (!user) {
-      /* No borrar la sesión solo porque la lista aún no sincronizó */
+      var sessionRoles = normalizeRoles(session.roles || session.role);
       return {
         id: session.id || '',
         email: normalizeEmail(session.email),
-        role: session.role || ROLES.usuarios,
+        role: sessionRoles[0],
+        roles: sessionRoles,
         nombre: session.nombre || session.email,
         apellido: '',
         fechaNacimiento: '',
@@ -714,10 +796,12 @@
       clearSession();
       return null;
     }
+    var roles = userRoles(user);
     return {
       id: user.id,
       email: user.email,
-      role: user.role,
+      role: roles[0],
+      roles: roles,
       nombre: session.nombre || displayName(user),
       apellido: user.apellido || '',
       fechaNacimiento: user.fechaNacimiento || '',
@@ -732,10 +816,20 @@
     return (ROLE_PERMISSIONS[role] || []).slice();
   }
 
+  function permissionsForUser(user) {
+    var set = {};
+    userRoles(user).forEach(function (role) {
+      permissionsFor(role).forEach(function (mod) {
+        set[mod] = true;
+      });
+    });
+    return Object.keys(set);
+  }
+
   function canAccess(moduleKey, user) {
     var u = user || currentUser();
     if (!u) return false;
-    return permissionsFor(u.role).indexOf(moduleKey) !== -1;
+    return permissionsForUser(u).indexOf(moduleKey) !== -1;
   }
 
   function acceptPreloadedUser(email, extras) {
@@ -945,13 +1039,16 @@
   function upsertUser(payload, actor) {
     function fail(msg) { return Promise.resolve({ ok: false, error: msg }); }
 
-    if (!actor || actor.role !== ROLES.admin) {
+    if (!isAdminUser(actor)) {
       return fail('Solo Admin puede gestionar usuarios.');
     }
 
     var email = normalizeEmail(payload.email);
     var dni = normalizeDni(payload.dni);
-    var role = payload.role || ROLES.usuarios;
+    var roles = normalizeRoles(
+      payload.roles != null ? payload.roles : (payload.role || ROLES.usuarios)
+    );
+    var role = roles[0];
     var nombre = String(payload.nombre || '').trim();
     var apellido = String(payload.apellido || '').trim();
     var fechaNacimiento = normalizeBirthDate(payload.fechaNacimiento);
@@ -974,7 +1071,7 @@
     if (payload.reparticion && String(payload.reparticion).trim() && !reparticion) {
       return fail('Repartición inválida. Opciones: ' + REPARTICIONES.join(', ') + '.');
     }
-    if (!ROLE_PERMISSIONS[role]) return fail('Rol inválido.');
+    if (!roles.length) return fail('Seleccioná al menos un rol.');
 
     var users = ensureSeed();
     var existing = null;
@@ -1003,27 +1100,28 @@
 
     if (existing) {
       if (normalizeEmail(existing.email) === normalizeEmail(SEED_ADMIN.email)) {
-        role = ROLES.admin;
+        if (roles.indexOf(ROLES.admin) === -1) roles.unshift(ROLES.admin);
+        roles = normalizeRoles(roles);
+        role = roles[0];
         active = true;
       }
-      if (existing.role === ROLES.admin && role !== ROLES.admin) {
+      if (userHasRole(existing, ROLES.admin) && roles.indexOf(ROLES.admin) === -1) {
         var otherAdmins = users.filter(function (u) {
-          return u.id !== existing.id && u.role === ROLES.admin && u.active;
+          return u.id !== existing.id && userHasRole(u, ROLES.admin) && u.active;
         });
         if (!otherAdmins.length) return fail('Debe quedar al menos un Admin activo.');
       }
-      if (existing.role === ROLES.admin && active === false) {
+      if (userHasRole(existing, ROLES.admin) && active === false) {
         var otherAdmins2 = users.filter(function (u) {
-          return u.id !== existing.id && u.role === ROLES.admin && u.active;
+          return u.id !== existing.id && userHasRole(u, ROLES.admin) && u.active;
         });
         if (!otherAdmins2.length) return fail('No podés desactivar el único Admin.');
       }
 
-      // Si cambia el mail, el doc id en Firestore es el mail
       var oldEmail = normalizeEmail(existing.email);
       existing.email = email;
       existing.dni = dni;
-      existing.role = role;
+      applyRolesToUser(existing, roles);
       existing.nombre = nombre;
       existing.apellido = apellido;
       existing.fechaNacimiento = fechaNacimiento;
@@ -1039,6 +1137,7 @@
         email: email,
         dni: dni,
         role: role,
+        roles: roles,
         nombre: nombre,
         apellido: apellido,
         fechaNacimiento: fechaNacimiento,
@@ -1101,7 +1200,7 @@
   function importUsers(rows, actor, options) {
     options = options || {};
     function fail(msg) { return Promise.resolve({ ok: false, error: msg, created: 0, updated: 0, skipped: 0, errors: [msg] }); }
-    if (!actor || actor.role !== ROLES.admin) {
+    if (!isAdminUser(actor)) {
       return fail('Solo Admin puede importar usuarios.');
     }
     if (!Array.isArray(rows) || !rows.length) {
@@ -1127,9 +1226,9 @@
           skipped += 1;
           return;
         }
-        var roleRaw = String(row.role || row.rol || 'usuarios').trim().toLowerCase();
-        if (roleRaw === 'usuario') roleRaw = 'usuarios';
-        if (roleRaw === 'administrador') roleRaw = 'admin';
+        var rolesRaw = row.roles != null && String(row.roles).trim() !== ''
+          ? row.roles
+          : (row.role || row.rol || 'usuarios');
         var activeRaw = row.active !== undefined ? row.active : row.activo;
         var active = true;
         if (activeRaw !== undefined && activeRaw !== null && String(activeRaw).trim() !== '') {
@@ -1143,7 +1242,7 @@
           apellido: row.apellido || row.lastname || row.surname,
           fechaNacimiento: row.fechaNacimiento || row.fecha_nacimiento || row.nacimiento || row.birthdate,
           reparticion: row.reparticion || row.repartición || row.area || row.dependencia,
-          role: roleRaw,
+          roles: rolesRaw,
           active: active
         }, actor).then(function (result) {
           if (!result.ok) {
@@ -1169,7 +1268,7 @@
 
   function removeUser(userId, actor) {
     function fail(msg) { return Promise.resolve({ ok: false, error: msg }); }
-    if (!actor || actor.role !== ROLES.admin) {
+    if (!isAdminUser(actor)) {
       return fail('Solo Admin puede eliminar usuarios.');
     }
     var users = ensureSeed();
@@ -1182,9 +1281,9 @@
     if (target.email === normalizeEmail(SEED_ADMIN.email)) {
       return fail('No se puede eliminar el Admin inicial.');
     }
-    if (target.role === ROLES.admin) {
+    if (userHasRole(target, ROLES.admin)) {
       var otherAdmins = users.filter(function (u) {
-        return u.id !== target.id && u.role === ROLES.admin && u.active;
+        return u.id !== target.id && userHasRole(u, ROLES.admin) && u.active;
       });
       if (!otherAdmins.length) {
         return fail('Debe quedar al menos un Admin activo.');
@@ -1216,7 +1315,13 @@
     return ROLE_LABELS[role] || role;
   }
 
-  function describePermissions(role) {
+  function rolesLabel(userOrRoles) {
+    return userRoles(
+      Array.isArray(userOrRoles) ? { roles: userOrRoles } : userOrRoles
+    ).map(roleLabel).join(' · ');
+  }
+
+  function describePermissions(roleOrUser) {
     var map = {
       acto_publico: 'Acto Público',
       clasificacion: 'Clasificación',
@@ -1225,7 +1330,10 @@
       eleves_concursos: 'Eleves Concursos',
       admin_usuarios: 'Gestión de usuarios'
     };
-    return permissionsFor(role).map(function (k) { return map[k] || k; });
+    var mods = roleOrUser && typeof roleOrUser === 'object'
+      ? permissionsForUser(roleOrUser)
+      : permissionsFor(roleOrUser);
+    return mods.map(function (k) { return map[k] || k; });
   }
 
   global.PortalAuth = {
@@ -1242,6 +1350,7 @@
     normalizeDni: normalizeDni,
     normalizeBirthDate: normalizeBirthDate,
     normalizeReparticion: normalizeReparticion,
+    normalizeRoles: normalizeRoles,
     formatBirthDateDisplay: formatBirthDateDisplay,
     displayName: displayName,
     isBueEmail: isBueEmail,
@@ -1257,10 +1366,15 @@
     requireAuth: requireAuth,
     canAccess: canAccess,
     permissionsFor: permissionsFor,
+    permissionsForUser: permissionsForUser,
+    userRoles: userRoles,
+    userHasRole: userHasRole,
+    isAdminUser: isAdminUser,
     upsertUser: upsertUser,
     importUsers: importUsers,
     removeUser: removeUser,
     roleLabel: roleLabel,
+    rolesLabel: rolesLabel,
     describePermissions: describePermissions,
     ensureSeed: ensureSeed,
     ready: ready,

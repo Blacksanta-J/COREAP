@@ -15,11 +15,21 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(email);
     }
 
+    function userData() {
+      return get(userDocPath(request.auth.token.email)).data;
+    }
+
+    function hasAdminRole() {
+      let data = userData();
+      return data.role == 'admin'
+        || (data.roles is list && 'admin' in data.roles);
+    }
+
     function isAdmin() {
       return isBue()
         && exists(userDocPath(request.auth.token.email))
-        && get(userDocPath(request.auth.token.email)).data.role == 'admin'
-        && get(userDocPath(request.auth.token.email)).data.active != false;
+        && hasAdminRole()
+        && userData().active != false;
     }
 
     function isSeedAdmin() {

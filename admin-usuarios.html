@@ -18,8 +18,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260824-tabs2"></script>
-<script src="auth.js?v=20260824-tabs2"></script>
+<script src="users-data.js?v=20260824-roles1"></script>
+<script src="auth.js?v=20260824-roles1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -89,6 +89,15 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-li
 html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 .badge.admin{background:rgba(255,204,0,.25)}
 .badge.apel{background:rgba(141,226,214,.3)}
+.badge.concursos{background:rgba(96,165,250,.28)}
+.badge.usuarios{background:rgba(148,163,184,.25)}
+.badge-stack{display:flex;flex-wrap:wrap;gap:4px}
+.roles-grid{
+  display:grid;gap:8px;margin:6px 0 12px;
+  padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);
+}
+.roles-grid label{display:flex;align-items:flex-start;gap:8px;font-size:13px;font-weight:500;cursor:pointer;margin:0}
+.roles-grid .role-desc{display:block;font-size:11px;font-weight:400;color:var(--gr-light);margin-top:2px}
 .muted{color:var(--gr-light);font-size:12px}
 .user-actions{display:flex;gap:6px;flex-wrap:wrap}
 .modal-overlay{
@@ -131,7 +140,6 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     <div class="callout" id="publishHint">
       Con <strong>Firebase</strong> configurado en <code>auth-config.js</code>, las altas se guardan en la nube
       y el usuario puede ingresar desde cualquier PC al instante.
-      Si Firebase aún no está configurado, usá “Descargar users-data.js” como respaldo.
     </div>
 
     <div class="toast" id="pageToast"></div>
@@ -140,7 +148,6 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       <button type="button" class="btn-primary" id="btnNewUser">Nuevo usuario</button>
       <button type="button" class="btn-secondary" id="btnImport">Importar usuarios</button>
       <button type="button" class="btn-secondary" id="btnTemplate">Descargar plantilla CSV</button>
-      <button type="button" class="btn-secondary" id="btnExportUsersData">Descargar users-data.js</button>
     </div>
 
     <section class="panel">
@@ -208,12 +215,25 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
           <option value="">Seleccioná una repartición</option>
         </select>
 
-        <label for="role">Rol / permisos</label>
-        <select id="role" required>
-          <option value="usuarios">Usuarios — solo Manuales</option>
-          <option value="apel">APEL — Acto Público + Eleves Acto Público + Manuales</option>
-          <option value="admin">Admin — todo + asignar permisos</option>
-        </select>
+        <span class="label-text">Roles / permisos</span>
+        <div class="roles-grid" id="rolesGrid" role="group" aria-label="Roles del usuario">
+          <label>
+            <input type="checkbox" name="roles" value="usuarios">
+            <span>Usuarios<span class="role-desc">Manuales (Acto Público, Clasificación, Estatuto)</span></span>
+          </label>
+          <label>
+            <input type="checkbox" name="roles" value="apel">
+            <span>APEL<span class="role-desc">Manuales + Eleves Acto Público</span></span>
+          </label>
+          <label>
+            <input type="checkbox" name="roles" value="concursos">
+            <span>Concursos<span class="role-desc">Manuales + Eleves Concursos</span></span>
+          </label>
+          <label>
+            <input type="checkbox" name="roles" value="admin">
+            <span>Admin<span class="role-desc">Todo + gestión de usuarios</span></span>
+          </label>
+        </div>
 
         <label class="row-check"><input type="checkbox" id="active" checked> Usuario activo</label>
 
@@ -235,10 +255,10 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       </div>
       <p class="hint">
         Subí un CSV o Excel con columnas:
-        <code>nombre, apellido, email, dni, fecha_nacimiento, reparticion, role, activo</code>.
+        <code>nombre, apellido, email, dni, fecha_nacimiento, reparticion, roles, activo</code>.
         Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>.
         Repartición: <code>Sistemas, Administracion, RRHH, Listados, APEL, JUNTA</code>.
-        Roles: <code>admin</code>, <code>apel</code>, <code>usuarios</code>.
+        Roles (uno o más, separados por coma): <code>admin</code>, <code>apel</code>, <code>concursos</code>, <code>usuarios</code>.
       </p>
       <label for="importFile">Archivo</label>
       <input id="importFile" type="file" accept=".csv,.xlsx,.xls">
@@ -348,10 +368,29 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     });
   });
 
+  function getSelectedRoles() {
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="roles"]:checked'))
+      .map(function (el) { return el.value; });
+  }
+
+  function setSelectedRoles(roles) {
+    var list = PortalAuth.normalizeRoles
+      ? PortalAuth.normalizeRoles(roles)
+      : [].concat(roles || []);
+    document.querySelectorAll('input[name="roles"]').forEach(function (el) {
+      el.checked = list.indexOf(el.value) !== -1;
+    });
+    if (!list.length) {
+      var usuarios = document.querySelector('input[name="roles"][value="usuarios"]');
+      if (usuarios) usuarios.checked = true;
+    }
+  }
+
   function resetForm() {
     editId.value = '';
     form.reset();
     fillReparticionOptions();
+    setSelectedRoles(['usuarios']);
     document.getElementById('active').checked = true;
     document.getElementById('email').readOnly = false;
     document.getElementById('userModalTitle').textContent = 'Nuevo usuario';
@@ -372,7 +411,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       PortalAuth.normalizeBirthDate(u.fechaNacimiento || '');
     var repa = normalizeReparticionLocal(u.reparticion || '');
     reparticionSelect.value = repa;
-    document.getElementById('role').value = u.role || 'usuarios';
+    setSelectedRoles(u.roles || u.role || ['usuarios']);
     document.getElementById('active').checked = !!u.active;
     document.getElementById('userModalTitle').textContent = 'Editar usuario';
     var hint = 'Modificá los datos y guardá los cambios.';
@@ -402,16 +441,20 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       return;
     }
     tbody.innerHTML = users.map(function (u) {
+      var roles = PortalAuth.userRoles ? PortalAuth.userRoles(u) : [u.role || 'usuarios'];
+      var badges = roles.map(function (r) {
+        return '<span class="badge ' + escapeHtml(r) + '">' + escapeHtml(PortalAuth.roleLabel(r)) + '</span>';
+      }).join('');
       return (
         '<tr>' +
           '<td>' + escapeHtml(u.nombre || '—') + '</td>' +
           '<td>' + escapeHtml(u.apellido || '—') + '</td>' +
           '<td><div>' + escapeHtml(u.email) + '</div><div class="muted">' +
-            escapeHtml(PortalAuth.describePermissions(u.role).join(' · ')) + '</div></td>' +
+            escapeHtml(PortalAuth.describePermissions(u).join(' · ')) + '</div></td>' +
           '<td>' + escapeHtml(u.dni) + '</td>' +
           '<td>' + escapeHtml(PortalAuth.formatBirthDateDisplay(u.fechaNacimiento)) + '</td>' +
           '<td>' + escapeHtml(u.reparticion || '—') + '</td>' +
-          '<td><span class="badge ' + u.role + '">' + PortalAuth.roleLabel(u.role) + '</span></td>' +
+          '<td><div class="badge-stack">' + badges + '</div></td>' +
           '<td>' + (u.active ? 'Activo' : 'Inactivo') + '</td>' +
           '<td><div class="user-actions">' +
             '<button type="button" class="btn-secondary" data-edit="' + escapeHtml(u.id) + '">Editar</button>' +
@@ -438,9 +481,10 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
 
   document.getElementById('btnTemplate').addEventListener('click', function () {
     var csv = [
-      'nombre,apellido,email,dni,fecha_nacimiento,reparticion,role,activo',
+      'nombre,apellido,email,dni,fecha_nacimiento,reparticion,roles,activo',
       'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,Sistemas,usuarios,si',
-      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,APEL,apel,si'
+      'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,APEL,"apel,usuarios",si',
+      'Ana,Ruiz,ana.ruiz@bue.edu.ar,30111444,20/07/1985,JUNTA,concursos,si'
     ].join('\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var a = document.createElement('a');
@@ -448,17 +492,6 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     a.download = 'plantilla_usuarios_coreap.csv';
     a.click();
     URL.revokeObjectURL(a.href);
-  });
-
-  document.getElementById('btnExportUsersData').addEventListener('click', function () {
-    var content = PortalAuth.exportUsersDataJs(PortalAuth.getUsers());
-    var blob = new Blob([content], { type: 'application/javascript;charset=utf-8;' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'users-data.js';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('Descargaste users-data.js. Reemplazalo en el sitio para publicar las altas.', true);
   });
 
   form.addEventListener('submit', function (e) {
@@ -490,6 +523,12 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       return;
     }
 
+    var rolesValue = getSelectedRoles();
+    if (!rolesValue.length) {
+      showFormMsg('Seleccioná al menos un rol.', false);
+      return;
+    }
+
     document.getElementById('saveBtn').disabled = true;
     PortalAuth.upsertUser({
       id: editId.value || undefined,
@@ -499,7 +538,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       apellido: apellidoValue,
       fechaNacimiento: document.getElementById('fechaNacimiento').value,
       reparticion: reparticionValue,
-      role: document.getElementById('role').value,
+      roles: rolesValue,
       active: document.getElementById('active').checked
     }, user).then(function (result) {
       document.getElementById('saveBtn').disabled = false;
@@ -512,7 +551,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       resetForm();
       renderUsers();
       if (result.created) {
-        showToast(fbOn ? 'Usuario creado. Ya puede ingresar con Google desde cualquier PC.' : 'Usuario creado localmente. Configurá Firebase o exportá users-data.js.', true);
+        showToast(fbOn ? 'Usuario creado. Ya puede ingresar con Google desde cualquier PC.' : 'Usuario creado localmente.', true);
       } else {
         showToast('Usuario actualizado.', true);
       }

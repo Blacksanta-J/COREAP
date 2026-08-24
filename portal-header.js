@@ -6,9 +6,9 @@
   'use strict';
 
   var SKIP_PAGES = { 'login.html': true, '': true };
-  var DEFAULT_SUBTITLE = 'Dirección de Carrera Docente · GCBA';
+  var DEFAULT_SUBTITLE = 'COREAP — Comisión de Registro y Evaluación de Antecedentes Profesionales';
   var PAGE_SUBTITLES = {
-    'index.html': 'Comisión de Registro y Evaluación de Antecedentes Profesionales.'
+    'index.html': 'Comisión de Registro y Evaluación de Antecedentes Profesionales'
   };
   var BA_LOGO =
     '<svg width="75" height="40" viewBox="0 0 75 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
@@ -116,9 +116,11 @@
     if (nameEl) nameEl.textContent = displayName;
     if (emailEl) emailEl.textContent = user.email || '';
     if (roleEl) {
-      roleEl.textContent = global.PortalAuth && PortalAuth.roleLabel
-        ? PortalAuth.roleLabel(user.role)
-        : (user.role || '');
+      roleEl.textContent = global.PortalAuth && PortalAuth.rolesLabel
+        ? PortalAuth.rolesLabel(user)
+        : (global.PortalAuth && PortalAuth.roleLabel
+          ? PortalAuth.roleLabel(user.role)
+          : (user.role || ''));
     }
 
     if (logoutBtn && logoutBtn.dataset.bound !== '1') {
