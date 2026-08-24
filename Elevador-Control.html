@@ -308,7 +308,6 @@
             }
         });
         actualizarUiProcesador();
-        actualizarInfoModal();
         if (global.PortalNav && PortalNav.scrollToPanels) {
             PortalNav.scrollToPanels();
         }
@@ -330,16 +329,6 @@
         } else if (statusDiv && proc.enabled) {
             statusDiv.innerText = '';
         }
-    }
-
-    function actualizarInfoModal() {
-        var proc = getProcesadorActivo();
-        var title = document.querySelector('#infoOverlay h3');
-        var intro = document.getElementById('infoIntro');
-        var list = document.getElementById('infoRulesList');
-        if (title) title.textContent = 'Procesos · ' + proc.label;
-        if (intro) intro.textContent = 'Reglas del procesador ' + proc.label + ':';
-        if (list) list.innerHTML = (proc.reglas || []).map(function (r) { return '<li>' + r + '</li>'; }).join('');
     }
 
     document.addEventListener('DOMContentLoaded', function () {
