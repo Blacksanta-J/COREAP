@@ -926,7 +926,7 @@ ul.criteria-list{
 }
 .ot-table{
   width:100%;
-  border-collapse:separate;
+  border-collapse:collapse;
   border-spacing:0;
   font-size:13px;
   min-width:640px;
@@ -948,8 +948,8 @@ ul.criteria-list{
   letter-spacing:.4px;
   padding:12px 10px;
   text-align:center;
-  border-right:1px solid rgba(255,255,255,.08);
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-right:1px solid rgba(255,255,255,.18);
+  border-bottom:1px solid rgba(255,255,255,.18);
   vertical-align:middle;
   line-height:1.35;
 }
@@ -997,27 +997,29 @@ ul.criteria-list{
   padding:14px 10px;
   text-align:center;
   border-bottom:1px solid var(--border);
+  border-right:1px solid var(--border);
   background:var(--surface);
   vertical-align:middle;
 }
+.ot-table tbody td:last-child{border-right:none}
 .ot-table tbody tr:last-child td{border-bottom:none}
 .ot-table tbody tr:hover td{background:color-mix(in srgb, var(--az) 6%, var(--surface))}
 
+/* No usar display:flex en <td>: rompe bordes de tabla */
 .ot-tipo{
   text-align:left !important;
   padding-left:16px !important;
   font-size:14px;
   color:var(--az);
-  display:flex;
-  align-items:center;
-  gap:10px;
+  white-space:nowrap;
 }
 .ot-tipo-dot{
   display:inline-block;
   width:10px;
   height:10px;
   border-radius:50%;
-  flex-shrink:0;
+  margin-right:10px;
+  vertical-align:middle;
 }
 .ot-row-docente .ot-tipo-dot{background:#16a34a}
 .ot-row-habilitante .ot-tipo-dot{background:#f59e0b}

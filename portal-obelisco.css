@@ -449,12 +449,44 @@ html[data-theme='dark'] .sidebar .nav-link.active {
   color: #ffcc00;
 }
 
-/* OTROS TÍTULOS — filas y leyenda legibles (no texto claro sobre fondo claro) */
+/* Sub-nav "Ir a:" — contraste en dark (texto navy sobre teal quedaba ilegible) */
+html[data-theme='dark'] .sub-nav,
+html[data-theme='dark'] .clasi-scope .sub-nav {
+  background: #15202b !important;
+  border: 1px solid #3a4f5e !important;
+}
+
+html[data-theme='dark'] .sub-nav-label,
+html[data-theme='dark'] .clasi-scope .sub-nav-label {
+  color: #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .sub-nav a,
+html[data-theme='dark'] .clasi-scope .sub-nav a {
+  background: #1a2733 !important;
+  color: #f2f5f7 !important;
+  border-color: #526778 !important;
+}
+
+html[data-theme='dark'] .sub-nav a:hover,
+html[data-theme='dark'] .clasi-scope .sub-nav a:hover {
+  background: #1d3343 !important;
+  color: #ffcc00 !important;
+  border-color: #ffcc00 !important;
+}
+
+/* OTROS TÍTULOS — filas, bordes y leyenda legibles */
 html[data-theme='dark'] .ot-wrap,
 html[data-theme='dark'] .clasi-scope .ot-wrap {
   background: #1a2733 !important;
   border-color: #3a4f5e !important;
   color: #f2f5f7 !important;
+}
+
+html[data-theme='dark'] .ot-table thead th,
+html[data-theme='dark'] .clasi-scope .ot-table thead th {
+  border-right-color: rgba(255, 255, 255, .22) !important;
+  border-bottom-color: rgba(255, 255, 255, .22) !important;
 }
 
 html[data-theme='dark'] .ot-table tbody td,
@@ -464,7 +496,13 @@ html[data-theme='dark'] .clasi-scope .ot-table tbody tr:nth-child(odd) td,
 html[data-theme='dark'] .clasi-scope .ot-table tbody tr:nth-child(even) td {
   background: #1a2733 !important;
   color: #f2f5f7 !important;
-  border-color: #3a4f5e !important;
+  border-bottom: 1px solid #3a4f5e !important;
+  border-right: 1px solid #3a4f5e !important;
+}
+
+html[data-theme='dark'] .ot-table tbody td:last-child,
+html[data-theme='dark'] .clasi-scope .ot-table tbody td:last-child {
+  border-right: none !important;
 }
 
 html[data-theme='dark'] .ot-table tbody tr:nth-child(even) td,
@@ -498,12 +536,23 @@ html[data-theme='dark'] .clasi-scope .ot-table .badge-tb {
 }
 
 html[data-theme='dark'] .ot-table .badge-ot,
-html[data-theme='dark'] .ot-table .badge-ot-sec,
-html[data-theme='dark'] .clasi-scope .ot-table .badge-ot,
-html[data-theme='dark'] .clasi-scope .ot-table .badge-ot-sec {
+html[data-theme='dark'] .clasi-scope .ot-table .badge-ot {
   background: #21555c !important;
   color: #ffffff !important;
-  border-color: #5ee0d0 !important;
+  border: none !important;
+}
+
+html[data-theme='dark'] .ot-table .badge-ot-sec,
+html[data-theme='dark'] .clasi-scope .ot-table .badge-ot-sec {
+  background: #1a454c !important;
+  color: #ffffff !important;
+  border: 1px solid #5ee0d0 !important;
+}
+
+html[data-theme='dark'] .ot-th-sub,
+html[data-theme='dark'] .clasi-scope .ot-th-sub {
+  color: rgba(255, 255, 255, .85) !important;
+  opacity: 1 !important;
 }
 
 /* Highlight boxes (AÑOS 2015/2016, VIGENCIA, etc.) */
