@@ -13,6 +13,7 @@
       label: 'Portal',
       items: [
         { href: 'actopublico_final.html', label: 'Acto Público', icon: '📋', module: 'acto_publico' },
+        { href: 'cronograma.html', label: 'Cronograma', icon: '📅', module: 'cronograma' },
         { href: 'seguimiento_final.html', label: 'Seguimiento', icon: '📊', disabled: true },
         { href: 'clasificacion_final.html', label: 'Clasificación', icon: '🗂️', module: 'clasificacion' }
       ]
