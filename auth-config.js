@@ -14,9 +14,15 @@
  * 2. Firestore Database → Create
  * 3. Authentication → Settings → Authorized domains → localhost + blacksanta-j.github.io
  * 4. Publicá las reglas de firestore.rules
+ *
+ * CRONOGRAMA (Google Slides):
+ * Pegá el link de la presentación (compartida “cualquiera con el enlace” o publicada).
+ * Sirve el link /edit, /pub o el de insertar (/embed).
  */
 window.PORTAL_AUTH_CONFIG = {
   googleClientId: '691135057707-64u4hv4k93ogmt9mv2hgg0pf656qeld5.apps.googleusercontent.com',
+  /** URL de la presentación de Google Slides del cronograma COREAP */
+  cronogramaSlidesUrl: '',
   firebase: {
     apiKey: 'AIzaSyDLHYqb9yM_FWFoxsczkKEDpPns9OLUFtA',
     authDomain: 'portal-coreap.firebaseapp.com',

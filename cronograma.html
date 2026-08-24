@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Cronograma</title>
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script src="portal-auth-gate.js"></script>
+<script src="portal-theme.js"></script>
+<script src="portal-header.js"></script>
+<script src="portal-sidebar.js"></script>
+<script src="portal-footer.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260824-crono1"></script>
+<script src="auth.js?v=20260824-crono1"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#1d3343;--am:#FFCC00;--gr:#08202f;--gr-light:#6d6d6d;
+  --bg:#f3f6f9;--surface:#ffffff;--border:#e6ebf0;
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  font-family:'Open Sans',sans-serif;color-scheme:light;
+}
+html[data-theme="dark"]{
+  --gr:#f2f5f7;--gr-light:#c5d0d8;--bg:#0b1218;--surface:#1a2733;
+  --border:#3a4f5e;--shadow:0 8px 24px rgba(0,0,0,.5);color-scheme:dark;
+}
+body{background:var(--bg);color:var(--gr);min-height:100vh}
+.wrap{max-width:none;width:100%;margin:0;padding:20px 28px 32px}
+.header-row{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-bottom:14px;
+}
+h1{font-family:'Archivo',Georgia,serif;font-size:26px;color:#1d3343;margin:0}
+html[data-theme="dark"] h1{color:#f2f5f7}
+.lead{color:var(--gr-light);font-size:14px;line-height:1.5;margin-top:6px;max-width:52rem}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;border:none;border-radius:8px;
+  padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.4px;
+  text-transform:uppercase;cursor:pointer;text-decoration:none;
+}
+.btn-primary{background:#1d3343;color:var(--am)}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--gr)}
+.btn[aria-disabled="true"],.btn.disabled{
+  opacity:.45;pointer-events:none;cursor:not-allowed;
+}
+.slides-frame-wrap{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);overflow:hidden;min-height:70vh;
+  display:flex;flex-direction:column;
+}
+.slides-frame-wrap iframe{
+  width:100%;flex:1;min-height:70vh;border:0;background:#111;
+}
+.callout{
+  margin-bottom:14px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+  background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.45);color:var(--gr);
+}
+html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
+.callout code{font-size:11px}
+.empty-state{
+  padding:40px 24px;text-align:center;color:var(--gr-light);font-size:14px;line-height:1.6;
+}
+.empty-state strong{color:var(--gr);display:block;margin-bottom:8px;font-size:16px}
+@media(max-width:720px){
+  .wrap{padding:16px}
+  .slides-frame-wrap,.slides-frame-wrap iframe{min-height:55vh}
+}
+</style>
+<link rel="stylesheet" href="portal-obelisco.css">
+</head>
+<body class="portal-tool-body">
+  <div class="page-shell">
+  <header id="portal-header"></header>
+
+  <div class="layout">
+  <aside id="portal-sidebar"></aside>
+  <div class="content portal-tool-content">
+  <div class="wrap">
+    <div class="header-row">
+      <div>
+        <h1>Cronograma</h1>
+        <p class="lead">Presentación de Google Slides con el cronograma operativo COREAP.</p>
+      </div>
+      <div class="header-actions">
+        <a class="btn btn-secondary disabled" id="btnOpenSlides" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Abrir en Google</a>
+        <button type="button" class="btn btn-primary" id="btnFullscreen" disabled>Pantalla completa</button>
+      </div>
+    </div>
+
+    <div class="callout" id="configHint" hidden>
+      Falta configurar la URL de la presentación en <code>auth-config.js</code>
+      (<code>cronogramaSlidesUrl</code>). Compartí el archivo con “Cualquiera con el enlace” (lector)
+      o publicá en la web, y pegá el link aquí.
+    </div>
+
+    <div class="slides-frame-wrap" id="slidesWrap">
+      <div class="empty-state" id="emptyState">
+        <strong>Cronograma no configurado</strong>
+        Pegá el link de Google Slides en <code>auth-config.js</code> y recargá esta página.
+      </div>
+      <iframe id="slidesFrame" title="Cronograma COREAP — Google Slides" allowfullscreen allow="fullscreen" hidden></iframe>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <footer id="portal-footer"></footer>
+  </div>
+
+<script>
+(function () {
+  function toEmbedUrl(raw) {
+    var url = String(raw || '').trim();
+    if (!url) return '';
+
+    /* Ya es embed / pub embed */
+    if (/\/embed(\?|$)/.test(url) || /\/embed\//.test(url)) return url;
+
+    /* Presentación publicada: /d/e/2PACX-.../pub → /embed */
+    var pub = url.match(/^(https:\/\/docs\.google\.com\/presentation\/d\/e\/[^/]+)\/(pub|pub\?.*)?/i);
+    if (pub) {
+      return pub[1] + '/embed?start=false&loop=false&delayms=60000';
+    }
+
+    /* Link normal /d/ID/edit → /embed */
+    var m = url.match(/^(https:\/\/docs\.google\.com\/presentation\/d\/[^/]+)/i);
+    if (m) {
+      return m[1] + '/embed?start=false&loop=false&delayms=60000';
+    }
+
+    return url;
+  }
+
+  function toOpenUrl(raw) {
+    var url = String(raw || '').trim();
+    if (!url) return '';
+    var m = url.match(/^(https:\/\/docs\.google\.com\/presentation\/d\/(?:e\/)?[^/]+)/i);
+    if (m) return m[1] + '/edit?usp=sharing';
+    return url;
+  }
+
+  PortalAuth.ready().then(function () {
+    var user = PortalAuth.requireAuth({ module: PortalAuth.MODULES.cronograma });
+    if (!user) return;
+    if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+      PortalHeader.fillUserMenu(user);
+    }
+
+    var cfg = window.PORTAL_AUTH_CONFIG || {};
+    var rawUrl = cfg.cronogramaSlidesUrl || cfg.cronogramaUrl || '';
+    var embedUrl = toEmbedUrl(rawUrl);
+    var openUrl = toOpenUrl(rawUrl);
+
+    var hint = document.getElementById('configHint');
+    var empty = document.getElementById('emptyState');
+    var frame = document.getElementById('slidesFrame');
+    var btnOpen = document.getElementById('btnOpenSlides');
+    var btnFs = document.getElementById('btnFullscreen');
+    var wrap = document.getElementById('slidesWrap');
+
+    if (!embedUrl) {
+      hint.hidden = false;
+      return;
+    }
+
+    empty.hidden = true;
+    frame.hidden = false;
+    frame.src = embedUrl;
+
+    btnOpen.href = openUrl || embedUrl;
+    btnOpen.classList.remove('disabled');
+    btnOpen.setAttribute('aria-disabled', 'false');
+
+    btnFs.disabled = false;
+    btnFs.addEventListener('click', function () {
+      var el = wrap;
+      if (!el) return;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    });
+  }).catch(function () {
+    PortalAuth.requireAuth({ module: PortalAuth.MODULES.cronograma });
+  });
+})();
+</script>
+</body>
+</html>

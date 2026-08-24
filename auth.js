@@ -38,6 +38,7 @@
     acto_publico: 'acto_publico',
     clasificacion: 'clasificacion',
     estatuto: 'estatuto',
+    cronograma: 'cronograma',
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
     admin_usuarios: 'admin_usuarios',
@@ -47,7 +48,8 @@
   var MANUALES = [
     MODULES.acto_publico,
     MODULES.clasificacion,
-    MODULES.estatuto
+    MODULES.estatuto,
+    MODULES.cronograma
   ];
 
   var ROLE_PERMISSIONS = {
@@ -55,6 +57,7 @@
       MODULES.acto_publico,
       MODULES.clasificacion,
       MODULES.estatuto,
+      MODULES.cronograma,
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
       MODULES.admin_usuarios,
@@ -1427,6 +1430,7 @@
       acto_publico: 'Acto Público',
       clasificacion: 'Clasificación',
       estatuto: 'Estatuto',
+      cronograma: 'Cronograma',
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
       admin_usuarios: 'Gestión de usuarios',
