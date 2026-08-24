@@ -217,9 +217,11 @@
 
   function saveGoogleIdToken(idToken) {
     try {
-      if (idToken) localStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
+      if (idToken) {
+        localStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
+        sessionStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
+      }
     } catch (e) {}
-    try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
   }
 
   function clearGoogleIdToken() {
@@ -229,15 +231,9 @@
 
   function readGoogleIdToken() {
     try {
-      var t = localStorage.getItem(STORAGE_GOOGLE_TOKEN);
-      if (t) return t;
-      t = sessionStorage.getItem(STORAGE_GOOGLE_TOKEN);
-      if (t) {
-        localStorage.setItem(STORAGE_GOOGLE_TOKEN, t);
-        try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e2) {}
-        return t;
-      }
-      return '';
+      return localStorage.getItem(STORAGE_GOOGLE_TOKEN)
+        || sessionStorage.getItem(STORAGE_GOOGLE_TOKEN)
+        || '';
     } catch (e) {
       return '';
     }
@@ -252,19 +248,32 @@
     return new Promise(function (resolve) {
       var settled = false;
       var unsub = function () {};
-      var timer = setTimeout(function () {
-        if (settled) return;
-        settled = true;
-        try { unsub(); } catch (e) {}
-        resolve(_firebaseAuth.currentUser);
-      }, timeoutMs);
+      var nullTimer = null;
 
-      unsub = _firebaseAuth.onAuthStateChanged(function (user) {
+      function finish(user) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        if (nullTimer) clearTimeout(nullTimer);
         try { unsub(); } catch (e) {}
         resolve(user || null);
+      }
+
+      var timer = setTimeout(function () {
+        finish(_firebaseAuth.currentUser);
+      }, timeoutMs);
+
+      unsub = _firebaseAuth.onAuthStateChanged(function (user) {
+        if (user) {
+          finish(user);
+          return;
+        }
+        /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
+        if (!nullTimer) {
+          nullTimer = setTimeout(function () {
+            finish(_firebaseAuth.currentUser);
+          }, 500);
+        }
       });
     });
   }
@@ -596,11 +605,25 @@
     }) || null;
   }
 
+  function restoreSessionFromFirebaseUser(fbUser) {
+    if (!fbUser || !fbUser.email) return null;
+    ensureSeedLocal();
+    var portalUser = findUserByEmail(fbUser.email);
+    if (!portalUser || !portalUser.active) return null;
+    return setSession(portalUser, {
+      nombre: fbUser.displayName || displayName(portalUser),
+      picture: fbUser.photoURL || '',
+      provider: 'google'
+    });
+  }
+
   /** Carga usuarios (Firestore si está configurado). Llamar al iniciar cada página. */
   function ready() {
     if (_readyPromise) return _readyPromise;
     _readyPromise = Promise.resolve().then(function () {
       ensureSeedLocal();
+      /* Migrar / normalizar sesión al arrancar cada pestaña */
+      getSession();
       if (!isFirebaseEnabled()) {
         return getUsers();
       }
@@ -609,17 +632,8 @@
       }
       return waitForFirebaseAuth().then(function (fbUser) {
         return syncFromFirestore().then(function () {
-          /* Auth Firebase persiste entre pestañas; la sesión portal no siempre.
-             Si hay usuario Firebase y no hay sesión portal, reconstruirla. */
-          if (fbUser && fbUser.email && !getSession()) {
-            var portalUser = findUserByEmail(fbUser.email);
-            if (portalUser && portalUser.active) {
-              setSession(portalUser, {
-                nombre: fbUser.displayName || displayName(portalUser),
-                picture: fbUser.photoURL || '',
-                provider: 'google'
-              });
-            }
+          if (fbUser && fbUser.email && !currentUser()) {
+            restoreSessionFromFirebaseUser(fbUser);
           }
           return getUsers();
         });
@@ -628,19 +642,27 @@
     return _readyPromise;
   }
 
-  function getSession() {
+  function readSessionRaw() {
     try {
       var raw = localStorage.getItem(STORAGE_SESSION);
-      if (!raw) {
-        /* Migrar sesión vieja de sessionStorage (por pestaña) → localStorage (compartida) */
-        raw = sessionStorage.getItem(STORAGE_SESSION);
-        if (raw) {
-          localStorage.setItem(STORAGE_SESSION, raw);
-          try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e2) {}
-        }
-      }
+      if (raw) return raw;
+    } catch (e) {}
+    try {
+      return sessionStorage.getItem(STORAGE_SESSION) || '';
+    } catch (e2) {
+      return '';
+    }
+  }
+
+  function getSession() {
+    try {
+      var raw = readSessionRaw();
       if (!raw) return null;
-      return JSON.parse(raw);
+      var session = JSON.parse(raw);
+      /* Escribir en ambos: localStorage (entre pestañas) + sessionStorage (fallback) */
+      try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
+      try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
+      return session;
     } catch (e) {
       return null;
     }
@@ -657,8 +679,9 @@
       provider: extra.provider || 'local',
       at: new Date().toISOString()
     };
-    localStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
-    try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e) {}
+    var raw = JSON.stringify(session);
+    try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
+    try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
     return session;
   }
 
@@ -669,9 +692,25 @@
 
   function currentUser() {
     var session = getSession();
-    if (!session) return null;
+    if (!session || !session.email) return null;
+    ensureSeedLocal();
     var user = findUserByEmail(session.email);
-    if (!user || !user.active) {
+    if (!user) {
+      /* No borrar la sesión solo porque la lista aún no sincronizó */
+      return {
+        id: session.id || '',
+        email: normalizeEmail(session.email),
+        role: session.role || ROLES.usuarios,
+        nombre: session.nombre || session.email,
+        apellido: '',
+        fechaNacimiento: '',
+        reparticion: '',
+        dni: '',
+        picture: session.picture || '',
+        provider: session.provider || 'local'
+      };
+    }
+    if (!user.active) {
       clearSession();
       return null;
     }
