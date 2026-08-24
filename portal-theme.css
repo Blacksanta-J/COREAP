@@ -1,5 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
+/* Evitar flash de contenido antes de confirmar sesión */
+html.portal-auth-pending body {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 /* ── Tokens compartidos (Obelisco V2 / GCBA) ── */
 :root {
   --portal-az: #1d3343;
