@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Log de procesos</title>
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script src="portal-auth-gate.js"></script>
+<script src="portal-theme.js"></script>
+<script src="portal-header.js"></script>
+<script src="portal-sidebar.js"></script>
+<script src="portal-footer.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260824-logs1"></script>
+<script src="auth.js?v=20260824-logs1"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#1d3343;--am:#FFCC00;--cy:#009688;--gr:#08202f;--gr-light:#6d6d6d;
+  --bg:#f3f6f9;--surface:#ffffff;--border:#e6ebf0;--error:#b91c1c;--ok:#166534;
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  font-family:'Open Sans',sans-serif;color-scheme:light;
+}
+html[data-theme="dark"]{
+  --gr:#f2f5f7;--gr-light:#c5d0d8;--bg:#0b1218;--surface:#1a2733;
+  --border:#3a4f5e;--error:#fb8a8a;--ok:#6ee7a0;--shadow:0 8px 24px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--gr);min-height:100vh}
+.wrap{max-width:none;width:100%;margin:0;padding:28px 40px 40px}
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);padding:22px;
+}
+h1{font-family:'Archivo',Georgia,serif;font-size:28px;color:#1d3343;margin-bottom:6px}
+html[data-theme="dark"] h1{color:#f2f5f7}
+.lead{color:var(--gr-light);font-size:14px;margin-bottom:18px;line-height:1.5}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
+.toolbar .field{min-width:160px;flex:1}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--gr-light);margin:0 0 6px}
+input,select{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--gr);font:inherit;font-size:14px;
+}
+button{
+  border:none;border-radius:8px;padding:10px 14px;font-weight:700;font-size:12px;
+  letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
+}
+.btn-primary{background:#1d3343;color:var(--am)}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--gr)}
+.toast{
+  display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;
+}
+.toast.visible{display:block}
+.toast.ok{background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.25);color:var(--ok)}
+.toast.err{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);color:var(--error)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-light)}
+.muted{color:var(--gr-light);font-size:12px}
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;
+  letter-spacing:.3px;text-transform:uppercase;background:#eef1f4;color:#1d3343;
+}
+html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
+.badge.concursos{background:rgba(96,165,250,.28)}
+.badge.acto{background:rgba(141,226,214,.3)}
+.callout{
+  margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+  background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.45);color:var(--gr);
+}
+html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
+.meta-line{font-size:12px;color:var(--gr-light);margin-top:4px}
+.detail-cell{max-width:280px;word-break:break-word}
+</style>
+<link rel="stylesheet" href="portal-obelisco.css">
+</head>
+<body class="portal-tool-body">
+  <div class="page-shell">
+  <header id="portal-header"></header>
+
+  <div class="layout">
+  <aside id="portal-sidebar"></aside>
+  <div class="content portal-tool-content">
+  <div class="wrap">
+    <h1>Log de procesos</h1>
+    <p class="lead">Auditoría de cada ejecución de Eleves Acto Público y Eleves Concursos. Solo visible para rol Admin.</p>
+
+    <div class="callout">
+      Se guarda automáticamente al completar un proceso: usuario, módulo, procesador, área, archivos y cantidad de filas.
+      Requiere publicar las reglas de Firestore actualizadas (<code>process_logs</code>).
+    </div>
+
+    <div class="toast" id="pageToast"></div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label for="filterModule">Módulo</label>
+        <select id="filterModule">
+          <option value="">Todos</option>
+          <option value="eleves_acto">Eleves Acto Público</option>
+          <option value="eleves_concursos">Eleves Concursos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filterEmail">Usuario (email)</label>
+        <input id="filterEmail" type="search" placeholder="Filtrar por mail…" autocomplete="off">
+      </div>
+      <button type="button" class="btn-primary" id="btnRefresh">Actualizar</button>
+    </div>
+
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="font-size:16px;margin:0">Ejecuciones recientes</h2>
+        <span class="muted" id="logsCount">—</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th>Módulo</th>
+              <th>Procesador</th>
+              <th>Área</th>
+              <th>Filas</th>
+              <th>Archivos</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="logsBody">
+            <tr><td colspan="8" class="muted">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  </div>
+  </div>
+
+  <footer id="portal-footer"></footer>
+  </div>
+
+<script>
+(function () {
+  var allLogs = [];
+
+  function showToast(msg, ok) {
+    var el = document.getElementById('pageToast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast visible ' + (ok ? 'ok' : 'err');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString('es-AR');
+    } catch (e) {
+      return String(iso);
+    }
+  }
+
+  function moduleBadge(mod) {
+    if (mod === 'eleves_concursos') return '<span class="badge concursos">Concursos</span>';
+    if (mod === 'eleves_acto') return '<span class="badge acto">Acto</span>';
+    return '<span class="badge">' + (mod || '—') + '</span>';
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function filteredLogs() {
+    var mod = (document.getElementById('filterModule').value || '').trim();
+    var emailQ = (document.getElementById('filterEmail').value || '').trim().toLowerCase();
+    return allLogs.filter(function (row) {
+      if (mod && row.module !== mod) return false;
+      if (emailQ && String(row.email || '').toLowerCase().indexOf(emailQ) === -1) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = filteredLogs();
+    var body = document.getElementById('logsBody');
+    var count = document.getElementById('logsCount');
+    count.textContent = rows.length + ' de ' + allLogs.length + ' registro(s)';
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="muted">No hay ejecuciones para mostrar.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(function (r) {
+      var nombre = [r.nombre, r.apellido].filter(Boolean).join(' ') || '—';
+      var archivos = '';
+      if (r.archivoOrigen) archivos += '<div><span class="muted">Origen:</span> ' + escapeHtml(r.archivoOrigen) + '</div>';
+      if (r.archivoSalida) archivos += '<div><span class="muted">Salida:</span> ' + escapeHtml(r.archivoSalida) + '</div>';
+      if (!archivos) archivos = '—';
+      return '<tr>'
+        + '<td>' + escapeHtml(formatDate(r.createdAt)) + '</td>'
+        + '<td><strong>' + escapeHtml(nombre) + '</strong>'
+        + '<div class="meta-line">' + escapeHtml(r.email || '') + '</div>'
+        + (r.reparticion ? '<div class="meta-line">' + escapeHtml(r.reparticion) + '</div>' : '')
+        + '</td>'
+        + '<td>' + moduleBadge(r.module) + '<div class="meta-line">' + escapeHtml(r.moduleLabel || r.module || '') + '</div></td>'
+        + '<td>' + escapeHtml(r.procesadorLabel || r.procesador || '—') + '</td>'
+        + '<td>' + escapeHtml(r.area || '—') + '</td>'
+        + '<td>' + escapeHtml(String(r.filas != null ? r.filas : '—')) + '</td>'
+        + '<td class="detail-cell">' + archivos + '</td>'
+        + '<td class="detail-cell">' + escapeHtml(r.detalle || '—') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  function loadLogs() {
+    var body = document.getElementById('logsBody');
+    body.innerHTML = '<tr><td colspan="8" class="muted">Cargando…</td></tr>';
+    PortalAuth.listProcessLogs({ limit: 300 }).then(function (rows) {
+      allLogs = rows || [];
+      render();
+      showToast('Log actualizado.', true);
+      setTimeout(function () {
+        var t = document.getElementById('pageToast');
+        if (t) t.classList.remove('visible');
+      }, 1800);
+    }).catch(function (err) {
+      console.error(err);
+      allLogs = [];
+      body.innerHTML = '<tr><td colspan="8" class="muted">No se pudo cargar el log.</td></tr>';
+      showToast(err && err.message ? err.message : 'Error al cargar el log.', false);
+    });
+  }
+
+  PortalAuth.ready().then(function () {
+    var user = PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_logs });
+    if (!user) return;
+    if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+      PortalHeader.fillUserMenu(user);
+    }
+    document.getElementById('btnRefresh').addEventListener('click', loadLogs);
+    document.getElementById('filterModule').addEventListener('change', render);
+    document.getElementById('filterEmail').addEventListener('input', render);
+    loadLogs();
+  }).catch(function () {
+    PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_logs });
+  });
+})();
+</script>
+</body>
+</html>

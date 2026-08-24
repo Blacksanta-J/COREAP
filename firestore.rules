@@ -46,5 +46,19 @@ service cloud.firestore {
     match /_meta/{docId} {
       allow read, write: if isSeedAdmin() || isAdmin();
     }
+
+    /* Log de ejecuciones de procesadores: escritura autenticada @bue; lectura solo admin */
+    match /process_logs/{logId} {
+      allow create: if isBue()
+        && exists(userDocPath(request.auth.token.email))
+        && userData().active != false
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasAll([
+          'createdAt', 'email', 'module', 'procesador'
+        ]);
+      allow read: if isAdmin() || isSeedAdmin();
+      allow update: if false;
+      allow delete: if isAdmin() || isSeedAdmin();
+    }
   }
 }

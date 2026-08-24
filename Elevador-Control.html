@@ -19,8 +19,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260824-gate1"></script>
-<script src="auth.js?v=20260824-gate1"></script>
+<script src="users-data.js?v=20260824-logs1"></script>
+<script src="auth.js?v=20260824-logs1"></script>
     <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'eleves_concursos' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'eleves_concursos' }); });</script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -897,6 +897,26 @@
                 let nombreArchivo = areaDetectada + '_' + proc.suffix + '_' + formatearFechaHoraNombre() + '.xlsx';
                 
                 XLSX.writeFile(wb, nombreArchivo);
+
+                if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                    PortalAuth.logProcessRun({
+                        module: 'eleves_concursos',
+                        moduleLabel: 'Eleves Concursos',
+                        procesador: proc.id,
+                        procesadorLabel: proc.label,
+                        archivoOrigen: file.name || '',
+                        archivoSalida: nombreArchivo,
+                        filas: dataFinal.length,
+                        area: areaDetectada,
+                        detalle: proc.id === 'control'
+                            ? ('Duplicados Id. POF eliminados: ' + duplicadosEliminados)
+                            : '',
+                        extras: {
+                            duplicadosEliminados: duplicadosEliminados,
+                            hojas: ['Resultado', 'Informe']
+                        }
+                    });
+                }
 
                 statusDiv.className = "";
                 var extraDedupe = duplicadosEliminados > 0

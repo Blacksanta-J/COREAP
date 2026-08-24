@@ -27,7 +27,8 @@
     {
       label: 'Admin',
       items: [
-        { href: 'admin-usuarios.html', label: 'Usuarios', icon: '👥', module: 'admin_usuarios' }
+        { href: 'admin-usuarios.html', label: 'Usuarios', icon: '👥', module: 'admin_usuarios' },
+        { href: 'admin-logs.html', label: 'Log de procesos', icon: '📜', module: 'admin_logs' }
       ]
     }
   ];

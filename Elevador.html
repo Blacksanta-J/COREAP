@@ -19,8 +19,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260824-gate1"></script>
-<script src="auth.js?v=20260824-gate1"></script>
+<script src="users-data.js?v=20260824-logs1"></script>
+<script src="auth.js?v=20260824-logs1"></script>
     <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'eleves_acto' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'eleves_acto' }); });</script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1729,6 +1729,29 @@
             logPaso("Fecha de proceso: " + now.toLocaleString("es-AR"));
 
             setTimeout(() => descargarTexto(nombreTxt, bitacora.join("\r\n") + "\r\n"), 500);
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_acto',
+                    moduleLabel: 'Eleves Acto Público',
+                    procesador: 'confeccionar_eleve',
+                    procesadorLabel: 'Confeccionar Eleve',
+                    archivoOrigen: archivoOrigen,
+                    archivoSalida: nombreDescarga,
+                    filas: processedData.length,
+                    area: areaNombre,
+                    detalle: 'Tipo: ' + tipoNombre
+                        + (isAreaCatalogo
+                            ? ('; coincidencias ' + filasOk.length + '; sin coincidencia ' + filasSinCoincidencia.length)
+                            : '')
+                        + '; filas rojas eliminadas: ' + filasRojasEliminadas,
+                    extras: {
+                        tipo: tipoNombre,
+                        filasRojasEliminadas: filasRojasEliminadas,
+                        archivoProceso: nombreTxt
+                    }
+                });
+            }
 
             statusDiv.className = "";
             const extraTxt = " También se descargó el detalle en " + nombreTxt + ".";

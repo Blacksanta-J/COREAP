@@ -40,7 +40,8 @@
     estatuto: 'estatuto',
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
-    admin_usuarios: 'admin_usuarios'
+    admin_usuarios: 'admin_usuarios',
+    admin_logs: 'admin_logs'
   };
 
   var MANUALES = [
@@ -56,7 +57,8 @@
       MODULES.estatuto,
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
-      MODULES.admin_usuarios
+      MODULES.admin_usuarios,
+      MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto]),
     concursos: MANUALES.concat([MODULES.eleves_concursos]),
@@ -1330,6 +1332,96 @@
     ).map(roleLabel).join(' · ');
   }
 
+  /**
+   * Registra en Firestore una ejecución de procesador (Eleves Acto / Concursos).
+   * Solo los admin pueden leer la colección; cualquier usuario autenticado @bue puede crear.
+   */
+  function logProcessRun(details) {
+    details = details || {};
+    if (!initFirebase() || !_firestore) {
+      return Promise.resolve(null);
+    }
+    var user = currentUser();
+    if (!user || !user.email) return Promise.resolve(null);
+
+    var extras = details.extras && typeof details.extras === 'object' ? details.extras : {};
+    var safeExtras = {};
+    Object.keys(extras).forEach(function (k) {
+      var v = extras[k];
+      if (v === undefined) return;
+      if (v !== null && typeof v === 'object') {
+        try { safeExtras[k] = JSON.parse(JSON.stringify(v)); } catch (e) {}
+        return;
+      }
+      safeExtras[k] = v;
+    });
+
+    var payload = {
+      ts: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      email: normalizeEmail(user.email),
+      nombre: String(user.nombre || ''),
+      apellido: String(user.apellido || ''),
+      reparticion: String(user.reparticion || ''),
+      module: String(details.module || ''),
+      moduleLabel: String(details.moduleLabel || ''),
+      procesador: String(details.procesador || ''),
+      procesadorLabel: String(details.procesadorLabel || ''),
+      archivoOrigen: String(details.archivoOrigen || ''),
+      archivoSalida: String(details.archivoSalida || ''),
+      filas: Number(details.filas) || 0,
+      area: String(details.area || ''),
+      detalle: String(details.detalle || ''),
+      extras: safeExtras
+    };
+
+    return _firestore.collection('process_logs').add(payload).catch(function (err) {
+      console.warn('No se pudo guardar el log del proceso', err);
+      return null;
+    });
+  }
+
+  /** Lista logs de procesos. Solo admin. */
+  function listProcessLogs(options) {
+    options = options || {};
+    var actor = currentUser();
+    if (!isAdminUser(actor)) {
+      return Promise.reject(new Error('Solo administradores pueden ver el log de procesos.'));
+    }
+    if (!initFirebase() || !_firestore) {
+      return Promise.reject(new Error('Firebase no está disponible.'));
+    }
+    var limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
+    return _firestore.collection('process_logs')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get()
+      .then(function (snap) {
+        return snap.docs.map(function (doc) {
+          var d = doc.data() || {};
+          return {
+            id: doc.id,
+            createdAt: d.createdAt || '',
+            ts: d.ts || null,
+            email: d.email || '',
+            nombre: d.nombre || '',
+            apellido: d.apellido || '',
+            reparticion: d.reparticion || '',
+            module: d.module || '',
+            moduleLabel: d.moduleLabel || '',
+            procesador: d.procesador || '',
+            procesadorLabel: d.procesadorLabel || '',
+            archivoOrigen: d.archivoOrigen || '',
+            archivoSalida: d.archivoSalida || '',
+            filas: d.filas || 0,
+            area: d.area || '',
+            detalle: d.detalle || '',
+            extras: d.extras || {}
+          };
+        });
+      });
+  }
+
   function describePermissions(roleOrUser) {
     var map = {
       acto_publico: 'Acto Público',
@@ -1337,7 +1429,8 @@
       estatuto: 'Estatuto',
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
-      admin_usuarios: 'Gestión de usuarios'
+      admin_usuarios: 'Gestión de usuarios',
+      admin_logs: 'Log de procesos'
     };
     var mods = roleOrUser && typeof roleOrUser === 'object'
       ? permissionsForUser(roleOrUser)
@@ -1382,6 +1475,8 @@
     upsertUser: upsertUser,
     importUsers: importUsers,
     removeUser: removeUser,
+    logProcessRun: logProcessRun,
+    listProcessLogs: listProcessLogs,
     roleLabel: roleLabel,
     rolesLabel: rolesLabel,
     describePermissions: describePermissions,
