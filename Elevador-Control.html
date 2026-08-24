@@ -170,6 +170,7 @@
                 '<strong>Mapeo de Turnos:</strong> Conversión de letras (M, T, N, etc.) a palabras completas (Mañana, Tarde, NOCHE, Completo).',
                 '<strong>Campos Vacíos / Fijos:</strong> Sit. Rev. = INTERINO; Base/Ascenso y Tipo de Listado = 3; Novedad mayor a 60 días = 2; Distrito/Nº Escuela vacíos = 1; Motivo/Docente vacíos = ".".',
                 '<strong>Horas:</strong> Se eliminan decimales (si viene 0 o vacía, se pone 1).',
+                '<strong>Duplicados Id. POF:</strong> Se eliminan registros con el mismo <em>Id. POF</em> (se conserva la primera aparición; los vacíos no se agrupan).',
                 '<strong>Formato Nativo:</strong> Fechas de apertura, publicación, desde y hasta (31/12 del año actual) en formato serial Excel.',
                 '<strong>Nombrado:</strong> El archivo incluye el Área, la palabra "CONTROL" y la fecha de exportación.',
                 '<strong>Informe:</strong> Segunda hoja con conteo de vacantes por área y por cargo.'
@@ -597,6 +598,32 @@
         return filas;
     }
 
+    /** Control: deja una sola fila por Id. POF (primera aparición). IDs vacíos se conservan. */
+    function eliminarDuplicadosIdPof(filas) {
+        var seen = Object.create(null);
+        var out = [];
+        var removed = 0;
+        (filas || []).forEach(function (fila) {
+            var id = String(
+                fila["Id. POF"] != null && fila["Id. POF"] !== ""
+                    ? fila["Id. POF"]
+                    : (fila["Numero de propuesta"] != null ? fila["Numero de propuesta"] : "")
+            ).trim();
+            if (!id) {
+                out.push(fila);
+                return;
+            }
+            var key = id.toLowerCase();
+            if (seen[key]) {
+                removed += 1;
+                return;
+            }
+            seen[key] = true;
+            out.push(fila);
+        });
+        return { filas: out, removed: removed };
+    }
+
     async function iniciarProceso() {
         const proc = getProcesadorActivo();
         const fileInput = document.getElementById('fileInput');
@@ -785,6 +812,13 @@
                     return filaOrdenada;
                 });
 
+                var duplicadosEliminados = 0;
+                if (proc.id === 'control') {
+                    var dedupe = eliminarDuplicadosIdPof(dataFinal);
+                    dataFinal = dedupe.filas;
+                    duplicadosEliminados = dedupe.removed;
+                }
+
                 const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
                 
@@ -810,7 +844,10 @@
                 XLSX.writeFile(wb, nombreArchivo);
 
                 statusDiv.className = "";
-                statusDiv.innerText = `¡Proceso completado! Archivo guardado como:\n"${nombreArchivo}"\n(Hojas: Resultado + Informe)`;
+                var extraDedupe = duplicadosEliminados > 0
+                    ? '\nSe eliminaron ' + duplicadosEliminados + ' registro(s) con Id. POF duplicado.'
+                    : (proc.id === 'control' ? '\nSin duplicados de Id. POF.' : '');
+                statusDiv.innerText = '¡Proceso completado! Archivo guardado como:\n"' + nombreArchivo + '"\n(Hojas: Resultado + Informe)' + extraDedupe;
 
             };
             reader.readAsArrayBuffer(file);
