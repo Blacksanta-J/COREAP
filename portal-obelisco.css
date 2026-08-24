@@ -549,6 +549,12 @@ html[data-theme='dark'] .clasi-scope .ot-table .badge-ot-sec {
   border: 1px solid #5ee0d0 !important;
 }
 
+html[data-theme='dark'] .ot-th-sub,
+html[data-theme='dark'] .clasi-scope .ot-th-sub {
+  color: rgba(255, 255, 255, .85) !important;
+  opacity: 1 !important;
+}
+
 /* Highlight boxes (AÑOS 2015/2016, VIGENCIA, etc.) */
 html[data-theme='dark'] .highlight-box,
 html[data-theme='dark'] .clasi-scope .highlight-box {
