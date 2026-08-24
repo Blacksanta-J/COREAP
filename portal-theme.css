@@ -825,6 +825,26 @@ html[data-theme="light"] .processor-tabs button:not(.active) .processor-badge {
   overflow-wrap: anywhere;
 }
 
+.processor-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.processor-title-row h3 {
+  margin: 0;
+}
+
+.processor-info-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .processor-note {
   margin: 0 0 12px;
   padding: 10px 12px;

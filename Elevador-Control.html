@@ -92,9 +92,6 @@
 <div class="portal-tool-panel container">
     <div class="header-row">
         <h2>Procesador</h2>
-        <div class="header-actions">
-            <button type="button" class="theme-toggle" id="infoBtn" title="Información de procesos">ℹ️</button>
-        </div>
     </div>
 
     <nav class="processor-tabs" id="processorTabs" aria-label="Tipo de procesador"></nav>
@@ -255,8 +252,14 @@
             var note = p.pending
                 ? '<div class="processor-note pending">Este procesador está en preparación. Por ahora solo <strong>Control</strong> está habilitado.</div>'
                 : '';
+            var titleRow = p.id === 'control'
+                ? '<div class="processor-title-row">' +
+                    '<h3>' + p.label + '</h3>' +
+                    '<button type="button" class="theme-toggle processor-info-btn" id="infoBtn" title="Información del proceso Control" aria-label="Información del proceso Control">ℹ️</button>' +
+                  '</div>'
+                : '<h3>' + p.label + '</h3>';
             return '<section id="panel-' + p.id + '" class="processor-panel ' + (p.id === procesadorActivo ? 'active' : '') + '">' +
-                '<h3>' + p.label + '</h3>' +
+                titleRow +
                 '<p>' + p.descripcion + '</p>' +
                 note +
                 '</section>';
@@ -267,6 +270,26 @@
                 seleccionarProcesador(btn.getAttribute('data-processor'));
             });
         });
+
+        bindInfoButton();
+    }
+
+    function mostrarInfoControl() {
+        var control = PROCESADORES.find(function (p) { return p.id === 'control'; }) || PROCESADORES[0];
+        var title = document.querySelector('#infoOverlay h3');
+        var intro = document.getElementById('infoIntro');
+        var list = document.getElementById('infoRulesList');
+        if (title) title.textContent = 'Procesos · Control';
+        if (intro) intro.textContent = 'Al procesar el archivo de Control, se aplican automáticamente las siguientes reglas:';
+        if (list) list.innerHTML = (control.reglas || []).map(function (r) { return '<li>' + r + '</li>'; }).join('');
+        document.getElementById('infoOverlay').classList.add('visible');
+    }
+
+    function bindInfoButton() {
+        var infoBtn = document.getElementById('infoBtn');
+        if (!infoBtn || infoBtn.dataset.bound === '1') return;
+        infoBtn.dataset.bound = '1';
+        infoBtn.addEventListener('click', mostrarInfoControl);
     }
 
     function seleccionarProcesador(id) {
@@ -322,13 +345,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         renderProcessorTabs();
         actualizarUiProcesador();
-        actualizarInfoModal();
-        
-        // Listeners para botones del UI
 
-        // Modales
         const infoOverlay = document.getElementById('infoOverlay');
-        document.getElementById('infoBtn').addEventListener('click', () => infoOverlay.classList.add('visible'));
         document.getElementById('infoClose').addEventListener('click', () => infoOverlay.classList.remove('visible'));
         infoOverlay.addEventListener('click', (e) => { if (e.target === infoOverlay) infoOverlay.classList.remove('visible'); });
     });
