@@ -8,6 +8,7 @@
 <link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
 <link rel="shortcut icon" href="assets/favicon.ico">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script src="portal-auth-gate.js"></script>
 <script src="portal-theme.js"></script>
 <script src="portal-header.js"></script>
 <script src="portal-sidebar.js"></script>
@@ -18,8 +19,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260824-roles1"></script>
-<script src="auth.js?v=20260824-roles1"></script>
+<script src="users-data.js?v=20260824-gate1"></script>
+<script src="auth.js?v=20260824-gate1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -652,7 +653,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   PortalTheme.initThemeToggle('themeToggle');
   }).catch(function (err) {
     console.error(err);
-    alert('No se pudo cargar usuarios. Reintentá.');
+    PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_usuarios });
   });
 })();
 </script>

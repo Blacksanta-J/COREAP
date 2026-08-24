@@ -1020,6 +1020,14 @@
     }
   }
 
+  function revealProtectedPage() {
+    if (global.PortalAuthGate && typeof global.PortalAuthGate.reveal === 'function') {
+      global.PortalAuthGate.reveal();
+    } else {
+      try { document.documentElement.classList.remove('portal-auth-pending'); } catch (e) {}
+    }
+  }
+
   function requireAuth(options) {
     options = options || {};
     var user = currentUser();
@@ -1033,6 +1041,7 @@
       location.replace('index.html?denied=1');
       return null;
     }
+    revealProtectedPage();
     return user;
   }
 

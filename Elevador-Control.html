@@ -8,7 +8,8 @@
 <link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
 <link rel="shortcut icon" href="assets/favicon.ico">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-    <script src="portal-theme.js"></script>
+    <script src="portal-auth-gate.js"></script>
+<script src="portal-theme.js"></script>
     <script src="portal-header.js"></script>
     <script src="portal-nav.js"></script>
     <script src="portal-sidebar.js"></script>
@@ -18,9 +19,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260824-roles1"></script>
-<script src="auth.js?v=20260824-roles1"></script>
-    <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'eleves_concursos' }); });</script>
+<script src="users-data.js?v=20260824-gate1"></script>
+<script src="auth.js?v=20260824-gate1"></script>
+    <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'eleves_concursos' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'eleves_concursos' }); });</script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
