@@ -217,16 +217,30 @@
 
   function saveGoogleIdToken(idToken) {
     try {
-      if (idToken) sessionStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
+      if (idToken) localStorage.setItem(STORAGE_GOOGLE_TOKEN, String(idToken));
     } catch (e) {}
+    try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
   }
 
   function clearGoogleIdToken() {
+    try { localStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
     try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
   }
 
   function readGoogleIdToken() {
-    try { return sessionStorage.getItem(STORAGE_GOOGLE_TOKEN) || ''; } catch (e) { return ''; }
+    try {
+      var t = localStorage.getItem(STORAGE_GOOGLE_TOKEN);
+      if (t) return t;
+      t = sessionStorage.getItem(STORAGE_GOOGLE_TOKEN);
+      if (t) {
+        localStorage.setItem(STORAGE_GOOGLE_TOKEN, t);
+        try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e2) {}
+        return t;
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
   }
 
   /** Espera a que Firebase Auth restaure la sesión persistida. */
@@ -593,8 +607,22 @@
       if (!initFirebase()) {
         return getUsers();
       }
-      return waitForFirebaseAuth().then(function () {
-        return syncFromFirestore();
+      return waitForFirebaseAuth().then(function (fbUser) {
+        return syncFromFirestore().then(function () {
+          /* Auth Firebase persiste entre pestañas; la sesión portal no siempre.
+             Si hay usuario Firebase y no hay sesión portal, reconstruirla. */
+          if (fbUser && fbUser.email && !getSession()) {
+            var portalUser = findUserByEmail(fbUser.email);
+            if (portalUser && portalUser.active) {
+              setSession(portalUser, {
+                nombre: fbUser.displayName || displayName(portalUser),
+                picture: fbUser.photoURL || '',
+                provider: 'google'
+              });
+            }
+          }
+          return getUsers();
+        });
       });
     });
     return _readyPromise;
@@ -602,7 +630,15 @@
 
   function getSession() {
     try {
-      var raw = sessionStorage.getItem(STORAGE_SESSION);
+      var raw = localStorage.getItem(STORAGE_SESSION);
+      if (!raw) {
+        /* Migrar sesión vieja de sessionStorage (por pestaña) → localStorage (compartida) */
+        raw = sessionStorage.getItem(STORAGE_SESSION);
+        if (raw) {
+          localStorage.setItem(STORAGE_SESSION, raw);
+          try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e2) {}
+        }
+      }
       if (!raw) return null;
       return JSON.parse(raw);
     } catch (e) {
@@ -621,12 +657,14 @@
       provider: extra.provider || 'local',
       at: new Date().toISOString()
     };
-    sessionStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
+    localStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
+    try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e) {}
     return session;
   }
 
   function clearSession() {
-    sessionStorage.removeItem(STORAGE_SESSION);
+    try { localStorage.removeItem(STORAGE_SESSION); } catch (e) {}
+    try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e) {}
   }
 
   function currentUser() {
