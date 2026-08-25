@@ -6,15 +6,8 @@
 (function (global) {
   'use strict';
 
-  var SESSION_KEY = 'portal-session-v2';
-  var ACTIVITY_KEY = 'portal-activity-v2';
-  var IDLE_MS = 60 * 60 * 1000;
+  var SESSION_KEY = 'portal-session-v1';
   var page = (global.location.pathname || '').split('/').pop() || 'index.html';
-
-  try {
-    localStorage.removeItem('portal-session-v1');
-    sessionStorage.removeItem('portal-session-v1');
-  } catch (e) {}
 
   function reveal() {
     document.documentElement.classList.remove('portal-auth-pending');
@@ -38,22 +31,7 @@
       var raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
       if (!raw) return false;
       var session = JSON.parse(raw);
-      if (!session || !session.email) return false;
-      var last = 0;
-      try {
-        last = Number(localStorage.getItem(ACTIVITY_KEY) || sessionStorage.getItem(ACTIVITY_KEY) || 0);
-      } catch (e2) {}
-      if (!last && session.at) last = Date.parse(session.at) || 0;
-      if (last && (Date.now() - last) > IDLE_MS) {
-        try {
-          localStorage.removeItem(SESSION_KEY);
-          sessionStorage.removeItem(SESSION_KEY);
-          localStorage.removeItem(ACTIVITY_KEY);
-          sessionStorage.removeItem(ACTIVITY_KEY);
-        } catch (e3) {}
-        return false;
-      }
-      return true;
+      return !!(session && session.email);
     } catch (e) {
       return false;
     }

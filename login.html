@@ -8,15 +8,15 @@
 <link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
 <link rel="shortcut icon" href="assets/favicon.ico">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<script src="portal-auth-gate.js?v=20260825-idle1"></script>
+<script src="portal-auth-gate.js"></script>
 <script src="portal-theme.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260825-norest1"></script>
-<script src="auth.js?v=20260825-idle1"></script>
+<script src="users-data.js?v=20260825-login8am"></script>
+<script src="auth.js?v=20260825-login8am"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
@@ -92,22 +92,15 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   function goNext() {
     var params = new URLSearchParams(location.search);
     var next = params.get('next') || 'index.html';
-    if (!/^[A-Za-z0-9._-]+\.html$/.test(next) || next === 'login.html') {
-      next = 'index.html';
-    }
+    if (!/^[A-Za-z0-9._-]+\.html$/.test(next)) next = 'index.html';
     location.replace(next);
   }
 
   PortalTheme.initThemeToggle('themeToggle');
 
   function finishLogin(result) {
-    if (!result || !result.ok) {
-      showError((result && result.error) || 'No se pudo iniciar sesión.');
-      try {
-        if (window.google && google.accounts && google.accounts.id) {
-          google.accounts.id.disableAutoSelect();
-        }
-      } catch (e) {}
+    if (!result.ok) {
+      showError(result.error);
       return;
     }
     goNext();
@@ -145,12 +138,8 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
       cancel_on_tap_outside: true,
       ux_mode: 'popup',
       context: 'signin',
-      hosted_domain: PortalAuth.ALLOWED_DOMAIN,
-      itp_support: true,
-      use_fedcm_for_prompt: true,
-      use_fedcm_for_button: true
+      hosted_domain: PortalAuth.ALLOWED_DOMAIN
     });
-    try { google.accounts.id.disableAutoSelect(); } catch (e) {}
 
     var host = document.getElementById('googleBtnHost');
     host.innerHTML = '';
@@ -164,14 +153,10 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     });
   }
 
-  if (new URLSearchParams(location.search).get('idle') === '1') {
-    showError('Tu sesión se cerró por inactividad (1 hora). Volvé a ingresar.');
-  }
-
   PortalAuth.ready().then(function () {
     var existing = PortalAuth.currentUser();
     if (existing) {
-      goNext();
+      location.replace('index.html');
       return;
     }
     initGoogle();

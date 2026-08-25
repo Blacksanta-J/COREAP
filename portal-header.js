@@ -138,8 +138,8 @@
 
   function readSessionFallback() {
     try {
-      var raw = localStorage.getItem('portal-session-v2')
-        || sessionStorage.getItem('portal-session-v2');
+      var raw = localStorage.getItem('portal-session-v1')
+        || sessionStorage.getItem('portal-session-v1');
       if (!raw) return null;
       var session = JSON.parse(raw);
       if (!session || !session.email) return null;

@@ -7,10 +7,7 @@
   'use strict';
 
   var STORAGE_USERS = 'portal-users-v2';
-  var STORAGE_SESSION = 'portal-session-v2';
-  var STORAGE_ACTIVITY = 'portal-activity-v2';
-  var IDLE_MS = 60 * 60 * 1000;
-  var LEGACY_SESSION_KEYS = ['portal-session-v1'];
+  var STORAGE_SESSION = 'portal-session-v1';
   var ALLOWED_DOMAIN = 'bue.edu.ar';
 
   var _firebaseAppReady = false;
@@ -18,12 +15,6 @@
   var _firebaseAuth = null;
   var _usersCache = null;
   var _readyPromise = null;
-  var _persistencePromise = null;
-  var _idleWatchStarted = false;
-  var _idleCheckTimer = null;
-  var _lastActivityWrite = 0;
-  var _firestoreNet = Promise.resolve();
-  var _firestoreWantOnline = false;
 
   var ROLES = {
     admin: 'admin',
@@ -284,15 +275,10 @@
         firebase.initializeApp(getFirebaseConfig());
       }
       _firestore = firebase.firestore();
-      try {
-        _firestore.settings({
-          experimentalAutoDetectLongPolling: true,
-          ignoreUndefinedProperties: true,
-          merge: true
-        });
-      } catch (e) {}
-      try { firebase.firestore.setLogLevel('error'); } catch (e2) {}
       _firebaseAuth = firebase.auth();
+      try {
+        _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      } catch (e) {}
       _firebaseAppReady = true;
       return true;
     } catch (e) {
@@ -301,8 +287,7 @@
     }
   }
 
-  var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v2';
-  var LEGACY_GOOGLE_TOKEN_KEYS = ['portal-google-id-token-v1'];
+  var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v1';
 
   function saveGoogleIdToken(idToken) {
     try {
@@ -316,21 +301,6 @@
   function clearGoogleIdToken() {
     try { localStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
     try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
-    (LEGACY_GOOGLE_TOKEN_KEYS || []).forEach(function (key) {
-      try { localStorage.removeItem(key); } catch (e) {}
-      try { sessionStorage.removeItem(key); } catch (e2) {}
-    });
-  }
-
-  function wipeLegacyAuthStorage() {
-    (LEGACY_SESSION_KEYS || []).forEach(function (key) {
-      try { localStorage.removeItem(key); } catch (e) {}
-      try { sessionStorage.removeItem(key); } catch (e2) {}
-    });
-    (LEGACY_GOOGLE_TOKEN_KEYS || []).forEach(function (key) {
-      try { localStorage.removeItem(key); } catch (e) {}
-      try { sessionStorage.removeItem(key); } catch (e2) {}
-    });
   }
 
   function readGoogleIdToken() {
@@ -343,87 +313,41 @@
     }
   }
 
-  /** LOCAL → SESSION → NONE si el navegador bloquea IndexedDB / storage. */
-  function ensureAuthPersistence() {
-    if (!initFirebase()) return Promise.resolve(false);
-    if (_persistencePromise) return _persistencePromise;
-    var persist = firebase.auth.Auth.Persistence;
-    _persistencePromise = _firebaseAuth.setPersistence(persist.LOCAL)
-      .catch(function () {
-        return _firebaseAuth.setPersistence(persist.SESSION);
-      })
-      .catch(function () {
-        return _firebaseAuth.setPersistence(persist.NONE);
-      })
-      .then(function () { return true; })
-      .catch(function () { return true; });
-    return _persistencePromise;
-  }
-
-  /** Enciende la red de Firestore solo mientras hay una lectura/escritura. */
-  function ensureFirestoreOnline() {
-    if (!initFirebase() || !_firestore) return Promise.resolve();
-    _firestoreWantOnline = true;
-    _firestoreNet = _firestoreNet.then(function () {
-      return _firestore.enableNetwork();
-    }).catch(function () {});
-    return _firestoreNet;
-  }
-
-  /** Cierra el WebChannel en reposo: evita pings bloqueados y ráfagas de `channel?`. */
-  function releaseFirestoreNetwork() {
-    if (!_firestore) return Promise.resolve();
-    _firestoreWantOnline = false;
-    _firestoreNet = _firestoreNet.then(function () {
-      if (_firestoreWantOnline) return;
-      return _firestore.disableNetwork();
-    }).catch(function () {});
-    return _firestoreNet;
-  }
-
-  function isPermissionDenied(err) {
-    if (!err) return false;
-    var code = String(err.code || '');
-    if (code === 'permission-denied' || code.indexOf('permission-denied') !== -1) return true;
-    return /insufficient permissions/i.test(String(err.message || ''));
-  }
-
   /** Espera a que Firebase Auth restaure la sesión persistida. */
   function waitForFirebaseAuth(timeoutMs) {
     timeoutMs = timeoutMs || 8000;
     if (!initFirebase()) return Promise.resolve(null);
-    return ensureAuthPersistence().then(function () {
-      if (_firebaseAuth.currentUser) return _firebaseAuth.currentUser;
-      return new Promise(function (resolve) {
-        var settled = false;
-        var unsub = function () {};
-        var nullTimer = null;
+    if (_firebaseAuth.currentUser) return Promise.resolve(_firebaseAuth.currentUser);
 
-        function finish(user) {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          if (nullTimer) clearTimeout(nullTimer);
-          try { unsub(); } catch (e) {}
-          resolve(user || null);
+    return new Promise(function (resolve) {
+      var settled = false;
+      var unsub = function () {};
+      var nullTimer = null;
+
+      function finish(user) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (nullTimer) clearTimeout(nullTimer);
+        try { unsub(); } catch (e) {}
+        resolve(user || null);
+      }
+
+      var timer = setTimeout(function () {
+        finish(_firebaseAuth.currentUser);
+      }, timeoutMs);
+
+      unsub = _firebaseAuth.onAuthStateChanged(function (user) {
+        if (user) {
+          finish(user);
+          return;
         }
-
-        var timer = setTimeout(function () {
-          finish(_firebaseAuth.currentUser);
-        }, timeoutMs);
-
-        unsub = _firebaseAuth.onAuthStateChanged(function (user) {
-          if (user) {
-            finish(user);
-            return;
-          }
-          /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
-          if (!nullTimer) {
-            nullTimer = setTimeout(function () {
-              finish(_firebaseAuth.currentUser);
-            }, 500);
-          }
-        });
+        /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
+        if (!nullTimer) {
+          nullTimer = setTimeout(function () {
+            finish(_firebaseAuth.currentUser);
+          }, 500);
+        }
       });
     });
   }
@@ -432,9 +356,7 @@
   function ensureFirebaseAuthForWrite() {
     if (!initFirebase()) return Promise.resolve(null);
 
-    return ensureFirestoreOnline().then(function () {
-      return waitForFirebaseAuth();
-    }).then(function (user) {
+    return waitForFirebaseAuth().then(function (user) {
       if (user) return user;
       var token = readGoogleIdToken();
       if (!token) {
@@ -556,97 +478,27 @@
     });
   }
 
-  function mergeRemoteUsersIntoLocal(remoteUsers) {
-    var local = ensureSeedLocal();
-    var byEmail = {};
-    local.forEach(function (u) {
-      byEmail[normalizeEmail(u.email)] = u;
-    });
-    (remoteUsers || []).forEach(function (u) {
-      if (!u || !u.email) return;
-      byEmail[normalizeEmail(u.email)] = u;
-    });
-    var users = mergeUsersKeepingSeedAdmin(Object.keys(byEmail).map(function (k) {
-      return byEmail[k];
-    }));
-    writeUsers(users);
-    return getUsers();
-  }
-
-  function fetchOwnUserFromFirestore(email) {
-    var id = userDocId(email);
-    if (!id || !_firestore) return Promise.resolve(null);
-    return _firestore.collection('users').doc(id).get().then(function (snap) {
-      if (!snap.exists) return null;
-      return fromFirestoreDoc(snap);
-    });
-  }
-
-  function applyUsersSnapshot(snap) {
-    var users = [];
-    snap.forEach(function (doc) {
-      users.push(fromFirestoreDoc(doc));
-    });
-    var hadSeed = firestoreHasSeedAdmin(snap);
-    users = mergeUsersKeepingSeedAdmin(users);
-    writeUsers(users);
-    var actor = _firebaseAuth && _firebaseAuth.currentUser
-      ? normalizeEmail(_firebaseAuth.currentUser.email)
-      : '';
-    if (!hadSeed && actor === normalizeEmail(SEED_ADMIN.email)) {
-      return ensureSeedAdminInFirestore().then(function () {
-        return getUsers();
-      });
-    }
-    return Promise.resolve(getUsers());
-  }
-
-  function restoreFirebaseAuthIfPossible() {
-    return waitForFirebaseAuth().then(function (user) {
-      if (user) return user;
-      var token = readGoogleIdToken();
-      if (!token) return null;
-      return signInFirebaseWithGoogleIdToken(token).then(function (cred) {
-        return (cred && cred.user) || null;
-      }).catch(function () {
-        return null;
-      });
-    });
-  }
-
   function syncFromFirestore() {
     if (!initFirebase()) {
       return Promise.resolve(ensureSeedLocal());
     }
-    return ensureFirestoreOnline().then(function () {
-      return restoreFirebaseAuthIfPossible();
-    }).then(function (fbUser) {
-      if (!fbUser || !fbUser.email) {
-        return ensureSeedLocal();
-      }
-      var email = normalizeEmail(fbUser.email);
-      /* Usuarios comunes (p. ej. lola.hurtado) no pueden listar /users:
-         leer solo el propio documento. El listado queda para Admin. */
-      return fetchOwnUserFromFirestore(email).then(function (own) {
-        if (own) mergeRemoteUsersIntoLocal([own]);
-        var local = own || findUserByEmail(email);
-        if (!isAdminUser(local) && normalizeEmail(email) !== normalizeEmail(SEED_ADMIN.email)) {
-          return getUsers();
-        }
-        return _firestore.collection('users').get().then(function (snap) {
-          return applyUsersSnapshot(snap);
-        }).catch(function (err) {
-          if (!isPermissionDenied(err)) {
-            console.warn('Firestore list users', err);
-          }
+    return _firestore.collection('users').get().then(function (snap) {
+      var users = [];
+      snap.forEach(function (doc) {
+        users.push(fromFirestoreDoc(doc));
+      });
+      var hadSeed = firestoreHasSeedAdmin(snap);
+      users = mergeUsersKeepingSeedAdmin(users);
+      writeUsers(users);
+      if (!hadSeed) {
+        return ensureSeedAdminInFirestore().then(function () {
           return getUsers();
         });
-      }).catch(function (err) {
-        if (!isPermissionDenied(err)) {
-          console.warn('Firestore sync', err);
-        }
-        return ensureSeedLocal();
-      });
+      }
+      return getUsers();
+    }).catch(function (err) {
+      console.error('Firestore sync error', err);
+      return ensureSeedLocal();
     });
   }
 
@@ -664,37 +516,7 @@
   function signInFirebaseWithGoogleIdToken(idToken) {
     if (!initFirebase()) return Promise.resolve(null);
     var credential = firebase.auth.GoogleAuthProvider.credential(idToken);
-    return ensureAuthPersistence().then(function () {
-      return _firebaseAuth.signInWithCredential(credential);
-    });
-  }
-
-  function extrasFromFirebaseUser(fbUser) {
-    fbUser = fbUser || {};
-    return {
-      nombre: fbUser.displayName || '',
-      picture: fbUser.photoURL || '',
-      provider: 'google'
-    };
-  }
-
-  function finishFirebaseUserLogin(fbUser, extrasOverride) {
-    if (!fbUser || !fbUser.email) {
-      return Promise.resolve({ ok: false, error: 'Google no devolvió el mail de la cuenta.' });
-    }
-    if (!isBueEmail(fbUser.email)) {
-      try { _firebaseAuth.signOut(); } catch (e) {}
-      return Promise.resolve({
-        ok: false,
-        error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.'
-      });
-    }
-    var extras = Object.assign(extrasFromFirebaseUser(fbUser), extrasOverride || {});
-    return bootstrapFirestoreIfNeeded(fbUser.email).then(function () {
-      return syncFromFirestore();
-    }).then(function () {
-      return acceptPreloadedUser(fbUser.email, extras);
-    });
+    return _firebaseAuth.signInWithCredential(credential);
   }
 
   function hydratePublishedUser(raw) {
@@ -849,11 +671,9 @@
   function ready() {
     if (_readyPromise) return _readyPromise;
     _readyPromise = Promise.resolve().then(function () {
-      wipeLegacyAuthStorage();
       ensureSeedLocal();
       /* Migrar / normalizar sesión al arrancar cada pestaña */
       getSession();
-      startIdleWatch();
       if (!isFirebaseEnabled()) {
         return getUsers();
       }
@@ -861,16 +681,11 @@
         return getUsers();
       }
       return waitForFirebaseAuth().then(function (fbUser) {
-        /* Sin sesión v2 no rearmar login desde Firebase: hay que volver a Google. */
-        if (fbUser && !getSession()) {
-          try { _firebaseAuth.signOut(); } catch (e) {}
-          return getUsers();
-        }
         return syncFromFirestore().then(function () {
+          if (fbUser && fbUser.email && !currentUser()) {
+            restoreSessionFromFirebaseUser(fbUser);
+          }
           return getUsers();
-        }).then(function (users) {
-          releaseFirestoreNetwork();
-          return users;
         });
       });
     });
@@ -894,10 +709,6 @@
       var raw = readSessionRaw();
       if (!raw) return null;
       var session = JSON.parse(raw);
-      if (isIdleExpired(session)) {
-        logout();
-        return null;
-      }
       /* Escribir en ambos: localStorage (entre pestañas) + sessionStorage (fallback) */
       try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
       try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
@@ -923,92 +734,12 @@
     var raw = JSON.stringify(session);
     try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
     try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
-    writeActivityTs(Date.now());
     return session;
   }
 
   function clearSession() {
     try { localStorage.removeItem(STORAGE_SESSION); } catch (e) {}
     try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e) {}
-    clearActivityTs();
-  }
-
-  function readActivityTs() {
-    try {
-      var n = Number(localStorage.getItem(STORAGE_ACTIVITY) || sessionStorage.getItem(STORAGE_ACTIVITY) || 0);
-      return n > 0 ? n : 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  function writeActivityTs(ts) {
-    var s = String(ts);
-    try { localStorage.setItem(STORAGE_ACTIVITY, s); } catch (e) {}
-    try { sessionStorage.setItem(STORAGE_ACTIVITY, s); } catch (e2) {}
-  }
-
-  function clearActivityTs() {
-    try { localStorage.removeItem(STORAGE_ACTIVITY); } catch (e) {}
-    try { sessionStorage.removeItem(STORAGE_ACTIVITY); } catch (e2) {}
-  }
-
-  function lastActivityMs(session) {
-    var stored = readActivityTs();
-    if (stored) return stored;
-    if (session && session.at) {
-      var parsed = Date.parse(session.at);
-      if (parsed) return parsed;
-    }
-    return 0;
-  }
-
-  function isIdleExpired(session) {
-    session = session || null;
-    var last = lastActivityMs(session);
-    if (!last) return false;
-    return (Date.now() - last) > IDLE_MS;
-  }
-
-  function touchActivity() {
-    var now = Date.now();
-    if (now - _lastActivityWrite < 15000 && readActivityTs()) return;
-    _lastActivityWrite = now;
-    writeActivityTs(now);
-  }
-
-  function expireIdleSession(redirect) {
-    logout();
-    if (!redirect) return;
-    var page = (location.pathname || '').split('/').pop() || 'index.html';
-    if (page === 'login.html') return;
-    location.replace('login.html?next=' + encodeURIComponent(page) + '&idle=1');
-  }
-
-  function startIdleWatch() {
-    if (_idleWatchStarted) return;
-    _idleWatchStarted = true;
-
-    function checkIdle() {
-      var raw = readSessionRaw();
-      if (!raw) return;
-      var session = null;
-      try { session = JSON.parse(raw); } catch (e) { return; }
-      if (isIdleExpired(session)) expireIdleSession(true);
-    }
-
-    var onActivity = function () {
-      checkIdle();
-      if (readSessionRaw()) touchActivity();
-    };
-    ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(function (evt) {
-      document.addEventListener(evt, onActivity, { passive: true });
-    });
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) return;
-      onActivity();
-    });
-    _idleCheckTimer = setInterval(checkIdle, 30000);
   }
 
   function currentUser() {
@@ -1181,7 +912,6 @@
 
     var now = Math.floor(Date.now() / 1000);
     if (payload.exp && Number(payload.exp) < now) {
-      clearGoogleIdToken();
       return Promise.resolve({ ok: false, error: 'La sesión de Google expiró. Reintentá.' });
     }
     if (payload.aud !== clientId) {
@@ -1214,11 +944,14 @@
     saveGoogleIdToken(idToken);
 
     return signInFirebaseWithGoogleIdToken(idToken).then(function (cred) {
-      var user = (cred && cred.user) || (_firebaseAuth && _firebaseAuth.currentUser);
-      if (!user) {
+      if (!cred || !cred.user) {
         return Promise.reject(new Error('No se pudo iniciar sesión en Firebase Auth.'));
       }
-      return finishFirebaseUserLogin(user, extras);
+      return bootstrapFirestoreIfNeeded(payload.email);
+    }).then(function () {
+      return syncFromFirestore();
+    }).then(function () {
+      return acceptPreloadedUser(payload.email, extras);
     }).catch(function (err) {
       console.error(err);
       clearGoogleIdToken();
@@ -1436,9 +1169,6 @@
         ok: false,
         error: (err && err.message) || 'No se pudo guardar en Firebase.'
       };
-    }).then(function (result) {
-      releaseFirestoreNetwork();
-      return result;
     });
   }
 
@@ -1558,10 +1288,6 @@
           ok: false,
           error: (err && err.message) || ('No se pudo eliminar en Firebase.')
         };
-      })
-      .then(function (result) {
-        releaseFirestoreNetwork();
-        return result;
       });
   }
 
@@ -1618,14 +1344,9 @@
       extras: safeExtras
     };
 
-    return ensureFirestoreOnline().then(function () {
-      return _firestore.collection('process_logs').add(payload);
-    }).catch(function (err) {
+    return _firestore.collection('process_logs').add(payload).catch(function (err) {
       console.warn('No se pudo guardar el log del proceso', err);
       return null;
-    }).then(function (result) {
-      releaseFirestoreNetwork();
-      return result;
     });
   }
 
@@ -1640,13 +1361,12 @@
       return Promise.reject(new Error('Firebase no está disponible.'));
     }
     var limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
-    return ensureFirestoreOnline().then(function () {
-      return _firestore.collection('process_logs')
-        .orderBy('createdAt', 'desc')
-        .limit(limit)
-        .get();
-    }).then(function (snap) {
-      return snap.docs.map(function (doc) {
+    return _firestore.collection('process_logs')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get()
+      .then(function (snap) {
+        return snap.docs.map(function (doc) {
           var d = doc.data() || {};
           return {
             id: doc.id,
@@ -1668,13 +1388,7 @@
             extras: d.extras || {}
           };
         });
-    }).then(function (rows) {
-      releaseFirestoreNetwork();
-      return rows;
-    }, function (err) {
-      releaseFirestoreNetwork();
-      return Promise.reject(err);
-    });
+      });
   }
 
   function describePermissions(roleOrUser) {
