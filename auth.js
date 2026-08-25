@@ -15,6 +15,7 @@
   var _firebaseAuth = null;
   var _usersCache = null;
   var _readyPromise = null;
+  var _persistencePromise = null;
 
   var ROLES = {
     admin: 'admin',
@@ -276,9 +277,6 @@
       }
       _firestore = firebase.firestore();
       _firebaseAuth = firebase.auth();
-      try {
-        _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      } catch (e) {}
       _firebaseAppReady = true;
       return true;
     } catch (e) {
@@ -313,41 +311,66 @@
     }
   }
 
+  /** LOCAL → SESSION → NONE si el navegador bloquea IndexedDB / storage. */
+  function ensureAuthPersistence() {
+    if (!initFirebase()) return Promise.resolve(false);
+    if (_persistencePromise) return _persistencePromise;
+    var persist = firebase.auth.Auth.Persistence;
+    _persistencePromise = _firebaseAuth.setPersistence(persist.LOCAL)
+      .catch(function () {
+        return _firebaseAuth.setPersistence(persist.SESSION);
+      })
+      .catch(function () {
+        return _firebaseAuth.setPersistence(persist.NONE);
+      })
+      .then(function () { return true; })
+      .catch(function () { return true; });
+    return _persistencePromise;
+  }
+
+  function isPermissionDenied(err) {
+    if (!err) return false;
+    var code = String(err.code || '');
+    if (code === 'permission-denied' || code.indexOf('permission-denied') !== -1) return true;
+    return /insufficient permissions/i.test(String(err.message || ''));
+  }
+
   /** Espera a que Firebase Auth restaure la sesión persistida. */
   function waitForFirebaseAuth(timeoutMs) {
     timeoutMs = timeoutMs || 8000;
     if (!initFirebase()) return Promise.resolve(null);
-    if (_firebaseAuth.currentUser) return Promise.resolve(_firebaseAuth.currentUser);
+    return ensureAuthPersistence().then(function () {
+      if (_firebaseAuth.currentUser) return _firebaseAuth.currentUser;
+      return new Promise(function (resolve) {
+        var settled = false;
+        var unsub = function () {};
+        var nullTimer = null;
 
-    return new Promise(function (resolve) {
-      var settled = false;
-      var unsub = function () {};
-      var nullTimer = null;
-
-      function finish(user) {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        if (nullTimer) clearTimeout(nullTimer);
-        try { unsub(); } catch (e) {}
-        resolve(user || null);
-      }
-
-      var timer = setTimeout(function () {
-        finish(_firebaseAuth.currentUser);
-      }, timeoutMs);
-
-      unsub = _firebaseAuth.onAuthStateChanged(function (user) {
-        if (user) {
-          finish(user);
-          return;
+        function finish(user) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (nullTimer) clearTimeout(nullTimer);
+          try { unsub(); } catch (e) {}
+          resolve(user || null);
         }
-        /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
-        if (!nullTimer) {
-          nullTimer = setTimeout(function () {
-            finish(_firebaseAuth.currentUser);
-          }, 500);
-        }
+
+        var timer = setTimeout(function () {
+          finish(_firebaseAuth.currentUser);
+        }, timeoutMs);
+
+        unsub = _firebaseAuth.onAuthStateChanged(function (user) {
+          if (user) {
+            finish(user);
+            return;
+          }
+          /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
+          if (!nullTimer) {
+            nullTimer = setTimeout(function () {
+              finish(_firebaseAuth.currentUser);
+            }, 500);
+          }
+        });
       });
     });
   }
@@ -478,27 +501,95 @@
     });
   }
 
+  function mergeRemoteUsersIntoLocal(remoteUsers) {
+    var local = ensureSeedLocal();
+    var byEmail = {};
+    local.forEach(function (u) {
+      byEmail[normalizeEmail(u.email)] = u;
+    });
+    (remoteUsers || []).forEach(function (u) {
+      if (!u || !u.email) return;
+      byEmail[normalizeEmail(u.email)] = u;
+    });
+    var users = mergeUsersKeepingSeedAdmin(Object.keys(byEmail).map(function (k) {
+      return byEmail[k];
+    }));
+    writeUsers(users);
+    return getUsers();
+  }
+
+  function fetchOwnUserFromFirestore(email) {
+    var id = userDocId(email);
+    if (!id) return Promise.resolve(null);
+    return _firestore.collection('users').doc(id).get().then(function (snap) {
+      if (!snap.exists) return null;
+      return fromFirestoreDoc(snap);
+    });
+  }
+
+  function applyUsersSnapshot(snap) {
+    var users = [];
+    snap.forEach(function (doc) {
+      users.push(fromFirestoreDoc(doc));
+    });
+    var hadSeed = firestoreHasSeedAdmin(snap);
+    users = mergeUsersKeepingSeedAdmin(users);
+    writeUsers(users);
+    var actor = _firebaseAuth && _firebaseAuth.currentUser
+      ? normalizeEmail(_firebaseAuth.currentUser.email)
+      : '';
+    if (!hadSeed && actor === normalizeEmail(SEED_ADMIN.email)) {
+      return ensureSeedAdminInFirestore().then(function () {
+        return getUsers();
+      });
+    }
+    return Promise.resolve(getUsers());
+  }
+
+  function restoreFirebaseAuthIfPossible() {
+    return waitForFirebaseAuth().then(function (user) {
+      if (user) return user;
+      var token = readGoogleIdToken();
+      if (!token) return null;
+      return signInFirebaseWithGoogleIdToken(token).then(function (cred) {
+        return (cred && cred.user) || null;
+      }).catch(function (err) {
+        console.warn('No se pudo restaurar Firebase Auth', err);
+        return null;
+      });
+    });
+  }
+
   function syncFromFirestore() {
     if (!initFirebase()) {
       return Promise.resolve(ensureSeedLocal());
     }
-    return _firestore.collection('users').get().then(function (snap) {
-      var users = [];
-      snap.forEach(function (doc) {
-        users.push(fromFirestoreDoc(doc));
-      });
-      var hadSeed = firestoreHasSeedAdmin(snap);
-      users = mergeUsersKeepingSeedAdmin(users);
-      writeUsers(users);
-      if (!hadSeed) {
-        return ensureSeedAdminInFirestore().then(function () {
-          return getUsers();
-        });
+    return restoreFirebaseAuthIfPossible().then(function (fbUser) {
+      if (!fbUser || !fbUser.email) {
+        return ensureSeedLocal();
       }
-      return getUsers();
-    }).catch(function (err) {
-      console.error('Firestore sync error', err);
-      return ensureSeedLocal();
+      var email = normalizeEmail(fbUser.email);
+      return _firestore.collection('users').get().then(function (snap) {
+        return applyUsersSnapshot(snap);
+      }).catch(function (err) {
+        if (!isPermissionDenied(err)) {
+          console.error('Firestore sync error', err);
+          return fetchOwnUserFromFirestore(email).then(function (own) {
+            if (own) return mergeRemoteUsersIntoLocal([own]);
+            return ensureSeedLocal();
+          }).catch(function () {
+            return ensureSeedLocal();
+          });
+        }
+        /* Listado denegado (usuario no admin): leer solo el propio documento. */
+        return fetchOwnUserFromFirestore(email).then(function (own) {
+          if (own) return mergeRemoteUsersIntoLocal([own]);
+          return ensureSeedLocal();
+        }).catch(function (err2) {
+          console.error('Firestore sync error', err2);
+          return ensureSeedLocal();
+        });
+      });
     });
   }
 
@@ -516,7 +607,87 @@
   function signInFirebaseWithGoogleIdToken(idToken) {
     if (!initFirebase()) return Promise.resolve(null);
     var credential = firebase.auth.GoogleAuthProvider.credential(idToken);
-    return _firebaseAuth.signInWithCredential(credential);
+    return ensureAuthPersistence().then(function () {
+      return _firebaseAuth.signInWithCredential(credential);
+    });
+  }
+
+  function googleAuthProvider() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({
+      hd: ALLOWED_DOMAIN,
+      prompt: 'select_account'
+    });
+    return provider;
+  }
+
+  function extrasFromFirebaseUser(fbUser) {
+    fbUser = fbUser || {};
+    return {
+      nombre: fbUser.displayName || '',
+      picture: fbUser.photoURL || '',
+      provider: 'google'
+    };
+  }
+
+  function finishFirebaseUserLogin(fbUser, extrasOverride) {
+    if (!fbUser || !fbUser.email) {
+      return Promise.resolve({ ok: false, error: 'Google no devolvió el mail de la cuenta.' });
+    }
+    if (!isBueEmail(fbUser.email)) {
+      try { _firebaseAuth.signOut(); } catch (e) {}
+      return Promise.resolve({
+        ok: false,
+        error: 'Solo se permiten cuentas @' + ALLOWED_DOMAIN + '.'
+      });
+    }
+    var extras = Object.assign(extrasFromFirebaseUser(fbUser), extrasOverride || {});
+    return bootstrapFirestoreIfNeeded(fbUser.email).then(function () {
+      return syncFromFirestore();
+    }).then(function () {
+      return acceptPreloadedUser(fbUser.email, extras);
+    });
+  }
+
+  /** Ingreso que evita el popup de GIS (COOP / Tracking Prevention). */
+  function loginWithFirebaseGoogleRedirect() {
+    if (!isFirebaseEnabled() || !initFirebase()) {
+      return Promise.resolve({ ok: false, error: 'Firebase no está disponible.' });
+    }
+    return ensureAuthPersistence().then(function () {
+      return _firebaseAuth.signInWithRedirect(googleAuthProvider());
+    }).then(function () {
+      return { ok: true, pending: true };
+    }).catch(function (err) {
+      console.error(err);
+      var msg = (err && err.message) ? err.message : 'Error de Firebase';
+      var code = err && err.code ? ' (' + err.code + ')' : '';
+      return {
+        ok: false,
+        error: 'No se pudo iniciar el ingreso con Google' + code + '. ' + msg
+      };
+    });
+  }
+
+  /** Completa el retorno de signInWithRedirect en login.html. */
+  function completeFirebaseRedirectLogin() {
+    if (!isFirebaseEnabled() || !initFirebase()) return Promise.resolve(null);
+    return ensureAuthPersistence().then(function () {
+      return _firebaseAuth.getRedirectResult();
+    }).then(function (result) {
+      if (!result || !result.user) return null;
+      return finishFirebaseUserLogin(result.user);
+    }).catch(function (err) {
+      console.error(err);
+      var msg = (err && err.message) ? err.message : 'Error de Firebase';
+      var code = err && err.code ? ' (' + err.code + ')' : '';
+      return {
+        ok: false,
+        error: 'No se pudo completar el ingreso con Google' + code + '. ' + msg
+      };
+    });
   }
 
   function hydratePublishedUser(raw) {
@@ -944,14 +1115,11 @@
     saveGoogleIdToken(idToken);
 
     return signInFirebaseWithGoogleIdToken(idToken).then(function (cred) {
-      if (!cred || !cred.user) {
+      var user = (cred && cred.user) || (_firebaseAuth && _firebaseAuth.currentUser);
+      if (!user) {
         return Promise.reject(new Error('No se pudo iniciar sesión en Firebase Auth.'));
       }
-      return bootstrapFirestoreIfNeeded(payload.email);
-    }).then(function () {
-      return syncFromFirestore();
-    }).then(function () {
-      return acceptPreloadedUser(payload.email, extras);
+      return finishFirebaseUserLogin(user, extras);
     }).catch(function (err) {
       console.error(err);
       clearGoogleIdToken();
@@ -1434,6 +1602,8 @@
     login: login,
     loginWithGoogleIdToken: loginWithGoogleIdToken,
     loginWithGoogleProfile: loginWithGoogleProfile,
+    loginWithFirebaseGoogleRedirect: loginWithFirebaseGoogleRedirect,
+    completeFirebaseRedirectLogin: completeFirebaseRedirectLogin,
     logout: logout,
     requireAuth: requireAuth,
     canAccess: canAccess,
