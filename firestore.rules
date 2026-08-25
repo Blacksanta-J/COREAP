@@ -42,7 +42,11 @@ service cloud.firestore {
     }
 
     match /users/{userEmail} {
-      allow read: if isBue();
+      /* Cualquier @bue autenticado lee su propio doc; el listado es solo admin */
+      allow get: if isBue() && (
+        userEmail == authEmail() || isAdmin() || isSeedAdmin()
+      );
+      allow list: if isAdmin() || isSeedAdmin();
       allow create: if isAdmin() || isSeedAdmin();
       allow update, delete: if isAdmin() || isSeedAdmin();
     }

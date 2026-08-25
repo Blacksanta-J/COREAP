@@ -520,7 +520,7 @@
 
   function fetchOwnUserFromFirestore(email) {
     var id = userDocId(email);
-    if (!id) return Promise.resolve(null);
+    if (!id || !_firestore) return Promise.resolve(null);
     return _firestore.collection('users').doc(id).get().then(function (snap) {
       if (!snap.exists) return null;
       return fromFirestoreDoc(snap);
@@ -553,8 +553,7 @@
       if (!token) return null;
       return signInFirebaseWithGoogleIdToken(token).then(function (cred) {
         return (cred && cred.user) || null;
-      }).catch(function (err) {
-        console.warn('No se pudo restaurar Firebase Auth', err);
+      }).catch(function () {
         return null;
       });
     });
@@ -569,26 +568,27 @@
         return ensureSeedLocal();
       }
       var email = normalizeEmail(fbUser.email);
-      return _firestore.collection('users').get().then(function (snap) {
-        return applyUsersSnapshot(snap);
+      /* Usuarios comunes (p. ej. lola.hurtado) no pueden listar /users:
+         leer solo el propio documento. El listado queda para Admin. */
+      return fetchOwnUserFromFirestore(email).then(function (own) {
+        if (own) mergeRemoteUsersIntoLocal([own]);
+        var local = own || findUserByEmail(email);
+        if (!isAdminUser(local) && normalizeEmail(email) !== normalizeEmail(SEED_ADMIN.email)) {
+          return getUsers();
+        }
+        return _firestore.collection('users').get().then(function (snap) {
+          return applyUsersSnapshot(snap);
+        }).catch(function (err) {
+          if (!isPermissionDenied(err)) {
+            console.warn('Firestore list users', err);
+          }
+          return getUsers();
+        });
       }).catch(function (err) {
         if (!isPermissionDenied(err)) {
-          console.error('Firestore sync error', err);
-          return fetchOwnUserFromFirestore(email).then(function (own) {
-            if (own) return mergeRemoteUsersIntoLocal([own]);
-            return ensureSeedLocal();
-          }).catch(function () {
-            return ensureSeedLocal();
-          });
+          console.warn('Firestore sync', err);
         }
-        /* Listado denegado (usuario no admin): leer solo el propio documento. */
-        return fetchOwnUserFromFirestore(email).then(function (own) {
-          if (own) return mergeRemoteUsersIntoLocal([own]);
-          return ensureSeedLocal();
-        }).catch(function (err2) {
-          console.error('Firestore sync error', err2);
-          return ensureSeedLocal();
-        });
+        return ensureSeedLocal();
       });
     });
   }
@@ -610,6 +610,17 @@
     return ensureAuthPersistence().then(function () {
       return _firebaseAuth.signInWithCredential(credential);
     });
+  }
+
+  function googleAuthProvider() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({
+      hd: ALLOWED_DOMAIN,
+      prompt: 'select_account'
+    });
+    return provider;
   }
 
   function extrasFromFirebaseUser(fbUser) {
@@ -637,6 +648,43 @@
       return syncFromFirestore();
     }).then(function () {
       return acceptPreloadedUser(fbUser.email, extras);
+    });
+  }
+
+  function loginWithFirebaseGoogleRedirect() {
+    if (!isFirebaseEnabled() || !initFirebase()) {
+      return Promise.resolve({ ok: false, error: 'Firebase no está disponible.' });
+    }
+    return ensureAuthPersistence().then(function () {
+      return _firebaseAuth.signInWithRedirect(googleAuthProvider());
+    }).then(function () {
+      return { ok: true, pending: true };
+    }).catch(function (err) {
+      console.error(err);
+      var msg = (err && err.message) ? err.message : 'Error de Firebase';
+      var code = err && err.code ? ' (' + err.code + ')' : '';
+      return {
+        ok: false,
+        error: 'No se pudo iniciar el ingreso con Google' + code + '. ' + msg
+      };
+    });
+  }
+
+  function completeFirebaseRedirectLogin() {
+    if (!isFirebaseEnabled() || !initFirebase()) return Promise.resolve(null);
+    return ensureAuthPersistence().then(function () {
+      return _firebaseAuth.getRedirectResult();
+    }).then(function (result) {
+      if (!result || !result.user) return null;
+      return finishFirebaseUserLogin(result.user);
+    }).catch(function (err) {
+      console.error(err);
+      var msg = (err && err.message) ? err.message : 'Error de Firebase';
+      var code = err && err.code ? ' (' + err.code + ')' : '';
+      return {
+        ok: false,
+        error: 'No se pudo completar el ingreso con Google' + code + '. ' + msg
+      };
     });
   }
 
@@ -1552,6 +1600,8 @@
     login: login,
     loginWithGoogleIdToken: loginWithGoogleIdToken,
     loginWithGoogleProfile: loginWithGoogleProfile,
+    loginWithFirebaseGoogleRedirect: loginWithFirebaseGoogleRedirect,
+    completeFirebaseRedirectLogin: completeFirebaseRedirectLogin,
     logout: logout,
     requireAuth: requireAuth,
     canAccess: canAccess,
