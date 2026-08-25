@@ -133,6 +133,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
       return;
     }
     showStatus('Ingresando…');
+    loggingIn = true;
     PortalAuth.loginWithGoogleIdToken(response.credential).then(finishLogin);
   }
 
@@ -187,10 +188,8 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
 
   /* Warm-up en background (no bloquea el botón) */
   PortalAuth.ready().then(function () {
-    if (PortalAuth.currentUser() && !errorBox.classList.contains('visible')) {
-      /* Si ready restauró sesión Firebase mientras el usuario miraba el botón */
-      goNext();
-    }
+    if (loggingIn) return;
+    if (PortalAuth.currentUser()) goNext();
   }).catch(function (err) {
     console.error(err);
   });
