@@ -8,6 +8,8 @@
 
   var STORAGE_USERS = 'portal-users-v2';
   var STORAGE_SESSION = 'portal-session-v2';
+  var STORAGE_ACTIVITY = 'portal-activity-v2';
+  var IDLE_MS = 60 * 60 * 1000;
   var LEGACY_SESSION_KEYS = ['portal-session-v1'];
   var ALLOWED_DOMAIN = 'bue.edu.ar';
 
@@ -17,6 +19,9 @@
   var _usersCache = null;
   var _readyPromise = null;
   var _persistencePromise = null;
+  var _idleWatchStarted = false;
+  var _idleCheckTimer = null;
+  var _lastActivityWrite = 0;
   var _firestoreNet = Promise.resolve();
   var _firestoreWantOnline = false;
 
@@ -848,6 +853,7 @@
       ensureSeedLocal();
       /* Migrar / normalizar sesión al arrancar cada pestaña */
       getSession();
+      startIdleWatch();
       if (!isFirebaseEnabled()) {
         return getUsers();
       }
@@ -888,6 +894,10 @@
       var raw = readSessionRaw();
       if (!raw) return null;
       var session = JSON.parse(raw);
+      if (isIdleExpired(session)) {
+        logout();
+        return null;
+      }
       /* Escribir en ambos: localStorage (entre pestañas) + sessionStorage (fallback) */
       try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
       try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
@@ -913,12 +923,92 @@
     var raw = JSON.stringify(session);
     try { localStorage.setItem(STORAGE_SESSION, raw); } catch (e) {}
     try { sessionStorage.setItem(STORAGE_SESSION, raw); } catch (e2) {}
+    writeActivityTs(Date.now());
     return session;
   }
 
   function clearSession() {
     try { localStorage.removeItem(STORAGE_SESSION); } catch (e) {}
     try { sessionStorage.removeItem(STORAGE_SESSION); } catch (e) {}
+    clearActivityTs();
+  }
+
+  function readActivityTs() {
+    try {
+      var n = Number(localStorage.getItem(STORAGE_ACTIVITY) || sessionStorage.getItem(STORAGE_ACTIVITY) || 0);
+      return n > 0 ? n : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function writeActivityTs(ts) {
+    var s = String(ts);
+    try { localStorage.setItem(STORAGE_ACTIVITY, s); } catch (e) {}
+    try { sessionStorage.setItem(STORAGE_ACTIVITY, s); } catch (e2) {}
+  }
+
+  function clearActivityTs() {
+    try { localStorage.removeItem(STORAGE_ACTIVITY); } catch (e) {}
+    try { sessionStorage.removeItem(STORAGE_ACTIVITY); } catch (e2) {}
+  }
+
+  function lastActivityMs(session) {
+    var stored = readActivityTs();
+    if (stored) return stored;
+    if (session && session.at) {
+      var parsed = Date.parse(session.at);
+      if (parsed) return parsed;
+    }
+    return 0;
+  }
+
+  function isIdleExpired(session) {
+    session = session || null;
+    var last = lastActivityMs(session);
+    if (!last) return false;
+    return (Date.now() - last) > IDLE_MS;
+  }
+
+  function touchActivity() {
+    var now = Date.now();
+    if (now - _lastActivityWrite < 15000 && readActivityTs()) return;
+    _lastActivityWrite = now;
+    writeActivityTs(now);
+  }
+
+  function expireIdleSession(redirect) {
+    logout();
+    if (!redirect) return;
+    var page = (location.pathname || '').split('/').pop() || 'index.html';
+    if (page === 'login.html') return;
+    location.replace('login.html?next=' + encodeURIComponent(page) + '&idle=1');
+  }
+
+  function startIdleWatch() {
+    if (_idleWatchStarted) return;
+    _idleWatchStarted = true;
+
+    function checkIdle() {
+      var raw = readSessionRaw();
+      if (!raw) return;
+      var session = null;
+      try { session = JSON.parse(raw); } catch (e) { return; }
+      if (isIdleExpired(session)) expireIdleSession(true);
+    }
+
+    var onActivity = function () {
+      checkIdle();
+      if (readSessionRaw()) touchActivity();
+    };
+    ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(function (evt) {
+      document.addEventListener(evt, onActivity, { passive: true });
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      onActivity();
+    });
+    _idleCheckTimer = setInterval(checkIdle, 30000);
   }
 
   function currentUser() {
