@@ -17,6 +17,8 @@
   var _usersCache = null;
   var _readyPromise = null;
   var _persistencePromise = null;
+  var _firestoreNet = Promise.resolve();
+  var _firestoreWantOnline = false;
 
   var ROLES = {
     admin: 'admin',
@@ -277,6 +279,14 @@
         firebase.initializeApp(getFirebaseConfig());
       }
       _firestore = firebase.firestore();
+      try {
+        _firestore.settings({
+          experimentalAutoDetectLongPolling: true,
+          ignoreUndefinedProperties: true,
+          merge: true
+        });
+      } catch (e) {}
+      try { firebase.firestore.setLogLevel('error'); } catch (e2) {}
       _firebaseAuth = firebase.auth();
       _firebaseAppReady = true;
       return true;
@@ -345,6 +355,27 @@
     return _persistencePromise;
   }
 
+  /** Enciende la red de Firestore solo mientras hay una lectura/escritura. */
+  function ensureFirestoreOnline() {
+    if (!initFirebase() || !_firestore) return Promise.resolve();
+    _firestoreWantOnline = true;
+    _firestoreNet = _firestoreNet.then(function () {
+      return _firestore.enableNetwork();
+    }).catch(function () {});
+    return _firestoreNet;
+  }
+
+  /** Cierra el WebChannel en reposo: evita pings bloqueados y ráfagas de `channel?`. */
+  function releaseFirestoreNetwork() {
+    if (!_firestore) return Promise.resolve();
+    _firestoreWantOnline = false;
+    _firestoreNet = _firestoreNet.then(function () {
+      if (_firestoreWantOnline) return;
+      return _firestore.disableNetwork();
+    }).catch(function () {});
+    return _firestoreNet;
+  }
+
   function isPermissionDenied(err) {
     if (!err) return false;
     var code = String(err.code || '');
@@ -396,7 +427,9 @@
   function ensureFirebaseAuthForWrite() {
     if (!initFirebase()) return Promise.resolve(null);
 
-    return waitForFirebaseAuth().then(function (user) {
+    return ensureFirestoreOnline().then(function () {
+      return waitForFirebaseAuth();
+    }).then(function (user) {
       if (user) return user;
       var token = readGoogleIdToken();
       if (!token) {
@@ -580,7 +613,9 @@
     if (!initFirebase()) {
       return Promise.resolve(ensureSeedLocal());
     }
-    return restoreFirebaseAuthIfPossible().then(function (fbUser) {
+    return ensureFirestoreOnline().then(function () {
+      return restoreFirebaseAuthIfPossible();
+    }).then(function (fbUser) {
       if (!fbUser || !fbUser.email) {
         return ensureSeedLocal();
       }
@@ -827,6 +862,9 @@
         }
         return syncFromFirestore().then(function () {
           return getUsers();
+        }).then(function (users) {
+          releaseFirestoreNetwork();
+          return users;
         });
       });
     });
@@ -1308,6 +1346,9 @@
         ok: false,
         error: (err && err.message) || 'No se pudo guardar en Firebase.'
       };
+    }).then(function (result) {
+      releaseFirestoreNetwork();
+      return result;
     });
   }
 
@@ -1427,6 +1468,10 @@
           ok: false,
           error: (err && err.message) || ('No se pudo eliminar en Firebase.')
         };
+      })
+      .then(function (result) {
+        releaseFirestoreNetwork();
+        return result;
       });
   }
 
@@ -1483,9 +1528,14 @@
       extras: safeExtras
     };
 
-    return _firestore.collection('process_logs').add(payload).catch(function (err) {
+    return ensureFirestoreOnline().then(function () {
+      return _firestore.collection('process_logs').add(payload);
+    }).catch(function (err) {
       console.warn('No se pudo guardar el log del proceso', err);
       return null;
+    }).then(function (result) {
+      releaseFirestoreNetwork();
+      return result;
     });
   }
 
@@ -1500,12 +1550,13 @@
       return Promise.reject(new Error('Firebase no está disponible.'));
     }
     var limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
-    return _firestore.collection('process_logs')
-      .orderBy('createdAt', 'desc')
-      .limit(limit)
-      .get()
-      .then(function (snap) {
-        return snap.docs.map(function (doc) {
+    return ensureFirestoreOnline().then(function () {
+      return _firestore.collection('process_logs')
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .get();
+    }).then(function (snap) {
+      return snap.docs.map(function (doc) {
           var d = doc.data() || {};
           return {
             id: doc.id,
@@ -1527,7 +1578,13 @@
             extras: d.extras || {}
           };
         });
-      });
+    }).then(function (rows) {
+      releaseFirestoreNetwork();
+      return rows;
+    }, function (err) {
+      releaseFirestoreNetwork();
+      return Promise.reject(err);
+    });
   }
 
   function describePermissions(roleOrUser) {
