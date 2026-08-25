@@ -13,7 +13,7 @@
  * 1. Authentication → Sign-in method → Google → Enable
  * 2. Firestore Database → Create
  * 3. Authentication → Settings → Authorized domains → localhost + blacksanta-j.github.io
- * 4. Publicá las reglas de firestore.rules
+ * 4. Publicá las reglas de firestore.rules (firebase deploy --only firestore:rules)
  *
  * CRONOGRAMA (Google Slides):
  * Pegá el link de la presentación (compartida “cualquiera con el enlace” o publicada).
