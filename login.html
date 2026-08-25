@@ -15,8 +15,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260825-fixlogin1"></script>
-<script src="auth.js?v=20260825-fixlogin1"></script>
+<script src="users-data.js?v=20260825-fastlogin1"></script>
+<script src="auth.js?v=20260825-fastlogin1"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
@@ -78,6 +78,8 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   var errorBox = document.getElementById('errorBox');
   var clientId = PortalAuth.getGoogleClientId();
   var tries = 0;
+  var host = document.getElementById('googleBtnHost');
+  var loggingIn = false;
 
   function showBootError(msg) {
     errorBox.textContent = msg;
@@ -87,6 +89,20 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   function showError(msg) {
     errorBox.textContent = msg;
     errorBox.classList.add('visible');
+  }
+
+  function showStatus(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('visible');
+    errorBox.style.background = 'rgba(0,150,136,.08)';
+    errorBox.style.borderColor = 'rgba(0,150,136,.3)';
+    errorBox.style.color = 'var(--gr)';
+  }
+
+  function clearStatusStyle() {
+    errorBox.style.background = '';
+    errorBox.style.borderColor = '';
+    errorBox.style.color = '';
   }
 
   function goNext() {
@@ -101,6 +117,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   PortalTheme.initThemeToggle('themeToggle');
 
   function finishLogin(result) {
+    clearStatusStyle();
     if (!result || !result.ok) {
       showError((result && result.error) || 'No se pudo iniciar sesión.');
       return;
@@ -110,10 +127,13 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
 
   function handleCredential(response) {
     errorBox.classList.remove('visible');
+    clearStatusStyle();
     if (!response || !response.credential) {
       showError('No se recibió la credencial de Google.');
       return;
     }
+    showStatus('Ingresando…');
+    loggingIn = true;
     PortalAuth.loginWithGoogleIdToken(response.credential).then(finishLogin);
   }
 
@@ -129,7 +149,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
         showError('No se pudo cargar Google Sign-In.');
         return;
       }
-      setTimeout(initGoogle, 150);
+      setTimeout(initGoogle, 100);
       return;
     }
 
@@ -140,13 +160,9 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
       cancel_on_tap_outside: true,
       ux_mode: 'popup',
       context: 'signin',
-      hosted_domain: PortalAuth.ALLOWED_DOMAIN,
-      itp_support: true,
-      use_fedcm_for_prompt: true,
-      use_fedcm_for_button: true
+      hosted_domain: PortalAuth.ALLOWED_DOMAIN
     });
 
-    var host = document.getElementById('googleBtnHost');
     host.innerHTML = '';
     google.accounts.id.renderButton(host, {
       theme: 'outline',
@@ -158,17 +174,24 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     });
   }
 
-  PortalAuth.ready().then(function () {
-    var existing = PortalAuth.currentUser();
-    if (existing) {
+  /* Mostrar el botón ya: no esperar sync de Firestore.
+     Si ya hay sesión local, entrar; si no, pintar Google al instante. */
+  try {
+    if (PortalAuth.currentUser()) {
       goNext();
-      return;
+    } else {
+      initGoogle();
     }
+  } catch (e) {
     initGoogle();
+  }
+
+  /* Warm-up en background (no bloquea el botón) */
+  PortalAuth.ready().then(function () {
+    if (loggingIn) return;
+    if (PortalAuth.currentUser()) goNext();
   }).catch(function (err) {
     console.error(err);
-    showBootError('No se pudo inicializar el acceso. Reintentá.');
-    initGoogle();
   });
 })();
 </script>
