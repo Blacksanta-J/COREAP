@@ -7,7 +7,8 @@
   'use strict';
 
   var STORAGE_USERS = 'portal-users-v2';
-  var STORAGE_SESSION = 'portal-session-v1';
+  var STORAGE_SESSION = 'portal-session-v2';
+  var LEGACY_SESSION_KEYS = ['portal-session-v1'];
   var ALLOWED_DOMAIN = 'bue.edu.ar';
 
   var _firebaseAppReady = false;
@@ -285,7 +286,8 @@
     }
   }
 
-  var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v1';
+  var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v2';
+  var LEGACY_GOOGLE_TOKEN_KEYS = ['portal-google-id-token-v1'];
 
   function saveGoogleIdToken(idToken) {
     try {
@@ -299,6 +301,21 @@
   function clearGoogleIdToken() {
     try { localStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
     try { sessionStorage.removeItem(STORAGE_GOOGLE_TOKEN); } catch (e) {}
+    (LEGACY_GOOGLE_TOKEN_KEYS || []).forEach(function (key) {
+      try { localStorage.removeItem(key); } catch (e) {}
+      try { sessionStorage.removeItem(key); } catch (e2) {}
+    });
+  }
+
+  function wipeLegacyAuthStorage() {
+    (LEGACY_SESSION_KEYS || []).forEach(function (key) {
+      try { localStorage.removeItem(key); } catch (e) {}
+      try { sessionStorage.removeItem(key); } catch (e2) {}
+    });
+    (LEGACY_GOOGLE_TOKEN_KEYS || []).forEach(function (key) {
+      try { localStorage.removeItem(key); } catch (e) {}
+      try { sessionStorage.removeItem(key); } catch (e2) {}
+    });
   }
 
   function readGoogleIdToken() {
@@ -792,6 +809,7 @@
   function ready() {
     if (_readyPromise) return _readyPromise;
     _readyPromise = Promise.resolve().then(function () {
+      wipeLegacyAuthStorage();
       ensureSeedLocal();
       /* Migrar / normalizar sesión al arrancar cada pestaña */
       getSession();
@@ -802,10 +820,12 @@
         return getUsers();
       }
       return waitForFirebaseAuth().then(function (fbUser) {
+        /* Sin sesión v2 no rearmar login desde Firebase: hay que volver a Google. */
+        if (fbUser && !getSession()) {
+          try { _firebaseAuth.signOut(); } catch (e) {}
+          return getUsers();
+        }
         return syncFromFirestore().then(function () {
-          if (fbUser && fbUser.email && !currentUser()) {
-            restoreSessionFromFirebaseUser(fbUser);
-          }
           return getUsers();
         });
       });
@@ -1033,6 +1053,7 @@
 
     var now = Math.floor(Date.now() / 1000);
     if (payload.exp && Number(payload.exp) < now) {
+      clearGoogleIdToken();
       return Promise.resolve({ ok: false, error: 'La sesión de Google expiró. Reintentá.' });
     }
     if (payload.aud !== clientId) {

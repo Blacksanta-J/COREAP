@@ -6,8 +6,13 @@
 (function (global) {
   'use strict';
 
-  var SESSION_KEY = 'portal-session-v1';
+  var SESSION_KEY = 'portal-session-v2';
   var page = (global.location.pathname || '').split('/').pop() || 'index.html';
+
+  try {
+    localStorage.removeItem('portal-session-v1');
+    sessionStorage.removeItem('portal-session-v1');
+  } catch (e) {}
 
   function reveal() {
     document.documentElement.classList.remove('portal-auth-pending');
