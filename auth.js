@@ -337,7 +337,7 @@
 
   /** Espera a que Firebase Auth restaure la sesión persistida. */
   function waitForFirebaseAuth(timeoutMs) {
-    timeoutMs = timeoutMs || 8000;
+    timeoutMs = timeoutMs == null ? 2500 : timeoutMs;
     if (!initFirebase()) return Promise.resolve(null);
     return ensureAuthPersistence().then(function () {
       if (_firebaseAuth.currentUser) return _firebaseAuth.currentUser;
@@ -364,11 +364,11 @@
             finish(user);
             return;
           }
-          /* Algunos navegadores emiten null antes de restaurar IndexedDB: esperar un poco. */
+          /* null inicial: no esperar 500ms; basta un tick corto */
           if (!nullTimer) {
             nullTimer = setTimeout(function () {
               finish(_firebaseAuth.currentUser);
-            }, 500);
+            }, 120);
           }
         });
       });
@@ -547,6 +547,9 @@
   }
 
   function restoreFirebaseAuthIfPossible() {
+    if (_firebaseAuth && _firebaseAuth.currentUser) {
+      return Promise.resolve(_firebaseAuth.currentUser);
+    }
     return waitForFirebaseAuth().then(function (user) {
       if (user) return user;
       var token = readGoogleIdToken();
@@ -556,6 +559,23 @@
       }).catch(function () {
         return null;
       });
+    });
+  }
+
+  /** Solo el doc del usuario (rápido). Usado en login. */
+  function syncOwnUserForLogin(email) {
+    ensureSeedLocal();
+    if (!initFirebase() || !_firestore) {
+      return Promise.resolve(getUsers());
+    }
+    return fetchOwnUserFromFirestore(email).then(function (own) {
+      if (own) mergeRemoteUsersIntoLocal([own]);
+      return getUsers();
+    }).catch(function (err) {
+      if (!isPermissionDenied(err)) {
+        console.warn('Firestore own-user login sync', err);
+      }
+      return getUsers();
     });
   }
 
@@ -633,10 +653,19 @@
       });
     }
     var extras = Object.assign(extrasFromFirebaseUser(fbUser), extrasOverride || {});
-    return bootstrapFirestoreIfNeeded(fbUser.email).then(function () {
-      return syncFromFirestore();
-    }).then(function () {
-      return acceptPreloadedUser(fbUser.email, extras);
+    var email = normalizeEmail(fbUser.email);
+    /* Login rápido: solo el propio doc. El listado admin se sincroniza en background. */
+    return Promise.all([
+      bootstrapFirestoreIfNeeded(fbUser.email),
+      syncOwnUserForLogin(email)
+    ]).then(function () {
+      var result = acceptPreloadedUser(fbUser.email, extras);
+      if (result && result.ok && isAdminUser(result.user || findUserByEmail(email))) {
+        setTimeout(function () {
+          syncFromFirestore().catch(function () {});
+        }, 0);
+      }
+      return result;
     });
   }
 
