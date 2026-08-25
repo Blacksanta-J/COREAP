@@ -612,17 +612,6 @@
     });
   }
 
-  function googleAuthProvider() {
-    var provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('email');
-    provider.addScope('profile');
-    provider.setCustomParameters({
-      hd: ALLOWED_DOMAIN,
-      prompt: 'select_account'
-    });
-    return provider;
-  }
-
   function extrasFromFirebaseUser(fbUser) {
     fbUser = fbUser || {};
     return {
@@ -648,45 +637,6 @@
       return syncFromFirestore();
     }).then(function () {
       return acceptPreloadedUser(fbUser.email, extras);
-    });
-  }
-
-  /** Ingreso que evita el popup de GIS (COOP / Tracking Prevention). */
-  function loginWithFirebaseGoogleRedirect() {
-    if (!isFirebaseEnabled() || !initFirebase()) {
-      return Promise.resolve({ ok: false, error: 'Firebase no está disponible.' });
-    }
-    return ensureAuthPersistence().then(function () {
-      return _firebaseAuth.signInWithRedirect(googleAuthProvider());
-    }).then(function () {
-      return { ok: true, pending: true };
-    }).catch(function (err) {
-      console.error(err);
-      var msg = (err && err.message) ? err.message : 'Error de Firebase';
-      var code = err && err.code ? ' (' + err.code + ')' : '';
-      return {
-        ok: false,
-        error: 'No se pudo iniciar el ingreso con Google' + code + '. ' + msg
-      };
-    });
-  }
-
-  /** Completa el retorno de signInWithRedirect en login.html. */
-  function completeFirebaseRedirectLogin() {
-    if (!isFirebaseEnabled() || !initFirebase()) return Promise.resolve(null);
-    return ensureAuthPersistence().then(function () {
-      return _firebaseAuth.getRedirectResult();
-    }).then(function (result) {
-      if (!result || !result.user) return null;
-      return finishFirebaseUserLogin(result.user);
-    }).catch(function (err) {
-      console.error(err);
-      var msg = (err && err.message) ? err.message : 'Error de Firebase';
-      var code = err && err.code ? ' (' + err.code + ')' : '';
-      return {
-        ok: false,
-        error: 'No se pudo completar el ingreso con Google' + code + '. ' + msg
-      };
     });
   }
 
@@ -1602,8 +1552,6 @@
     login: login,
     loginWithGoogleIdToken: loginWithGoogleIdToken,
     loginWithGoogleProfile: loginWithGoogleProfile,
-    loginWithFirebaseGoogleRedirect: loginWithFirebaseGoogleRedirect,
-    completeFirebaseRedirectLogin: completeFirebaseRedirectLogin,
     logout: logout,
     requireAuth: requireAuth,
     canAccess: canAccess,
