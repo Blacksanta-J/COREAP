@@ -16,7 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260825-norest1"></script>
-<script src="auth.js?v=20260825-authfix1"></script>
+<script src="auth.js?v=20260825-authfix2"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
@@ -49,19 +49,6 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
   display:flex;justify-content:center;min-height:44px;
 }
 #googleBtnHost iframe{margin:0 auto !important}
-.login-alt{
-  margin-top:14px;text-align:center;
-}
-.login-alt button{
-  width:100%;max-width:360px;margin:0 auto;display:block;
-  padding:11px 14px;border-radius:8px;border:1px solid var(--border);
-  background:var(--portal-surface);color:var(--portal-text);
-  font-weight:700;font-size:14px;cursor:pointer;
-}
-.login-alt button:hover{border-color:var(--az)}
-.login-alt .hint{
-  margin-top:8px;font-size:12px;color:var(--gr-light);line-height:1.4;
-}
 .error{
   display:none;margin-top:14px;padding:10px 12px;border-radius:8px;
   background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);
@@ -82,10 +69,6 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     </div>
 
     <div id="googleBtnHost" aria-label="Iniciar sesión con Google"></div>
-    <div class="login-alt">
-      <button type="button" id="redirectLoginBtn">Ingresá con tu cuenta @bue.edu.ar</button>
-      <p class="hint">Usá esta opción si el botón de Google no abre o el navegador bloquea ventanas emergentes.</p>
-    </div>
     <div class="error" id="errorBox"></div>
     <p class="footer-note">Portal dedicado al uso exclusivo de la COREAP</p>
   </div>
@@ -173,21 +156,7 @@ html[data-theme="dark"] .brand h1{color:#f2f5f7}
     });
   }
 
-  document.getElementById('redirectLoginBtn').addEventListener('click', function () {
-    errorBox.classList.remove('visible');
-    PortalAuth.loginWithFirebaseGoogleRedirect().then(function (result) {
-      if (result && result.pending) return;
-      finishLogin(result || { ok: false, error: 'No se pudo iniciar el ingreso.' });
-    });
-  });
-
   PortalAuth.ready().then(function () {
-    return PortalAuth.completeFirebaseRedirectLogin();
-  }).then(function (redirectResult) {
-    if (redirectResult) {
-      finishLogin(redirectResult);
-      return;
-    }
     var existing = PortalAuth.currentUser();
     if (existing) {
       location.replace('index.html');
