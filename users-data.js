@@ -1,7 +1,6 @@
 /**
  * Semilla / respaldo de usuarios.
- * Con Firebase: el primer login del admin limpia extras y deja solo este usuario.
- * Después las altas viven en Firestore.
+ * Con Firebase las altas viven en Firestore; este archivo es respaldo local.
  */
 window.PORTAL_USERS = [
   {
