@@ -12,7 +12,6 @@
   var ALLOWED_DOMAIN = 'bue.edu.ar';
 
   var _firebaseAppReady = false;
-  var _firestore = null;
   var _firebaseAuth = null;
   var _usersCache = null;
   var _readyPromise = null;
@@ -276,7 +275,6 @@
       if (!firebase.apps.length) {
         firebase.initializeApp(getFirebaseConfig());
       }
-      _firestore = firebase.firestore();
       _firebaseAuth = firebase.auth();
       _firebaseAppReady = true;
       return true;
@@ -284,6 +282,173 @@
       console.error('Firebase init error', e);
       return false;
     }
+  }
+
+  function toRestValue(v) {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') {
+      if (isFinite(v) && Math.floor(v) === v) return { integerValue: String(v) };
+      return { doubleValue: v };
+    }
+    if (Array.isArray(v)) {
+      return { arrayValue: { values: v.map(toRestValue) } };
+    }
+    if (typeof v === 'object') {
+      var nested = {};
+      Object.keys(v).forEach(function (k) {
+        if (v[k] === undefined) return;
+        nested[k] = toRestValue(v[k]);
+      });
+      return { mapValue: { fields: nested } };
+    }
+    return { stringValue: String(v) };
+  }
+
+  function fromRestValue(node) {
+    if (!node) return null;
+    if (Object.prototype.hasOwnProperty.call(node, 'stringValue')) return node.stringValue;
+    if (Object.prototype.hasOwnProperty.call(node, 'booleanValue')) return node.booleanValue;
+    if (Object.prototype.hasOwnProperty.call(node, 'integerValue')) return Number(node.integerValue);
+    if (Object.prototype.hasOwnProperty.call(node, 'doubleValue')) return node.doubleValue;
+    if (Object.prototype.hasOwnProperty.call(node, 'nullValue')) return null;
+    if (Object.prototype.hasOwnProperty.call(node, 'timestampValue')) return node.timestampValue;
+    if (node.arrayValue) {
+      return (node.arrayValue.values || []).map(fromRestValue);
+    }
+    if (node.mapValue) {
+      return fromRestFields(node.mapValue.fields || {});
+    }
+    return null;
+  }
+
+  function fromRestFields(fields) {
+    var data = {};
+    Object.keys(fields || {}).forEach(function (k) {
+      data[k] = fromRestValue(fields[k]);
+    });
+    return data;
+  }
+
+  function wrapRestDoc(doc) {
+    var name = String((doc && doc.name) || '');
+    var id = name.split('/').pop() || '';
+    try { id = decodeURIComponent(id); } catch (e) {}
+    var data = fromRestFields((doc && doc.fields) || {});
+    return {
+      id: id,
+      exists: true,
+      data: function () { return data; }
+    };
+  }
+
+  function payloadToRestFields(payload) {
+    var fields = {};
+    Object.keys(payload || {}).forEach(function (k) {
+      if (payload[k] === undefined) return;
+      fields[k] = toRestValue(payload[k]);
+    });
+    return fields;
+  }
+
+  function firestoreRoot() {
+    var cfg = getFirebaseConfig() || {};
+    var project = encodeURIComponent(cfg.projectId || '');
+    return 'https://firestore.googleapis.com/v1/projects/' + project + '/databases/(default)/documents';
+  }
+
+  function getFirebaseIdToken() {
+    if (!initFirebase() || !_firebaseAuth || !_firebaseAuth.currentUser) {
+      return Promise.resolve('');
+    }
+    return _firebaseAuth.currentUser.getIdToken();
+  }
+
+  function firestoreHttp(method, url, body) {
+    return getFirebaseIdToken().then(function (token) {
+      if (!token) {
+        var unauth = new Error('Sesión Firebase no activa.');
+        unauth.code = 'unauthenticated';
+        return Promise.reject(unauth);
+      }
+      var cfg = getFirebaseConfig() || {};
+      var sep = url.indexOf('?') >= 0 ? '&' : '?';
+      if (cfg.apiKey) url += sep + 'key=' + encodeURIComponent(cfg.apiKey);
+      var opts = {
+        method: method,
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        }
+      };
+      if (body) opts.body = JSON.stringify(body);
+      return fetch(url, opts).then(function (res) {
+        if (res.status === 404) return null;
+        return res.text().then(function (text) {
+          var json = null;
+          if (text) {
+            try { json = JSON.parse(text); } catch (e) { json = null; }
+          }
+          if (!res.ok) {
+            var msg = (json && json.error && json.error.message) || ('Firestore HTTP ' + res.status);
+            var err = new Error(msg);
+            var status = (json && json.error && json.error.status) || '';
+            if (res.status === 403 || status === 'PERMISSION_DENIED') err.code = 'permission-denied';
+            return Promise.reject(err);
+          }
+          return json;
+        });
+      });
+    });
+  }
+
+  function firestoreDocPath(collection, id) {
+    return firestoreRoot() + '/' + encodeURIComponent(collection) + '/' + encodeURIComponent(id);
+  }
+
+  function firestoreGetDoc(collection, id) {
+    return firestoreHttp('GET', firestoreDocPath(collection, id));
+  }
+
+  function firestoreDeleteDoc(collection, id) {
+    return firestoreHttp('DELETE', firestoreDocPath(collection, id)).catch(function (err) {
+      if (err && err.code === 'permission-denied') return Promise.reject(err);
+      return null;
+    });
+  }
+
+  function firestorePatchDoc(collection, id, payload) {
+    var fields = payloadToRestFields(payload);
+    var masks = Object.keys(fields).map(function (k) {
+      return 'updateMask.fieldPaths=' + encodeURIComponent(k);
+    }).join('&');
+    var url = firestoreDocPath(collection, id) + (masks ? '?' + masks : '');
+    return firestoreHttp('PATCH', url, { fields: fields });
+  }
+
+  function firestoreListCollection(collection, pageToken, acc) {
+    acc = acc || [];
+    var url = firestoreRoot() + '/' + encodeURIComponent(collection) + '?pageSize=100';
+    if (pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
+    return firestoreHttp('GET', url).then(function (json) {
+      if (!json) return acc;
+      acc = acc.concat(json.documents || []);
+      if (json.nextPageToken) return firestoreListCollection(collection, json.nextPageToken, acc);
+      return acc;
+    });
+  }
+
+  function firestoreCreateDoc(collection, payload) {
+    var url = firestoreRoot() + '/' + encodeURIComponent(collection);
+    return firestoreHttp('POST', url, { fields: payloadToRestFields(payload) });
+  }
+
+  function firestoreRunQuery(structuredQuery) {
+    var url = firestoreRoot() + ':runQuery';
+    return firestoreHttp('POST', url, { structuredQuery: structuredQuery }).then(function (rows) {
+      if (!Array.isArray(rows)) return [];
+      return rows.map(function (row) { return row.document; }).filter(Boolean);
+    });
   }
 
   var STORAGE_GOOGLE_TOKEN = 'portal-google-id-token-v2';
@@ -489,32 +654,32 @@
     return list;
   }
 
-  function firestoreHasSeedAdmin(snap) {
-    if (!snap) return false;
+  function firestoreHasSeedAdmin(docs) {
+    if (!docs || !docs.length) return false;
     var seedEmail = normalizeEmail(SEED_ADMIN.email);
     var found = false;
-    snap.forEach(function (doc) {
-      var email = normalizeEmail((doc.data() && doc.data().email) || doc.id);
+    docs.forEach(function (doc) {
+      var wrapped = wrapRestDoc(doc);
+      var email = normalizeEmail((wrapped.data() && wrapped.data().email) || wrapped.id);
       if (email === seedEmail) found = true;
     });
     return found;
   }
 
   function ensureSeedAdminInFirestore() {
-    if (!initFirebase() || !_firestore) return Promise.resolve();
+    if (!initFirebase()) return Promise.resolve();
     var seedEmail = normalizeEmail(SEED_ADMIN.email);
-    var docRef = _firestore.collection('users').doc(userDocId(seedEmail));
-    return docRef.get().then(function (snap) {
-      if (snap.exists) {
-        return docRef.set({
+    return firestoreGetDoc('users', userDocId(seedEmail)).then(function (doc) {
+      if (doc) {
+        return firestorePatchDoc('users', userDocId(seedEmail), {
           email: seedEmail,
           role: ROLES.admin,
           roles: [ROLES.admin],
           active: true
-        }, { merge: true });
+        });
       }
       var admin = getSeedAdminUser();
-      return docRef.set(toFirestorePayload(admin), { merge: true });
+      return firestorePatchDoc('users', userDocId(seedEmail), toFirestorePayload(admin));
     });
   }
 
@@ -537,19 +702,19 @@
 
   function fetchOwnUserFromFirestore(email) {
     var id = userDocId(email);
-    if (!id || !_firestore) return Promise.resolve(null);
-    return _firestore.collection('users').doc(id).get().then(function (snap) {
-      if (!snap.exists) return null;
-      return fromFirestoreDoc(snap);
+    if (!id || !initFirebase()) return Promise.resolve(null);
+    return firestoreGetDoc('users', id).then(function (doc) {
+      if (!doc) return null;
+      return fromFirestoreDoc(wrapRestDoc(doc));
     });
   }
 
-  function applyUsersSnapshot(snap) {
+  function applyUsersDocuments(docs) {
     var users = [];
-    snap.forEach(function (doc) {
-      users.push(fromFirestoreDoc(doc));
+    (docs || []).forEach(function (doc) {
+      users.push(fromFirestoreDoc(wrapRestDoc(doc)));
     });
-    var hadSeed = firestoreHasSeedAdmin(snap);
+    var hadSeed = firestoreHasSeedAdmin(docs);
     users = mergeUsersKeepingSeedAdmin(users);
     writeUsers(users);
     var actor = _firebaseAuth && _firebaseAuth.currentUser
@@ -593,8 +758,8 @@
         if (!isAdminUser(local) && normalizeEmail(email) !== normalizeEmail(SEED_ADMIN.email)) {
           return getUsers();
         }
-        return _firestore.collection('users').get().then(function (snap) {
-          return applyUsersSnapshot(snap);
+        return firestoreListCollection('users').then(function (docs) {
+          return applyUsersDocuments(docs);
         }).catch(function (err) {
           if (!isPermissionDenied(err)) {
             console.warn('Firestore list users', err);
@@ -1285,14 +1450,13 @@
         renameFrom = userDocId(payloadId);
       }
 
-      var ref = _firestore.collection('users').doc(userDocId(email));
       var chain = Promise.resolve();
       if (renameFrom) {
-        chain = _firestore.collection('users').doc(renameFrom).delete().catch(function () {});
+        chain = firestoreDeleteDoc('users', renameFrom).catch(function () {});
       }
 
       return chain.then(function () {
-        return ref.set(toFirestorePayload(saved), { merge: true });
+        return firestorePatchDoc('users', userDocId(email), toFirestorePayload(saved));
       }).then(function () {
         if (normalizeEmail(saved.email) !== normalizeEmail(SEED_ADMIN.email)) {
           return ensureSeedAdminInFirestore();
@@ -1417,7 +1581,7 @@
       return Promise.resolve({ ok: true });
     }
     return ensureFirebaseAuthForWrite().then(function () {
-      return _firestore.collection('users').doc(userDocId(target.email)).delete();
+      return firestoreDeleteDoc('users', userDocId(target.email));
     })
       .then(function () { return syncFromFirestore(); })
       .then(function () { return { ok: true }; })
@@ -1446,7 +1610,7 @@
    */
   function logProcessRun(details) {
     details = details || {};
-    if (!initFirebase() || !_firestore) {
+    if (!initFirebase()) {
       return Promise.resolve(null);
     }
     var user = currentUser();
@@ -1465,7 +1629,6 @@
     });
 
     var payload = {
-      ts: firebase.firestore.FieldValue.serverTimestamp(),
       createdAt: new Date().toISOString(),
       email: normalizeEmail(user.email),
       nombre: String(user.nombre || ''),
@@ -1483,7 +1646,7 @@
       extras: safeExtras
     };
 
-    return _firestore.collection('process_logs').add(payload).catch(function (err) {
+    return firestoreCreateDoc('process_logs', payload).catch(function (err) {
       console.warn('No se pudo guardar el log del proceso', err);
       return null;
     });
@@ -1496,38 +1659,39 @@
     if (!isAdminUser(actor)) {
       return Promise.reject(new Error('Solo administradores pueden ver el log de procesos.'));
     }
-    if (!initFirebase() || !_firestore) {
+    if (!initFirebase()) {
       return Promise.reject(new Error('Firebase no está disponible.'));
     }
     var limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
-    return _firestore.collection('process_logs')
-      .orderBy('createdAt', 'desc')
-      .limit(limit)
-      .get()
-      .then(function (snap) {
-        return snap.docs.map(function (doc) {
-          var d = doc.data() || {};
-          return {
-            id: doc.id,
-            createdAt: d.createdAt || '',
-            ts: d.ts || null,
-            email: d.email || '',
-            nombre: d.nombre || '',
-            apellido: d.apellido || '',
-            reparticion: d.reparticion || '',
-            module: d.module || '',
-            moduleLabel: d.moduleLabel || '',
-            procesador: d.procesador || '',
-            procesadorLabel: d.procesadorLabel || '',
-            archivoOrigen: d.archivoOrigen || '',
-            archivoSalida: d.archivoSalida || '',
-            filas: d.filas || 0,
-            area: d.area || '',
-            detalle: d.detalle || '',
-            extras: d.extras || {}
-          };
-        });
+    return firestoreRunQuery({
+      from: [{ collectionId: 'process_logs' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: limit
+    }).then(function (docs) {
+      return docs.map(function (doc) {
+        var wrapped = wrapRestDoc(doc);
+        var d = wrapped.data() || {};
+        return {
+          id: wrapped.id,
+          createdAt: d.createdAt || '',
+          ts: d.ts || null,
+          email: d.email || '',
+          nombre: d.nombre || '',
+          apellido: d.apellido || '',
+          reparticion: d.reparticion || '',
+          module: d.module || '',
+          moduleLabel: d.moduleLabel || '',
+          procesador: d.procesador || '',
+          procesadorLabel: d.procesadorLabel || '',
+          archivoOrigen: d.archivoOrigen || '',
+          archivoSalida: d.archivoSalida || '',
+          filas: d.filas || 0,
+          area: d.area || '',
+          detalle: d.detalle || '',
+          extras: d.extras || {}
+        };
       });
+    });
   }
 
   function describePermissions(roleOrUser) {
