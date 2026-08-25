@@ -9,7 +9,6 @@
   var STORAGE_USERS = 'portal-users-v2';
   var STORAGE_SESSION = 'portal-session-v1';
   var ALLOWED_DOMAIN = 'bue.edu.ar';
-  var USERS_RESET_VERSION = 'admin-only-20260823';
 
   var _firebaseAppReady = false;
   var _firestore = null;
@@ -503,47 +502,14 @@
     });
   }
 
+  /** Asegura el admin seed en Firestore. Nunca borra otros usuarios. */
   function bootstrapFirestoreIfNeeded(actorEmail) {
     if (!initFirebase()) return Promise.resolve();
     if (normalizeEmail(actorEmail) !== normalizeEmail(SEED_ADMIN.email)) {
       return Promise.resolve();
     }
-
-    var metaRef = _firestore.collection('_meta').doc('users_reset');
-    var admin = getSeedAdminUser();
-    var adminPayload = toFirestorePayload(admin);
-    adminPayload.updatedAt = new Date().toISOString();
-
-    return metaRef.get().then(function (metaSnap) {
-      var already = metaSnap.exists && metaSnap.data() && metaSnap.data().version === USERS_RESET_VERSION;
-      if (already) {
-        return ensureSeedAdminInFirestore();
-      }
-
-      return _firestore.collection('users').get().then(function (snap) {
-        var batch = _firestore.batch();
-        snap.forEach(function (doc) {
-          var email = normalizeEmail((doc.data() && doc.data().email) || doc.id);
-          if (email !== normalizeEmail(SEED_ADMIN.email)) {
-            batch.delete(doc.ref);
-          }
-        });
-        batch.set(
-          _firestore.collection('users').doc(userDocId(SEED_ADMIN.email)),
-          adminPayload,
-          { merge: true }
-        );
-        batch.set(metaRef, {
-          version: USERS_RESET_VERSION,
-          cleanedAt: new Date().toISOString(),
-          keptAdmin: normalizeEmail(SEED_ADMIN.email)
-        }, { merge: true });
-        return batch.commit();
-      });
-    }).then(function () {
-      return syncFromFirestore();
-    }).catch(function (err) {
-      console.error('Firestore bootstrap/reset error', err);
+    return ensureSeedAdminInFirestore().catch(function (err) {
+      console.error('Firestore bootstrap error', err);
     });
   }
 
