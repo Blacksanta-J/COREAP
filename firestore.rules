@@ -6,9 +6,13 @@ service cloud.firestore {
         && request.auth.token.email is string;
     }
 
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
+
     function isBue() {
       return signedIn()
-        && request.auth.token.email.matches('.*@bue\\.edu\\.ar$');
+        && authEmail().matches('.*@bue\\.edu\\.ar$');
     }
 
     function userDocPath(email) {
@@ -16,7 +20,7 @@ service cloud.firestore {
     }
 
     function userData() {
-      return get(userDocPath(request.auth.token.email)).data;
+      return get(userDocPath(authEmail())).data;
     }
 
     function hasAdminRole() {
@@ -27,18 +31,22 @@ service cloud.firestore {
 
     function isAdmin() {
       return isBue()
-        && exists(userDocPath(request.auth.token.email))
+        && exists(userDocPath(authEmail()))
         && hasAdminRole()
         && userData().active != false;
     }
 
     function isSeedAdmin() {
       return isBue()
-        && request.auth.token.email == 'jonathanalejandro.perez@bue.edu.ar';
+        && authEmail() == 'jonathanalejandro.perez@bue.edu.ar';
     }
 
     match /users/{userEmail} {
-      allow read: if isBue();
+      /* Cualquier @bue autenticado lee su propio doc; el listado es solo admin */
+      allow get: if isBue() && (
+        userEmail == authEmail() || isAdmin() || isSeedAdmin()
+      );
+      allow list: if isAdmin() || isSeedAdmin();
       allow create: if isAdmin() || isSeedAdmin();
       allow update, delete: if isAdmin() || isSeedAdmin();
     }
@@ -50,9 +58,9 @@ service cloud.firestore {
     /* Log de ejecuciones de procesadores: escritura autenticada @bue; lectura solo admin */
     match /process_logs/{logId} {
       allow create: if isBue()
-        && exists(userDocPath(request.auth.token.email))
+        && exists(userDocPath(authEmail()))
         && userData().active != false
-        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email == authEmail()
         && request.resource.data.keys().hasAll([
           'createdAt', 'email', 'module', 'procesador'
         ]);
