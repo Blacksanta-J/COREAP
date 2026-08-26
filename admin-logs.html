@@ -11,7 +11,7 @@
 <script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
 <script src="portal-theme.js"></script>
 <script src="portal-header.js?v=20260825-sess2"></script>
-<script src="portal-sidebar.js"></script>
+<script src="portal-sidebar.js?v=20260826-controlpof1"></script>
 <script src="portal-footer.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -19,7 +19,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260826-fastpages1"></script>
-<script src="auth.js?v=20260826-fastpages1"></script>
+<script src="auth.js?v=20260826-controlpof1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -74,6 +74,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--gr-li
 html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 .badge.concursos{background:rgba(96,165,250,.28)}
 .badge.acto{background:rgba(141,226,214,.3)}
+.badge.pof{background:rgba(255,204,0,.35)}
 .callout{
   margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;
   background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.45);color:var(--gr);
@@ -93,7 +94,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   <div class="content portal-tool-content">
   <div class="wrap">
     <h1>Log de procesos</h1>
-    <p class="lead">Auditoría de cada ejecución de Eleves Acto Público y Eleves Concursos. Solo visible para rol Admin.</p>
+    <p class="lead">Auditoría de cada ejecución de Eleves Acto Público, Eleves Concursos y Control POF. Solo visible para rol Admin.</p>
 
     <div class="callout">
       Se guarda automáticamente al completar un proceso: usuario, módulo, procesador, área, archivos y cantidad de filas.
@@ -109,6 +110,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
           <option value="">Todos</option>
           <option value="eleves_acto">Eleves Acto Público</option>
           <option value="eleves_concursos">Eleves Concursos</option>
+          <option value="control_pof">Control POF</option>
         </select>
       </div>
       <div class="field">
@@ -175,6 +177,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   function moduleBadge(mod) {
     if (mod === 'eleves_concursos') return '<span class="badge concursos">Concursos</span>';
     if (mod === 'eleves_acto') return '<span class="badge acto">Acto</span>';
+    if (mod === 'control_pof') return '<span class="badge pof">POF</span>';
     return '<span class="badge">' + (mod || '—') + '</span>';
   }
 
