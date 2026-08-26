@@ -41,6 +41,7 @@
     cronograma: 'cronograma',
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
+    control_pof: 'control_pof',
     admin_usuarios: 'admin_usuarios',
     admin_logs: 'admin_logs'
   };
@@ -60,11 +61,12 @@
       MODULES.cronograma,
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
+      MODULES.control_pof,
       MODULES.admin_usuarios,
       MODULES.admin_logs
     ],
-    apel: MANUALES.concat([MODULES.eleves_acto]),
-    concursos: MANUALES.concat([MODULES.eleves_concursos]),
+    apel: MANUALES.concat([MODULES.eleves_acto, MODULES.control_pof]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.control_pof]),
     usuarios: MANUALES.slice()
   };
 
@@ -1569,6 +1571,7 @@
       cronograma: 'Cronograma',
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
+      control_pof: 'Control POF',
       admin_usuarios: 'Gestión de usuarios',
       admin_logs: 'Log de procesos'
     };

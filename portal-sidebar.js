@@ -22,7 +22,8 @@
       label: 'Herramientas',
       items: [
         { href: 'Elevador.html', label: 'Eleves Acto', icon: '📄', module: 'eleves_acto' },
-        { href: 'Elevador-Control.html', label: 'Eleves Concursos', icon: '🏆', module: 'eleves_concursos' }
+        { href: 'Elevador-Control.html', label: 'Eleves Concursos', icon: '🏆', module: 'eleves_concursos' },
+        { href: 'Control-POF.html', label: 'Control POF', icon: '🔎', module: 'control_pof' }
       ]
     },
     {
