@@ -817,29 +817,52 @@
     });
   }
 
-  /** Carga usuarios (Firestore si está configurado). Llamar al iniciar cada página. */
+  /** Carga local inmediata; Firebase/Firestore en background. */
+  var _syncPromise = null;
+
+  function startBackgroundSync() {
+    if (_syncPromise) return _syncPromise;
+    ensureSeedLocal();
+    if (!isFirebaseEnabled()) {
+      _syncPromise = Promise.resolve(getUsers());
+      return _syncPromise;
+    }
+    if (!initFirebase()) {
+      _syncPromise = Promise.resolve(getUsers());
+      return _syncPromise;
+    }
+    _syncPromise = waitForFirebaseAuth(1200).then(function (fbUser) {
+      return syncFromFirestore().then(function () {
+        if (fbUser && fbUser.email && !currentUser()) {
+          restoreSessionFromFirebaseUser(fbUser);
+        }
+        return getUsers();
+      });
+    }).catch(function (err) {
+      console.warn('Background sync', err);
+      return getUsers();
+    });
+    return _syncPromise;
+  }
+
+  /**
+   * Listo para pintar la UI (sesión + usuarios locales).
+   * No espera red: usá whenSynced() si necesitás datos frescos de Firestore.
+   */
   function ready() {
     if (_readyPromise) return _readyPromise;
     _readyPromise = Promise.resolve().then(function () {
       ensureSeedLocal();
-      /* Migrar / normalizar sesión al arrancar cada pestaña */
       getSession();
-      if (!isFirebaseEnabled()) {
-        return getUsers();
-      }
-      if (!initFirebase()) {
-        return getUsers();
-      }
-      return waitForFirebaseAuth().then(function (fbUser) {
-        return syncFromFirestore().then(function () {
-          if (fbUser && fbUser.email && !currentUser()) {
-            restoreSessionFromFirebaseUser(fbUser);
-          }
-          return getUsers();
-        });
-      });
+      startBackgroundSync();
+      return getUsers();
     });
     return _readyPromise;
+  }
+
+  /** Resuelve cuando terminó el sync con Firebase (o si no hay Firebase). */
+  function whenSynced() {
+    return startBackgroundSync();
   }
 
   function readSessionRaw() {
@@ -1599,6 +1622,7 @@
     describePermissions: describePermissions,
     ensureSeed: ensureSeed,
     ready: ready,
+    whenSynced: whenSynced,
     isFirebaseEnabled: isFirebaseEnabled,
     syncFromFirestore: syncFromFirestore
   };
