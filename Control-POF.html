@@ -117,8 +117,8 @@
         Columnas equivalentes para el cruce:
         <strong>ID CARGO</strong> = <strong>COD CARGO</strong> ·
         <strong>ID ASIGNATURA</strong> = <strong>COD ASIGNATURA</strong> ·
-        <strong>ID PLAN</strong> = <strong>COD ESPECIALIDAD</strong> ·
         <strong>DOCUMENTO DESIGNADO</strong> = <strong>NDOC</strong>.
+        No se cruza <strong>ID PLAN</strong> / <strong>COD ESPECIALIDAD</strong>.
         Del POF se conservan únicamente las filas con <strong>CARACTER = TITULAR</strong>.
         En esas columnas de cruce, si el valor es solo <strong>0</strong> se vacía (queda en blanco).
     </div>
@@ -143,9 +143,9 @@
         <div class="info-content">
             <ul>
                 <li><strong>Archivo 1 (POF):</strong> se leen las hojas, se detecta la fila de encabezados y se descartan las filas cuyo <em>CARACTER</em> no sea TITULAR.</li>
-                <li><strong>Archivo 2:</strong> listado de docentes a cruzar. Se usan <em>NDOC</em>, <em>COD CARGO</em>, <em>COD ASIGNATURA</em> y <em>COD ESPECIALIDAD</em> (o sus equivalentes del POF).</li>
-                <li><strong>Ceros en el POF:</strong> en las columnas de cruce (<em>ID CARGO</em>, <em>ID ASIGNATURA</em>, <em>ID PLAN</em>, <em>DOCUMENTO DESIGNADO</em>), si el valor es solo 0 se vacía antes de comparar y en el Excel de salida.</li>
-                <li><strong>Clave de coincidencia:</strong> documento + código de cargo + código de asignatura + código de especialidad/plan.</li>
+                <li><strong>Archivo 2:</strong> listado de docentes a cruzar. Se usan <em>NDOC</em>, <em>COD CARGO</em> y <em>COD ASIGNATURA</em> (o sus equivalentes del POF).</li>
+                <li><strong>Ceros en el POF:</strong> en las columnas de cruce (<em>ID CARGO</em>, <em>ID ASIGNATURA</em>, <em>DOCUMENTO DESIGNADO</em>), si el valor es solo 0 se vacía antes de comparar y en el Excel de salida.</li>
+                <li><strong>Clave de coincidencia:</strong> documento + código de cargo + código de asignatura. No se usa ID PLAN / COD ESPECIALIDAD.</li>
                 <li><strong>Excel de salida (formato POF):</strong> hoja 1 <em>Coincidieron</em> (TITULAR del POF presentes en el segundo archivo) y hoja 2 <em>No coincidieron</em> (TITULAR del POF que no están en el segundo archivo).</li>
             </ul>
         </div>
@@ -156,9 +156,9 @@
 (function () {
     var COL_CARGO = ['ID CARGO', 'COD CARGO', 'CODIGO CARGO', 'CÓDIGO CARGO', 'COD. CARGO'];
     var COL_ASIG = ['ID ASIGNATURA', 'COD ASIGNATURA', 'CODIGO ASIGNATURA', 'CÓDIGO ASIGNATURA', 'COD. ASIGNATURA'];
-    var COL_ESPEC = ['ID PLAN', 'COD ESPECIALIDAD', 'CODIGO ESPECIALIDAD', 'CÓDIGO ESPECIALIDAD', 'COD. ESPECIALIDAD', 'COD ESPECIALIDAD'];
     var COL_NDOC = ['DOCUMENTO DESIGNADO', 'NDOC', 'N.DOC', 'N DOC'];
     var COL_CARACTER = ['CARACTER', 'CARÁCTER'];
+    var EMPTY_KEY = '||';
 
     var infoOpen = document.getElementById('infoOpen');
     var infoClose = document.getElementById('infoClose');
@@ -210,7 +210,7 @@
     }
 
     function vaciarCerosColumnasCruce(rows, cols) {
-        var fields = ['cargo', 'asig', 'espec', 'ndoc'];
+        var fields = ['cargo', 'asig', 'ndoc'];
         var count = 0;
         rows.forEach(function (row) {
             fields.forEach(function (f) {
@@ -225,8 +225,8 @@
         return count;
     }
 
-    function makeKey(ndoc, cargo, asig, espec) {
-        return [normalizeDoc(ndoc), normalizeCode(cargo), normalizeCode(asig), normalizeCode(espec)].join('|');
+    function makeKey(ndoc, cargo, asig) {
+        return [normalizeDoc(ndoc), normalizeCode(cargo), normalizeCode(asig)].join('|');
     }
 
     function findColumnIndex(headers, aliases) {
@@ -318,14 +318,12 @@
         var idx = {
             cargo: findColumnIndex(headers, COL_CARGO),
             asig: findColumnIndex(headers, COL_ASIG),
-            espec: findColumnIndex(headers, COL_ESPEC),
             ndoc: findColumnIndex(headers, COL_NDOC),
             caracter: findColumnIndex(headers, COL_CARACTER)
         };
         var missing = [];
         if (idx.cargo < 0) missing.push('ID CARGO / COD CARGO');
         if (idx.asig < 0) missing.push('ID ASIGNATURA / COD ASIGNATURA');
-        if (idx.espec < 0) missing.push('ID PLAN / COD ESPECIALIDAD');
         if (idx.ndoc < 0) missing.push('DOCUMENTO DESIGNADO / NDOC');
         if (requireCaracter && idx.caracter < 0) missing.push('CARACTER');
         if (missing.length) {
@@ -416,10 +414,9 @@
                     var key = makeKey(
                         cell(row, cruceCols.ndoc),
                         cell(row, cruceCols.cargo),
-                        cell(row, cruceCols.asig),
-                        cell(row, cruceCols.espec)
+                        cell(row, cruceCols.asig)
                     );
-                    if (key === '|||') return;
+                    if (key === EMPTY_KEY) return;
                     if (!cruceKeys[key]) {
                         cruceKeys[key] = true;
                         cruceKeyCount += 1;
@@ -448,10 +445,9 @@
                     var key = makeKey(
                         cell(row, pofCols.ndoc),
                         cell(row, pofCols.cargo),
-                        cell(row, pofCols.asig),
-                        cell(row, pofCols.espec)
+                        cell(row, pofCols.asig)
                     );
-                    if (key !== '|||' && cruceKeys[key]) coinciden.push(row);
+                    if (key !== EMPTY_KEY && cruceKeys[key]) coinciden.push(row);
                     else noCoinciden.push(row);
                 });
 

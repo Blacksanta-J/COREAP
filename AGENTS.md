@@ -13,7 +13,7 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 - `clasificacion_final.html` — "Clasificación" module (scoring/listados).
 - `Elevador.html` — "Eleves Acto Publico".
 - `Elevador-Control.html` — "Eleves Concursos" (client-side spreadsheet processor titled "Procesador de Vacantes").
-- `Control-POF.html` — "Control POF": cruzá archivo POF (filtro CARACTER=TITULAR) con un segundo listado de docentes; Excel de coincidencias / no coincidencias en formato POF.
+- `Control-POF.html` — "Control POF": cruzá archivo POF (filtro CARACTER=TITULAR) con un segundo listado de docentes por documento, cargo y asignatura (sin ID PLAN / COD ESPECIALIDAD); Excel de coincidencias / no coincidencias en formato POF.
 
 Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks (except shared `auth.js`). Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
 
