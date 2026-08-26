@@ -433,6 +433,36 @@
         return xml.match(re) || [];
     }
 
+    /* Solo se eliminan vacantes con estos fondos (hex exacto). */
+    var FONDOS_ROJO_ELIMINAR = {
+      'FF0000': true,
+      '8B0000': true,
+      '800000': true,
+      'DC143C': true,
+      'B22222': true,
+      'CD5C5C': true,
+      'F08080': true,
+      'FA8072': true,
+      'FF6347': true,
+      'FF4500': true
+    };
+
+    var NOMBRES_ROJO_ELIMINAR = {
+      red: 'FF0000',
+      darkred: '8B0000',
+      maroon: '800000',
+      crimson: 'DC143C',
+      firebrick: 'B22222',
+      indianred: 'CD5C5C',
+      lightcoral: 'F08080',
+      salmon: 'FA8072',
+      tomato: 'FF6347',
+      orangered: 'FF4500'
+    };
+
+    /* Indexed color 2 del palette estándar Excel = #FF0000 */
+    var INDEXED_ROJO_ELIMINAR = { 2: 'FF0000' };
+
     function applyTint(hex, tint) {
         tint = Number(tint);
         if (!hex || !tint) return hex;
@@ -457,28 +487,22 @@
         };
     }
 
-    function rgbIsRed(r, g, b) {
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        if (max < 70) return false;
-        const d = max - min;
-        if (d < 18) return false;
-        let h = 0;
-        if (d !== 0) {
-            if (max === r) h = ((g - b) / d) % 6;
-            else if (max === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h *= 60;
-            if (h < 0) h += 360;
-        }
-        const s = max === 0 ? 0 : d / max;
-        return (h <= 18 || h >= 340) && s >= 0.08 && r >= 110 && r > g && r > b;
+    function hexEsFondoRojoEliminar(hex) {
+        const ch = rgbChannels(hex);
+        return !!(ch && FONDOS_ROJO_ELIMINAR[ch.hex]);
+    }
+
+    function rgbEsFondoRojoEliminar(r, g, b) {
+        const to = (v) => Math.max(0, Math.min(255, Number(v) || 0)).toString(16).padStart(2, "0").toUpperCase();
+        return !!FONDOS_ROJO_ELIMINAR[to(r) + to(g) + to(b)];
     }
 
     function colorAttrsAreRed(attrs, themeColors) {
         if (!attrs) return false;
         const indexed = attrs.indexed != null ? Number(attrs.indexed) : NaN;
-        if (indexed === 2 || indexed === 10) return true;
+        if (!isNaN(indexed) && INDEXED_ROJO_ELIMINAR[indexed]) {
+            return hexEsFondoRojoEliminar(INDEXED_ROJO_ELIMINAR[indexed]);
+        }
         let hex = null;
         if (attrs.rgb) {
             const ch = rgbChannels(attrs.rgb);
@@ -488,15 +512,13 @@
         }
         if (!hex) return false;
         hex = applyTint(hex, attrs.tint);
-        const ch = rgbChannels(hex);
-        return !!(ch && rgbIsRed(ch.r, ch.g, ch.b));
+        return hexEsFondoRojoEliminar(hex);
     }
 
     function sheetJsColorIsRed(color) {
         if (!color) return false;
         if (typeof color === "string") {
-            const ch = rgbChannels(color);
-            return !!(ch && rgbIsRed(ch.r, ch.g, ch.b));
+            return hexEsFondoRojoEliminar(color);
         }
         return colorAttrsAreRed(color, null);
     }
@@ -505,11 +527,11 @@
         if (!cell || !cell.s || typeof cell.s !== "object") return false;
         const style = cell.s;
         const fill = style.fill || {};
+        /* Solo fondo de celda (no color de fuente/texto). */
         const colors = [
-            style.fgColor, style.bgColor, style.color,
+            style.fgColor, style.bgColor,
             fill.fgColor, fill.bgColor,
-            fill.fgColor && fill.fgColor.rgb, fill.bgColor && fill.bgColor.rgb,
-            style.font && style.font.color, style.font && style.font.color && style.font.color.rgb
+            fill.fgColor && fill.fgColor.rgb, fill.bgColor && fill.bgColor.rgb
         ];
         return colors.some(sheetJsColorIsRed);
     }
@@ -613,11 +635,13 @@
     function cssColorIsRed(value) {
         if (!value) return false;
         const raw = String(value).trim().toLowerCase();
-        if (raw === "red" || raw === "darkred" || raw === "crimson" || raw === "firebrick" || raw === "indianred") return true;
-        const hex = rgbChannels(raw.replace(/^#/, "").toUpperCase());
-        if (hex) return rgbIsRed(hex.r, hex.g, hex.b);
+        if (NOMBRES_ROJO_ELIMINAR[raw]) {
+            return hexEsFondoRojoEliminar(NOMBRES_ROJO_ELIMINAR[raw]);
+        }
+        const hexMatch = raw.match(/^#?([0-9a-f]{6}|[0-9a-f]{8})$/i);
+        if (hexMatch) return hexEsFondoRojoEliminar(hexMatch[1]);
         const rgb = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-        if (rgb) return rgbIsRed(Number(rgb[1]), Number(rgb[2]), Number(rgb[3]));
+        if (rgb) return rgbEsFondoRojoEliminar(Number(rgb[1]), Number(rgb[2]), Number(rgb[3]));
         return false;
     }
 
