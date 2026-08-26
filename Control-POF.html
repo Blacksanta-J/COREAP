@@ -120,6 +120,7 @@
         <strong>DOCUMENTO DESIGNADO</strong> = <strong>NDOC</strong>.
         No se cruza <strong>ID PLAN</strong> / <strong>COD ESPECIALIDAD</strong>.
         Del POF se conservan únicamente las filas con <strong>CARACTER = TITULAR</strong>.
+        Se excluyen cargos <code>TC</code>, <code>TP1</code>, <code>TP2</code>, <code>TP3</code>, <code>TP4</code> y asignatura <code>TAREAS DOCENTES</code>.
         En esas columnas de cruce, si el valor es solo <strong>0</strong> se vacía (queda en blanco).
         Antes de comparar, los cargos <code>1550</code>, <code>1504</code>, <code>1549</code>, <code>1507</code> y <code>1528</code> se tratan como <code>1599</code>.
         En el Excel final se eliminan <strong>Id. POF</strong> duplicados.
@@ -145,6 +146,7 @@
         <div class="info-content">
             <ul>
                 <li><strong>Archivo 1 (POF):</strong> se leen las hojas, se detecta la fila de encabezados y se descartan las filas cuyo <em>CARACTER</em> no sea TITULAR.</li>
+                <li><strong>Filtros de exclusión:</strong> se eliminan registros con cargo <em>TC</em>, <em>TP1</em>, <em>TP2</em>, <em>TP3</em> o <em>TP4</em>, y los que en asignatura digan <em>TAREAS DOCENTES</em>.</li>
                 <li><strong>Archivo 2:</strong> listado de docentes a cruzar. Se usan <em>NDOC</em>, <em>COD CARGO</em> y <em>COD ASIGNATURA</em> (o sus equivalentes del POF).</li>
                 <li><strong>Ceros en el POF:</strong> en las columnas de cruce (<em>ID CARGO</em>, <em>ID ASIGNATURA</em>, <em>DOCUMENTO DESIGNADO</em>), si el valor es solo 0 se vacía antes de comparar y en el Excel de salida.</li>
                 <li><strong>Equivalencia de cargo:</strong> los códigos <em>1550</em>, <em>1504</em>, <em>1549</em>, <em>1507</em> y <em>1528</em> se convierten a <em>1599</em> antes de comparar (en POF y en el archivo 2) y quedan como 1599 en el Excel de salida del POF.</li>
@@ -159,7 +161,9 @@
 <script>
 (function () {
     var COL_CARGO = ['ID CARGO', 'COD CARGO', 'CODIGO CARGO', 'CÓDIGO CARGO', 'COD. CARGO'];
+    var COL_CARGO_DESC = ['CARGO', 'DESCRIPCION CARGO', 'DESCRIPCIÓN CARGO', 'DESC CARGO', 'DENOMINACION CARGO', 'DENOMINACIÓN CARGO'];
     var COL_ASIG = ['ID ASIGNATURA', 'COD ASIGNATURA', 'CODIGO ASIGNATURA', 'CÓDIGO ASIGNATURA', 'COD. ASIGNATURA'];
+    var COL_ASIG_DESC = ['ASIGNATURA', 'DESCRIPCION ASIGNATURA', 'DESCRIPCIÓN ASIGNATURA', 'DESC ASIGNATURA', 'DENOMINACION ASIGNATURA', 'DENOMINACIÓN ASIGNATURA'];
     var COL_NDOC = ['DOCUMENTO DESIGNADO', 'NDOC', 'N.DOC', 'N DOC'];
     var COL_CARACTER = ['CARACTER', 'CARÁCTER'];
     var COL_IDPOF = ['ID POF', 'ID. POF', 'IDPOF', 'Id. POF', 'ID DE POF', 'NUMERO DE PROPUESTA', 'NÚMERO DE PROPUESTA'];
@@ -172,6 +176,15 @@
         '1549': '1599',
         '1507': '1599',
         '1528': '1599'
+    };
+
+    /* Se eliminan del proceso (valores de columna cargo, normalizados). */
+    var CARGOS_TEXTO_EXCLUIR = {
+        TC: true,
+        TP1: true,
+        TP2: true,
+        TP3: true,
+        TP4: true
     };
 
     var infoOpen = document.getElementById('infoOpen');
@@ -379,7 +392,9 @@
     function mapColumns(headers, requireCaracter) {
         var idx = {
             cargo: findColumnIndex(headers, COL_CARGO),
+            cargoDesc: findColumnIndex(headers, COL_CARGO_DESC),
             asig: findColumnIndex(headers, COL_ASIG),
+            asigDesc: findColumnIndex(headers, COL_ASIG_DESC),
             ndoc: findColumnIndex(headers, COL_NDOC),
             caracter: findColumnIndex(headers, COL_CARACTER),
             idPof: findColumnIndex(headers, COL_IDPOF)
@@ -401,6 +416,29 @@
 
     function isTitular(value) {
         return normalizeHeader(value) === 'TITULAR';
+    }
+
+    function valorCargoExcluido(v) {
+        var n = normalizeHeader(v).replace(/\s+/g, '');
+        return !!(n && CARGOS_TEXTO_EXCLUIR[n]);
+    }
+
+    function esTareasDocentes(v) {
+        return normalizeHeader(v).indexOf('TAREAS DOCENTES') !== -1;
+    }
+
+    /** Excluye TC/TP1-TP4 (cargo) y TAREAS DOCENTES (asignatura). */
+    function debeExcluirFila(row, cols) {
+        var i;
+        var cargos = [cell(row, cols.cargo), cell(row, cols.cargoDesc)];
+        for (i = 0; i < cargos.length; i++) {
+            if (valorCargoExcluido(cargos[i])) return 'cargo';
+        }
+        var asigs = [cell(row, cols.asig), cell(row, cols.asigDesc)];
+        for (i = 0; i < asigs.length; i++) {
+            if (esTareasDocentes(asigs[i])) return 'asig';
+        }
+        return '';
     }
 
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -450,6 +488,8 @@
             { n: s.pofTotal, l: 'Filas POF leídas' },
             { n: s.titulares, l: 'TITULAR' },
             { n: s.descartadas, l: 'Descartadas' },
+            { n: s.excluidasCargoTcTp, l: 'Excl. TC/TP1-4' },
+            { n: s.excluidasTareasDocentes, l: 'Excl. Tareas doc.' },
             { n: s.cargosA1599, l: 'Cargos → 1599' },
             { n: s.coinciden, l: 'Coincidieron' },
             { n: s.noCoinciden, l: 'No coincidieron' },
@@ -508,16 +548,27 @@
 
                 var titulares = [];
                 var descartadas = 0;
+                var excluidasCargoTcTp = 0;
+                var excluidasTareasDocentes = 0;
                 pofTable.rows.forEach(function (row) {
                     if (!isTitular(cell(row, pofCols.caracter))) {
                         descartadas += 1;
+                        return;
+                    }
+                    var motivo = debeExcluirFila(row, pofCols);
+                    if (motivo === 'cargo') {
+                        excluidasCargoTcTp += 1;
+                        return;
+                    }
+                    if (motivo === 'asig') {
+                        excluidasTareasDocentes += 1;
                         return;
                     }
                     titulares.push(row.slice());
                 });
 
                 if (!titulares.length) {
-                    throw new Error('En el POF no quedó ningún registro con CARACTER = TITULAR.');
+                    throw new Error('En el POF no quedó ningún registro con CARACTER = TITULAR (tras filtros TC/TP y TAREAS DOCENTES).');
                 }
 
                 var cerosVaciados = vaciarCerosColumnasCruce(titulares, pofCols);
@@ -560,6 +611,8 @@
                     pofTotal: pofTable.rows.length,
                     titulares: titulares.length,
                     descartadas: descartadas,
+                    excluidasCargoTcTp: excluidasCargoTcTp,
+                    excluidasTareasDocentes: excluidasTareasDocentes,
                     coinciden: coinciden.length,
                     noCoinciden: noCoinciden.length,
                     cruceKeys: cruceKeyCount,
@@ -581,6 +634,8 @@
                         detalle: 'TITULAR ' + titulares.length
                             + ' · coincidieron ' + coinciden.length
                             + ' · no coincidieron ' + noCoinciden.length
+                            + ' · excl. TC/TP ' + excluidasCargoTcTp
+                            + ' · excl. Tareas doc. ' + excluidasTareasDocentes
                             + ' · cargos→1599 ' + cargosA1599
                             + ' · Id. POF dup. ' + idPofDup
                             + ' · ceros vaciados ' + cerosVaciados,
@@ -592,7 +647,10 @@
                     'Proceso completado. Archivo: "' + nombre + '"\n'
                     + 'Hoja 1 Coincidieron: ' + coinciden.length + ' registro(s)\n'
                     + 'Hoja 2 No coincidieron: ' + noCoinciden.length + ' registro(s)\n'
-                    + 'POF filtrado a TITULAR: ' + titulares.length + ' de ' + pofTable.rows.length + ' (se descartaron ' + descartadas + ').'
+                    + 'POF filtrado a TITULAR: ' + titulares.length + ' de ' + pofTable.rows.length
+                    + ' (no TITULAR: ' + descartadas
+                    + '; TC/TP1-4: ' + excluidasCargoTcTp
+                    + '; TAREAS DOCENTES: ' + excluidasTareasDocentes + ').'
                     + (cargosA1599 ? '\nCódigos de cargo convertidos a 1599 (1550/1504/1549/1507/1528): ' + cargosA1599 + '.' : '')
                     + (idPofDup ? '\nSe eliminaron ' + idPofDup + ' registro(s) con Id. POF duplicado.' : '')
                     + (pofCols.idPof < 0 ? '\nNo se encontró columna Id. POF: no se pudo deduplicar por ese campo.' : '')
