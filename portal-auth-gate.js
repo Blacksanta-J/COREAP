@@ -48,5 +48,5 @@
     if (document.documentElement.classList.contains('portal-auth-pending')) {
       reveal();
     }
-  }, 12000);
+  }, 2500);
 })(window);

@@ -8,7 +8,7 @@
 <link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
 <link rel="shortcut icon" href="assets/favicon.ico">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<script src="portal-auth-gate.js"></script>
+<script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
 <script src="portal-theme.js"></script>
 <script src="portal-header.js?v=20260825-sess2"></script>
 <script src="portal-nav.js"></script>
@@ -18,8 +18,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
-<script src="users-data.js?v=20260825-fastlogin1"></script>
-<script src="auth.js?v=20260825-fastlogin1"></script>
+<script src="users-data.js?v=20260826-fastpages1"></script>
+<script src="auth.js?v=20260826-fastpages1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
@@ -525,22 +525,25 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#1d3343}
 </div>
 <script>
 (function () {
+  function applyPermissions(user) {
+    document.querySelectorAll('[data-module]').forEach(function (el) {
+      var mod = el.getAttribute('data-module');
+      el.style.display = PortalAuth.canAccess(mod, user) ? '' : 'none';
+    });
+
+    var visibleCards = Array.prototype.filter.call(
+      document.querySelectorAll('.cards-grid .section-card'),
+      function (el) { return el.style.display !== 'none'; }
+    ).length;
+    var metaCount = document.querySelector('.hero-meta strong');
+    if (metaCount) metaCount.textContent = String(visibleCards);
+  }
+
   PortalAuth.ready().then(function () {
   var user = PortalAuth.requireAuth();
   if (!user) return;
 
-  // Visibilidad por permisos
-  document.querySelectorAll('[data-module]').forEach(function (el) {
-    var mod = el.getAttribute('data-module');
-    el.style.display = PortalAuth.canAccess(mod, user) ? '' : 'none';
-  });
-
-  var visibleCards = Array.prototype.filter.call(
-    document.querySelectorAll('.cards-grid .section-card'),
-    function (el) { return el.style.display !== 'none'; }
-  ).length;
-  var metaCount = document.querySelector('.hero-meta strong');
-  if (metaCount) metaCount.textContent = String(visibleCards);
+  applyPermissions(user);
 
   var params = new URLSearchParams(location.search);
   if (params.get('denied') === '1') {
@@ -550,6 +553,20 @@ html[data-theme="dark"] .card-arrow{background:#8DE2D6;color:#1d3343}
 
   if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
     PortalHeader.fillUserMenu(user);
+  }
+
+  if (PortalAuth.whenSynced) {
+    PortalAuth.whenSynced().then(function () {
+      var u = PortalAuth.currentUser();
+      if (!u) {
+        location.replace('login.html');
+        return;
+      }
+      applyPermissions(u);
+      if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+        PortalHeader.fillUserMenu(u);
+      }
+    });
   }
   }).catch(function () {
     PortalAuth.requireAuth();
