@@ -238,7 +238,8 @@
             var mapped = normalizeCargoCode(original);
             var current = normalizeCode(original);
             if (mapped && mapped !== current) {
-                row[cols.cargo] = mapped;
+                /* Número real (no texto) para que Excel lo tome con formato numérico */
+                row[cols.cargo] = Number(mapped);
                 count += 1;
             }
         });
@@ -410,13 +411,31 @@
             + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.xlsx';
     }
 
-    function sheetFromAoa(headers, dataRows) {
+    function sheetFromAoa(headers, dataRows, numberColIndexes) {
         var aoa = [headers.slice()].concat(dataRows.map(function (r) {
             var copy = [];
             for (var i = 0; i < headers.length; i++) copy[i] = r[i] != null ? r[i] : '';
             return copy;
         }));
-        return XLSX.utils.aoa_to_sheet(aoa);
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        (numberColIndexes || []).forEach(function (colIdx) {
+            if (colIdx < 0) return;
+            for (var r = 1; r < aoa.length; r++) {
+                var addr = XLSX.utils.encode_cell({ r: r, c: colIdx });
+                var c = ws[addr];
+                if (!c) continue;
+                if (typeof c.v === 'number' && isFinite(c.v)) {
+                    c.t = 'n';
+                    c.z = '0';
+                } else if (c.v !== '' && c.v != null && /^-?\d+(\.0+)?$/.test(String(c.v).trim().replace(',', '.'))) {
+                    c.v = parseInt(String(c.v).trim().replace(',', '.'), 10);
+                    c.t = 'n';
+                    c.z = '0';
+                    delete c.w;
+                }
+            }
+        });
+        return ws;
     }
 
     function setStatus(msg, isError) {
@@ -523,8 +542,16 @@
                 var idPofDup = dedupeOk.removed + dedupeNo.removed;
 
                 var wbOut = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(pofTable.headers, coinciden), 'Coincidieron');
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(pofTable.headers, noCoinciden), 'No coincidieron');
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(pofTable.headers, coinciden, [pofCols.cargo]),
+                    'Coincidieron'
+                );
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(pofTable.headers, noCoinciden, [pofCols.cargo]),
+                    'No coincidieron'
+                );
 
                 var nombre = nombreSalida();
                 XLSX.writeFile(wbOut, nombre);
