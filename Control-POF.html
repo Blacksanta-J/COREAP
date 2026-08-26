@@ -123,7 +123,7 @@
         En esas columnas de cruce, si el valor es solo <strong>0</strong> se vacía (queda en blanco).
     </div>
 
-    <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Controlar y descargar</button>
+    <button class="btn-primary" id="btnProcesar" type="button">Controlar y descargar</button>
     <div id="status"></div>
     <div class="stats-grid" id="statsGrid"></div>
 </div>
@@ -492,7 +492,7 @@
                     + 'Hoja 1 Coincidieron: ' + coinciden.length + ' registro(s)\n'
                     + 'Hoja 2 No coincidieron: ' + noCoinciden.length + ' registro(s)\n'
                     + 'POF filtrado a TITULAR: ' + titulares.length + ' de ' + pofTable.rows.length + ' (se descartaron ' + descartadas + ').'
-                    + (cerosVaciados ? '\nCeldas de cruce del POF con valor 0 vaciadas: ' + cerosVaciados + '.' : '');
+                    + (cerosVaciados ? '\nCeldas de cruce del POF con valor 0 vaciadas: ' + cerosVaciados + '.' : '')
                 );
             })
             .catch(function (err) {
@@ -503,6 +503,9 @@
                 btn.disabled = false;
             });
     };
+
+    var btnBind = document.getElementById('btnProcesar');
+    if (btnBind) btnBind.addEventListener('click', function () { window.iniciarProceso(); });
 })();
 </script>
 
