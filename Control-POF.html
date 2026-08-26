@@ -120,9 +120,10 @@
         <strong>ID PLAN</strong> = <strong>COD ESPECIALIDAD</strong> ·
         <strong>DOCUMENTO DESIGNADO</strong> = <strong>NDOC</strong>.
         Del POF se conservan únicamente las filas con <strong>CARACTER = TITULAR</strong>.
+        En esas columnas de cruce, si el valor es solo <strong>0</strong> se vacía (queda en blanco).
     </div>
 
-    <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Controlar y descargar</button>
+    <button class="btn-primary" id="btnProcesar" type="button">Controlar y descargar</button>
     <div id="status"></div>
     <div class="stats-grid" id="statsGrid"></div>
 </div>
@@ -143,6 +144,7 @@
             <ul>
                 <li><strong>Archivo 1 (POF):</strong> se leen las hojas, se detecta la fila de encabezados y se descartan las filas cuyo <em>CARACTER</em> no sea TITULAR.</li>
                 <li><strong>Archivo 2:</strong> listado de docentes a cruzar. Se usan <em>NDOC</em>, <em>COD CARGO</em>, <em>COD ASIGNATURA</em> y <em>COD ESPECIALIDAD</em> (o sus equivalentes del POF).</li>
+                <li><strong>Ceros en el POF:</strong> en las columnas de cruce (<em>ID CARGO</em>, <em>ID ASIGNATURA</em>, <em>ID PLAN</em>, <em>DOCUMENTO DESIGNADO</em>), si el valor es solo 0 se vacía antes de comparar y en el Excel de salida.</li>
                 <li><strong>Clave de coincidencia:</strong> documento + código de cargo + código de asignatura + código de especialidad/plan.</li>
                 <li><strong>Excel de salida (formato POF):</strong> hoja 1 <em>Coincidieron</em> (TITULAR del POF presentes en el segundo archivo) y hoja 2 <em>No coincidieron</em> (TITULAR del POF que no están en el segundo archivo).</li>
             </ul>
@@ -176,18 +178,51 @@
             .trim();
     }
 
+    function isZeroLike(v) {
+        if (v == null) return false;
+        if (typeof v === 'number') return v === 0;
+        var s = String(v).trim();
+        if (s === '') return false;
+        if (/^0+$/.test(s)) return true;
+        if (/^0+[.,]0+$/.test(s)) return true;
+        var compact = s.replace(',', '.');
+        if (/^-?0+(\.0+)?$/.test(compact)) return true;
+        return false;
+    }
+
     function normalizeDoc(v) {
-        return String(v == null ? '' : v).replace(/\D/g, '');
+        if (isZeroLike(v)) return '';
+        var d = String(v == null ? '' : v).replace(/\D/g, '');
+        if (!d || /^0+$/.test(d)) return '';
+        return d;
     }
 
     function normalizeCode(v) {
+        if (isZeroLike(v)) return '';
         var s = String(v == null ? '' : v).trim();
         if (s === '') return '';
         var compact = s.replace(',', '.');
         if (/^-?\d+(\.0+)?$/.test(compact)) {
-            return String(parseInt(compact, 10));
+            var n = parseInt(compact, 10);
+            return n === 0 ? '' : String(n);
         }
         return normalizeHeader(s);
+    }
+
+    function vaciarCerosColumnasCruce(rows, cols) {
+        var fields = ['cargo', 'asig', 'espec', 'ndoc'];
+        var count = 0;
+        rows.forEach(function (row) {
+            fields.forEach(function (f) {
+                var i = cols[f];
+                if (i < 0 || !row) return;
+                if (isZeroLike(row[i])) {
+                    row[i] = '';
+                    count += 1;
+                }
+            });
+        });
+        return count;
     }
 
     function makeKey(ndoc, cargo, asig, espec) {
@@ -338,7 +373,8 @@
             { n: s.descartadas, l: 'Descartadas' },
             { n: s.coinciden, l: 'Coincidieron' },
             { n: s.noCoinciden, l: 'No coincidieron' },
-            { n: s.cruceKeys, l: 'Claves archivo 2' }
+            { n: s.cruceKeys, l: 'Claves archivo 2' },
+            { n: s.cerosVaciados, l: 'Ceros vaciados POF' }
         ];
         grid.innerHTML = items.map(function (it) {
             return '<div class="stat-card"><div class="n">' + it.n + '</div><div class="l">' + it.l + '</div></div>';
@@ -397,12 +433,14 @@
                         descartadas += 1;
                         return;
                     }
-                    titulares.push(row);
+                    titulares.push(row.slice());
                 });
 
                 if (!titulares.length) {
                     throw new Error('En el POF no quedó ningún registro con CARACTER = TITULAR.');
                 }
+
+                var cerosVaciados = vaciarCerosColumnasCruce(titulares, pofCols);
 
                 var coinciden = [];
                 var noCoinciden = [];
@@ -430,7 +468,8 @@
                     descartadas: descartadas,
                     coinciden: coinciden.length,
                     noCoinciden: noCoinciden.length,
-                    cruceKeys: cruceKeyCount
+                    cruceKeys: cruceKeyCount,
+                    cerosVaciados: cerosVaciados
                 };
                 renderStats(stats);
 
@@ -443,7 +482,7 @@
                         archivoOrigen: (filePof.name || '') + ' + ' + (fileCruce.name || ''),
                         archivoSalida: nombre,
                         filas: coinciden.length,
-                        detalle: 'TITULAR ' + titulares.length + ' · coincidieron ' + coinciden.length + ' · no coincidieron ' + noCoinciden.length,
+                        detalle: 'TITULAR ' + titulares.length + ' · coincidieron ' + coinciden.length + ' · no coincidieron ' + noCoinciden.length + ' · ceros vaciados ' + cerosVaciados,
                         extras: stats
                     });
                 }
@@ -453,6 +492,7 @@
                     + 'Hoja 1 Coincidieron: ' + coinciden.length + ' registro(s)\n'
                     + 'Hoja 2 No coincidieron: ' + noCoinciden.length + ' registro(s)\n'
                     + 'POF filtrado a TITULAR: ' + titulares.length + ' de ' + pofTable.rows.length + ' (se descartaron ' + descartadas + ').'
+                    + (cerosVaciados ? '\nCeldas de cruce del POF con valor 0 vaciadas: ' + cerosVaciados + '.' : '')
                 );
             })
             .catch(function (err) {
@@ -463,6 +503,9 @@
                 btn.disabled = false;
             });
     };
+
+    var btnBind = document.getElementById('btnProcesar');
+    if (btnBind) btnBind.addEventListener('click', function () { window.iniciarProceso(); });
 })();
 </script>
 
