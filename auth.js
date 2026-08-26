@@ -1,7 +1,7 @@
 /**
  * Portal COREAP — autenticación y permisos (cliente).
  * Login Google con cuentas @bue.edu.ar + usuarios precargados (mail + DNI).
- * Roles: admin | apel | concursos | usuarios (un usuario puede tener varios).
+ * Roles: admin | apel | concursos | listados | usuarios (un usuario puede tener varios).
  */
 (function (global) {
   'use strict';
@@ -21,6 +21,7 @@
     admin: 'admin',
     apel: 'apel',
     concursos: 'concursos',
+    listados: 'listados',
     usuarios: 'usuarios'
   };
 
@@ -28,11 +29,12 @@
     admin: 'Admin',
     apel: 'APEL',
     concursos: 'Concursos',
+    listados: 'Listados',
     usuarios: 'Usuarios'
   };
 
   /** Orden de prioridad para el rol “principal” (legacy `role`). */
-  var ROLE_PRIORITY = [ROLES.admin, ROLES.apel, ROLES.concursos, ROLES.usuarios];
+  var ROLE_PRIORITY = [ROLES.admin, ROLES.apel, ROLES.concursos, ROLES.listados, ROLES.usuarios];
 
   var MODULES = {
     acto_publico: 'acto_publico',
@@ -65,8 +67,9 @@
       MODULES.admin_usuarios,
       MODULES.admin_logs
     ],
-    apel: MANUALES.concat([MODULES.eleves_acto, MODULES.control_pof]),
-    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.control_pof]),
+    apel: MANUALES.concat([MODULES.eleves_acto]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos]),
+    listados: MANUALES.concat([MODULES.control_pof]),
     usuarios: MANUALES.slice()
   };
 
@@ -148,6 +151,7 @@
     if (role === 'usuario') role = ROLES.usuarios;
     if (role === 'administrador') role = ROLES.admin;
     if (role === 'concurso') role = ROLES.concursos;
+    if (role === 'listado') role = ROLES.listados;
     if (!ROLE_PERMISSIONS[role]) return '';
     return role;
   }
