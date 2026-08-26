@@ -121,6 +121,8 @@
         No se cruza <strong>ID PLAN</strong> / <strong>COD ESPECIALIDAD</strong>.
         Del POF se conservan únicamente las filas con <strong>CARACTER = TITULAR</strong>.
         En esas columnas de cruce, si el valor es solo <strong>0</strong> se vacía (queda en blanco).
+        Antes de comparar, los cargos <code>1550</code>, <code>1504</code>, <code>1549</code>, <code>1507</code> y <code>1528</code> se tratan como <code>1599</code>.
+        En el Excel final se eliminan <strong>Id. POF</strong> duplicados.
     </div>
 
     <button class="btn-primary" id="btnProcesar" type="button">Controlar y descargar</button>
@@ -145,7 +147,9 @@
                 <li><strong>Archivo 1 (POF):</strong> se leen las hojas, se detecta la fila de encabezados y se descartan las filas cuyo <em>CARACTER</em> no sea TITULAR.</li>
                 <li><strong>Archivo 2:</strong> listado de docentes a cruzar. Se usan <em>NDOC</em>, <em>COD CARGO</em> y <em>COD ASIGNATURA</em> (o sus equivalentes del POF).</li>
                 <li><strong>Ceros en el POF:</strong> en las columnas de cruce (<em>ID CARGO</em>, <em>ID ASIGNATURA</em>, <em>DOCUMENTO DESIGNADO</em>), si el valor es solo 0 se vacía antes de comparar y en el Excel de salida.</li>
+                <li><strong>Equivalencia de cargo:</strong> los códigos <em>1550</em>, <em>1504</em>, <em>1549</em>, <em>1507</em> y <em>1528</em> se convierten a <em>1599</em> antes de comparar (en POF y en el archivo 2) y quedan como 1599 en el Excel de salida del POF.</li>
                 <li><strong>Clave de coincidencia:</strong> documento + código de cargo + código de asignatura. No se usa ID PLAN / COD ESPECIALIDAD.</li>
+                <li><strong>Id. POF duplicados:</strong> en el resultado final se elimina la repetición de <em>Id. POF</em> (se conserva la primera aparición; los vacíos no se agrupan).</li>
                 <li><strong>Excel de salida (formato POF):</strong> hoja 1 <em>Coincidieron</em> (TITULAR del POF presentes en el segundo archivo) y hoja 2 <em>No coincidieron</em> (TITULAR del POF que no están en el segundo archivo).</li>
             </ul>
         </div>
@@ -158,7 +162,17 @@
     var COL_ASIG = ['ID ASIGNATURA', 'COD ASIGNATURA', 'CODIGO ASIGNATURA', 'CÓDIGO ASIGNATURA', 'COD. ASIGNATURA'];
     var COL_NDOC = ['DOCUMENTO DESIGNADO', 'NDOC', 'N.DOC', 'N DOC'];
     var COL_CARACTER = ['CARACTER', 'CARÁCTER'];
+    var COL_IDPOF = ['ID POF', 'ID. POF', 'IDPOF', 'Id. POF', 'ID DE POF', 'NUMERO DE PROPUESTA', 'NÚMERO DE PROPUESTA'];
     var EMPTY_KEY = '||';
+
+    /* Antes de comparar, estos códigos de cargo se tratan como 1599. */
+    var CARGO_A_1599 = {
+        '1550': '1599',
+        '1504': '1599',
+        '1549': '1599',
+        '1507': '1599',
+        '1528': '1599'
+    };
 
     var infoOpen = document.getElementById('infoOpen');
     var infoClose = document.getElementById('infoClose');
@@ -209,6 +223,28 @@
         return normalizeHeader(s);
     }
 
+    function normalizeCargoCode(v) {
+        var code = normalizeCode(v);
+        if (!code) return '';
+        return CARGO_A_1599[code] || code;
+    }
+
+    function aplicarEquivalenciaCargo1599(rows, cols) {
+        if (!rows || cols.cargo < 0) return 0;
+        var count = 0;
+        rows.forEach(function (row) {
+            if (!row) return;
+            var original = cell(row, cols.cargo);
+            var mapped = normalizeCargoCode(original);
+            var current = normalizeCode(original);
+            if (mapped && mapped !== current) {
+                row[cols.cargo] = mapped;
+                count += 1;
+            }
+        });
+        return count;
+    }
+
     function vaciarCerosColumnasCruce(rows, cols) {
         var fields = ['cargo', 'asig', 'ndoc'];
         var count = 0;
@@ -226,7 +262,32 @@
     }
 
     function makeKey(ndoc, cargo, asig) {
-        return [normalizeDoc(ndoc), normalizeCode(cargo), normalizeCode(asig)].join('|');
+        return [normalizeDoc(ndoc), normalizeCargoCode(cargo), normalizeCode(asig)].join('|');
+    }
+
+    /** Conserva la primera fila por Id. POF. IDs vacíos se mantienen. */
+    function eliminarDuplicadosIdPof(rows, idPofIdx) {
+        if (idPofIdx < 0 || !rows || !rows.length) {
+            return { filas: rows || [], removed: 0 };
+        }
+        var seen = Object.create(null);
+        var out = [];
+        var removed = 0;
+        rows.forEach(function (row) {
+            var raw = cell(row, idPofIdx);
+            var id = String(raw == null ? '' : raw).trim();
+            if (!id) {
+                out.push(row);
+                return;
+            }
+            if (seen[id]) {
+                removed += 1;
+                return;
+            }
+            seen[id] = true;
+            out.push(row);
+        });
+        return { filas: out, removed: removed };
     }
 
     function findColumnIndex(headers, aliases) {
@@ -319,7 +380,8 @@
             cargo: findColumnIndex(headers, COL_CARGO),
             asig: findColumnIndex(headers, COL_ASIG),
             ndoc: findColumnIndex(headers, COL_NDOC),
-            caracter: findColumnIndex(headers, COL_CARACTER)
+            caracter: findColumnIndex(headers, COL_CARACTER),
+            idPof: findColumnIndex(headers, COL_IDPOF)
         };
         var missing = [];
         if (idx.cargo < 0) missing.push('ID CARGO / COD CARGO');
@@ -369,8 +431,10 @@
             { n: s.pofTotal, l: 'Filas POF leídas' },
             { n: s.titulares, l: 'TITULAR' },
             { n: s.descartadas, l: 'Descartadas' },
+            { n: s.cargosA1599, l: 'Cargos → 1599' },
             { n: s.coinciden, l: 'Coincidieron' },
             { n: s.noCoinciden, l: 'No coincidieron' },
+            { n: s.idPofDup, l: 'Id. POF duplicados' },
             { n: s.cruceKeys, l: 'Claves archivo 2' },
             { n: s.cerosVaciados, l: 'Ceros vaciados POF' }
         ];
@@ -438,6 +502,7 @@
                 }
 
                 var cerosVaciados = vaciarCerosColumnasCruce(titulares, pofCols);
+                var cargosA1599 = aplicarEquivalenciaCargo1599(titulares, pofCols);
 
                 var coinciden = [];
                 var noCoinciden = [];
@@ -450,6 +515,12 @@
                     if (key !== EMPTY_KEY && cruceKeys[key]) coinciden.push(row);
                     else noCoinciden.push(row);
                 });
+
+                var dedupeOk = eliminarDuplicadosIdPof(coinciden, pofCols.idPof);
+                var dedupeNo = eliminarDuplicadosIdPof(noCoinciden, pofCols.idPof);
+                coinciden = dedupeOk.filas;
+                noCoinciden = dedupeNo.filas;
+                var idPofDup = dedupeOk.removed + dedupeNo.removed;
 
                 var wbOut = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(pofTable.headers, coinciden), 'Coincidieron');
@@ -465,7 +536,9 @@
                     coinciden: coinciden.length,
                     noCoinciden: noCoinciden.length,
                     cruceKeys: cruceKeyCount,
-                    cerosVaciados: cerosVaciados
+                    cerosVaciados: cerosVaciados,
+                    cargosA1599: cargosA1599,
+                    idPofDup: idPofDup
                 };
                 renderStats(stats);
 
@@ -478,7 +551,12 @@
                         archivoOrigen: (filePof.name || '') + ' + ' + (fileCruce.name || ''),
                         archivoSalida: nombre,
                         filas: coinciden.length,
-                        detalle: 'TITULAR ' + titulares.length + ' · coincidieron ' + coinciden.length + ' · no coincidieron ' + noCoinciden.length + ' · ceros vaciados ' + cerosVaciados,
+                        detalle: 'TITULAR ' + titulares.length
+                            + ' · coincidieron ' + coinciden.length
+                            + ' · no coincidieron ' + noCoinciden.length
+                            + ' · cargos→1599 ' + cargosA1599
+                            + ' · Id. POF dup. ' + idPofDup
+                            + ' · ceros vaciados ' + cerosVaciados,
                         extras: stats
                     });
                 }
@@ -488,6 +566,9 @@
                     + 'Hoja 1 Coincidieron: ' + coinciden.length + ' registro(s)\n'
                     + 'Hoja 2 No coincidieron: ' + noCoinciden.length + ' registro(s)\n'
                     + 'POF filtrado a TITULAR: ' + titulares.length + ' de ' + pofTable.rows.length + ' (se descartaron ' + descartadas + ').'
+                    + (cargosA1599 ? '\nCódigos de cargo convertidos a 1599 (1550/1504/1549/1507/1528): ' + cargosA1599 + '.' : '')
+                    + (idPofDup ? '\nSe eliminaron ' + idPofDup + ' registro(s) con Id. POF duplicado.' : '')
+                    + (pofCols.idPof < 0 ? '\nNo se encontró columna Id. POF: no se pudo deduplicar por ese campo.' : '')
                     + (cerosVaciados ? '\nCeldas de cruce del POF con valor 0 vaciadas: ' + cerosVaciados + '.' : '')
                 );
             })
