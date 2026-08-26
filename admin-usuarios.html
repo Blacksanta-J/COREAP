@@ -20,7 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260826-fastpages1"></script>
-<script src="auth.js?v=20260826-controlpof1"></script>
+<script src="auth.js?v=20260826-listados1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -93,6 +93,7 @@ html[data-theme="dark"] .badge{background:#1e3440;color:#c5d4de}
 .badge.admin{background:rgba(255,204,0,.25)}
 .badge.apel{background:rgba(141,226,214,.3)}
 .badge.concursos{background:rgba(96,165,250,.28)}
+.badge.listados{background:rgba(255,204,0,.28)}
 .badge.usuarios{background:rgba(148,163,184,.25)}
 .badge-stack{display:flex;flex-wrap:wrap;gap:4px}
 .roles-grid{
@@ -226,11 +227,15 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
           </label>
           <label>
             <input type="checkbox" name="roles" value="apel">
-            <span>APEL<span class="role-desc">Manuales + Eleves Acto Público + Control POF</span></span>
+            <span>APEL<span class="role-desc">Manuales + Eleves Acto Público</span></span>
           </label>
           <label>
             <input type="checkbox" name="roles" value="concursos">
-            <span>Concursos<span class="role-desc">Manuales + Eleves Concursos + Control POF</span></span>
+            <span>Concursos<span class="role-desc">Manuales + Eleves Concursos</span></span>
+          </label>
+          <label>
+            <input type="checkbox" name="roles" value="listados">
+            <span>Listados<span class="role-desc">Manuales + Control POF</span></span>
           </label>
           <label>
             <input type="checkbox" name="roles" value="admin">
@@ -261,7 +266,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
         <code>nombre, apellido, email, dni, fecha_nacimiento, reparticion, roles, activo</code>.
         Fechas en <code>DD/MM/AAAA</code> o <code>AAAA-MM-DD</code>.
         Repartición: <code>Sistemas, Administracion, RRHH, Listados, APEL, JUNTA</code>.
-        Roles (uno o más, separados por coma): <code>admin</code>, <code>apel</code>, <code>concursos</code>, <code>usuarios</code>.
+        Roles (uno o más, separados por coma): <code>admin</code>, <code>apel</code>, <code>concursos</code>, <code>listados</code>, <code>usuarios</code>.
       </p>
       <label for="importFile">Archivo</label>
       <input id="importFile" type="file" accept=".csv,.xlsx,.xls">
@@ -487,7 +492,8 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
       'nombre,apellido,email,dni,fecha_nacimiento,reparticion,roles,activo',
       'Maria,Lopez,maria.lopez@bue.edu.ar,30111222,15/03/1988,Sistemas,usuarios,si',
       'Juan,Gomez,juan.gomez@bue.edu.ar,30111333,02/11/1990,APEL,"apel,usuarios",si',
-      'Ana,Ruiz,ana.ruiz@bue.edu.ar,30111444,20/07/1985,JUNTA,concursos,si'
+      'Ana,Ruiz,ana.ruiz@bue.edu.ar,30111444,20/07/1985,JUNTA,concursos,si',
+      'Luis,Paz,luis.paz@bue.edu.ar,30111555,08/01/1991,Listados,listados,si'
     ].join('\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var a = document.createElement('a');
