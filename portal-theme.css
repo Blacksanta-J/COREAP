@@ -522,7 +522,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
 .footer-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
 }
 
 .footer-jayjay-link {
@@ -531,22 +531,24 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   line-height: 0;
   position: relative;
   z-index: 5;
+  flex-shrink: 0;
+  margin-right: 4px;
 }
 
 .footer-jayjay-wrap {
   position: relative;
   display: inline-block;
-  width: 64px;
+  width: auto;
   height: 64px;
   overflow: visible;
 }
 
 .footer-jayjay-flyer {
   position: relative;
-  display: block;
-  width: 64px;
+  display: inline-block;
+  width: auto;
   height: 64px;
-  transform-origin: 40% 55%;
+  transform-origin: 35% 60%;
   will-change: transform;
 }
 
@@ -555,6 +557,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   z-index: 2;
   height: 64px;
   width: auto;
+  max-width: none;
   display: block;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
 }
@@ -616,51 +619,51 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   animation-delay: .15s;
 }
 
-/* Despega hasta salir completamente de la vista */
+/* Despega hacia la izquierda/arriba, lejos del texto, hasta salir de vista */
 @keyframes jayjay-takeoff {
   0% {
     transform: translate(0, 0) rotate(0deg) scale(1);
     opacity: 1;
   }
   12% {
-    transform: translate(-4px, 6px) rotate(-10deg) scale(1.04);
+    transform: translate(-6px, 4px) rotate(8deg) scale(1.04);
     opacity: 1;
   }
   28% {
-    transform: translate(18px, -28px) rotate(-22deg) scale(1.08);
+    transform: translate(-36px, -32px) rotate(16deg) scale(1.08);
     opacity: 1;
   }
   55% {
-    transform: translate(90px, -110px) rotate(-32deg) scale(1.12);
+    transform: translate(-120px, -120px) rotate(24deg) scale(1.12);
     opacity: 1;
   }
   78% {
-    transform: translate(180px, -220px) rotate(-40deg) scale(1.15);
+    transform: translate(-240px, -240px) rotate(32deg) scale(1.15);
     opacity: .85;
   }
   100% {
-    transform: translate(70vw, -90vh) rotate(-48deg) scale(1.2);
+    transform: translate(-70vw, -90vh) rotate(40deg) scale(1.2);
     opacity: 0;
   }
 }
 
-/* Fuego saliendo hacia atrás desde el avión */
+/* Fuego saliendo hacia atrás (derecha del avión al volar a la izquierda) */
 @keyframes jayjay-flame {
   0% {
     opacity: .15;
-    transform: translate(4px, 0) scaleX(.35) scaleY(.7) rotate(8deg);
+    transform: translate(-4px, 0) scaleX(.35) scaleY(.7) rotate(-8deg);
   }
   35% {
     opacity: 1;
-    transform: translate(-10px, 2px) scaleX(1.15) scaleY(1.05) rotate(-4deg);
+    transform: translate(10px, 2px) scaleX(1.15) scaleY(1.05) rotate(4deg);
   }
   70% {
     opacity: .75;
-    transform: translate(-22px, 4px) scaleX(1.45) scaleY(.85) rotate(-8deg);
+    transform: translate(22px, 4px) scaleX(1.45) scaleY(.85) rotate(8deg);
   }
   100% {
     opacity: 0;
-    transform: translate(-34px, 6px) scaleX(.6) scaleY(.4) rotate(-12deg);
+    transform: translate(34px, 6px) scaleX(.6) scaleY(.4) rotate(12deg);
   }
 }
 
@@ -668,7 +671,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   .footer-jayjay-link:hover .footer-jayjay-flyer,
   .footer-jayjay-link:focus-visible .footer-jayjay-flyer {
     animation: none;
-    transform: translateX(8px) rotate(-4deg);
+    transform: translateX(-8px) rotate(4deg);
   }
   .footer-jayjay-link:hover .footer-jayjay-flame,
   .footer-jayjay-link:focus-visible .footer-jayjay-flame {
