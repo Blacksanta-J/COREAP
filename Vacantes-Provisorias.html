@@ -1226,14 +1226,14 @@
             setStatusExcluir('No se encontraron vacantes para actualizar.', true);
             return;
         }
-        setStatusExcluir((excluir ? 'Excluyendo' : 'Incluyendo') + ' ' + touched.length + ' vacante(s)…');
+        setStatusExcluir((excluir ? 'Excluyendo' : 'Incluyendo') + ' ' + touched.length + ' vacante(s) en la nube…');
         persistMesesAfectados(touched).then(function () {
             state.seleccion = {};
-            setStatusExcluir((excluir ? 'Excluidas' : 'Incluidas') + ': ' + touched.length + ' vacante(s).');
+            setStatusExcluir((excluir ? 'Excluidas' : 'Incluidas') + ': ' + touched.length + ' vacante(s) · guardado en la nube.');
             renderTablaBase();
             renderInforme();
         }).catch(function (err) {
-            setStatusExcluir((err && err.message) || 'No se pudieron guardar las exclusiones.', true);
+            setStatusExcluir((err && err.message) || 'No se pudieron guardar las exclusiones en la nube.', true);
         });
     }
 
