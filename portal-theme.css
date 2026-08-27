@@ -516,6 +516,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   font-size: 12px;
   color: rgba(255,255,255,.5);
   font-family: 'Open Sans', sans-serif;
+  overflow: visible;
 }
 
 .footer-brand {
