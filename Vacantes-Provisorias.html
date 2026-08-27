@@ -48,8 +48,18 @@
             border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; box-sizing: border-box; font: inherit; font-size: 13px;
         }
         .filter-combo { position: relative; }
-        .filter-combo input { margin-top: 0; padding: 7px 10px; font-size: 13px; }
-        .filter-hint { display: none; }
+        .filter-combo .combo-row {
+            display: flex; gap: 4px; align-items: stretch; margin-top: 0;
+        }
+        .filter-combo .combo-row input {
+            flex: 1; min-width: 0; margin: 0;
+            padding: 7px 10px; font-size: 13px;
+        }
+        .filter-combo .combo-row select.combo-pick {
+            flex: 0 0 auto; width: auto; min-width: 72px; max-width: 110px;
+            margin: 0; padding: 7px 8px; font-size: 12px; cursor: pointer;
+        }
+        .filter-hint { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
         table.data tbody tr.excluida { background: rgba(185,28,28,.1); }
         table.data tbody tr.excluida td { color: var(--muted); }
         .badge-excl {
@@ -195,6 +205,10 @@
             text-transform: none;
             letter-spacing: .2px;
         }
+        .portal-tool-panel .filter-combo .combo-row select.combo-pick {
+            width: auto;
+            max-width: 110px;
+        }
     </style>
 <link rel="stylesheet" href="portal-obelisco.css"></head>
 <body class="portal-tool-body">
@@ -246,7 +260,7 @@
     </div>
 
     <div id="pane-base" class="tab-pane">
-        <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. Podés escribir en los filtros o elegir de la lista. Los filtros también alimentan el informe.</p>
+        <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. Podés escribir en los filtros o elegir del desplegable. Los filtros también alimentan el informe.</p>
         <div class="filters-grid" id="filtrosBase"></div>
         <div class="toolbar-inline">
             <button type="button" class="secondary" id="btnLimpiarFiltros">Limpiar filtros</button>
@@ -324,7 +338,7 @@
                 <li><strong>Área A:</strong> CENS o ANEXO CENS → Secundaria Adultos; resto → Adultos Primaria.</li>
                 <li><strong>CODES:</strong> el ID de establecimiento del archivo (columna CODES) se guarda como ESTABLECIMIENTO ID y se puede filtrar en base e informe.</li>
                 <li><strong>Período:</strong> año de concurso (ej. 2026 = vacantes de 2025-04 a 2026-03).</li>
-                <li><strong>Filtros:</strong> podés escribir el valor o elegir de la lista sugerida.</li>
+                <li><strong>Filtros:</strong> podés escribir el valor o elegir del desplegable.</li>
                 <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF y motivo). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
                 <li><strong>Base:</strong> se guarda en este navegador y, si hay Firebase, también en la nube para el equipo.</li>
@@ -787,14 +801,14 @@
         return desc || cod || '(Vacío)';
     }
 
-    function fillDatalist(el, values) {
-        if (!el) return;
-        var listId = el.getAttribute('list');
-        var dl = listId ? document.getElementById(listId) : null;
-        if (!dl) return;
-        dl.innerHTML = values.map(function (v) {
-            return '<option value="' + escapeHtml(v) + '"></option>';
-        }).join('');
+    function fillFilterPick(inputEl, values) {
+        if (!inputEl) return;
+        var sel = document.getElementById(inputEl.id + 'Pick');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Elegir…</option>'
+            + values.map(function (v) {
+                return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>';
+            }).join('');
     }
 
     function buildFilterSelects(containerId, prefix, opts) {
@@ -813,15 +827,16 @@
         }
         var html = fields.map(function (pair) {
             var id = prefix + pair[0];
-            var listId = id + 'List';
-            var ph = pair[0] === 'idpof' ? 'Buscar Id. POF…'
-                : (pair[0] === 'periodo' ? 'Ej: 2026' : 'Escribir o elegir…');
+            var ph = pair[0] === 'idpof' ? 'Escribir Id. POF…'
+                : (pair[0] === 'periodo' ? 'Escribir año…' : 'Escribir…');
             var hint = pair[0] === 'periodo'
-                ? '<div class="filter-hint" style="display:block">Ej. 2026 → 2025-04 a 2026-03</div>'
+                ? '<div class="filter-hint">Ej. 2026 → 2025-04 a 2026-03</div>'
                 : '';
             return '<div class="field filter-combo"><label for="' + id + '">' + pair[1] + '</label>'
-                + '<input type="text" id="' + id + '" list="' + listId + '" autocomplete="off" spellcheck="false" placeholder="' + ph + '">'
-                + '<datalist id="' + listId + '"></datalist>' + hint + '</div>';
+                + '<div class="combo-row">'
+                + '<input type="text" id="' + id + '" autocomplete="off" spellcheck="false" placeholder="' + ph + '">'
+                + '<select id="' + id + 'Pick" class="combo-pick" title="Elegir de la lista"><option value="">Elegir…</option></select>'
+                + '</div>' + hint + '</div>';
         }).join('');
         document.getElementById(containerId).innerHTML = html;
     }
@@ -829,16 +844,16 @@
     function refreshFilterOptions() {
         var rows = state.rows;
         ['f', 'i'].forEach(function (prefix) {
-            fillDatalist(document.getElementById(prefix + 'periodo'), periodosDisponibles(rows));
-            fillDatalist(document.getElementById(prefix + 'mes'), uniqueSorted(rows.map(mesDeFila)));
-            fillDatalist(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
-            fillDatalist(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
-            fillDatalist(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
-            fillDatalist(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
-            fillDatalist(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
+            fillFilterPick(document.getElementById(prefix + 'periodo'), periodosDisponibles(rows));
+            fillFilterPick(document.getElementById(prefix + 'mes'), uniqueSorted(rows.map(mesDeFila)));
+            fillFilterPick(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
+            fillFilterPick(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
+            fillFilterPick(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
+            fillFilterPick(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
+            fillFilterPick(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
             var idPofEl = document.getElementById(prefix + 'idpof');
             if (idPofEl) {
-                fillDatalist(idPofEl, uniqueSorted(rows.map(idPofDeFila)));
+                fillFilterPick(idPofEl, uniqueSorted(rows.map(idPofDeFila)));
             }
         });
     }
@@ -858,6 +873,8 @@
         keys.forEach(function (k) {
             var el = document.getElementById(prefix + k);
             if (el) el.value = '';
+            var pick = document.getElementById(prefix + k + 'Pick');
+            if (pick) pick.value = '';
         });
     }
 
@@ -1124,10 +1141,20 @@
     function bindFilterSelects(prefix, onChange) {
         var keys = prefix === 'i' ? FILTER_KEYS_INFORME : FILTER_KEYS_BASE;
         keys.forEach(function (k) {
-            var el = document.getElementById(prefix + k);
-            if (!el) return;
-            el.addEventListener('input', onChange);
-            el.addEventListener('change', onChange);
+            var inp = document.getElementById(prefix + k);
+            var pick = document.getElementById(prefix + k + 'Pick');
+            if (inp) {
+                inp.addEventListener('input', onChange);
+                inp.addEventListener('change', onChange);
+            }
+            if (pick) {
+                pick.addEventListener('change', function () {
+                    if (!pick.value || !inp) return;
+                    inp.value = pick.value;
+                    pick.value = '';
+                    onChange();
+                });
+            }
         });
     }
 
