@@ -399,6 +399,73 @@
         return '';
     }
 
+    function normalizarClaveColumna(s) {
+        return normalizar(String(s || '')).replace(/[.\s_-]/g, '');
+    }
+
+    function esColumnaIdPof(nombreCol) {
+        var n = normalizarClaveColumna(nombreCol);
+        if (!n) return false;
+        if (n === 'idpof' || n === 'pof') return true;
+        if (n.indexOf('idpof') >= 0) return true;
+        if (n.indexOf('pof') >= 0 && n.indexOf('id') >= 0) return true;
+        if (n === 'numerodepropuesta' || n === 'propuesta' || n === 'npropuesta') return true;
+        return false;
+    }
+
+    function esColumnaMotivoExclusion(nombreCol) {
+        var n = normalizar(String(nombreCol || ''));
+        if (!n) return false;
+        if (n.indexOf('motivo') >= 0 && n.indexOf('vacante') < 0) return true;
+        if (n.indexOf('motivo exclusion') >= 0 || n.indexOf('motivo exclus') >= 0) return true;
+        if (n === 'observacion' || n === 'observaciones') return true;
+        return false;
+    }
+
+    function valorCeldaIdPof(v) {
+        if (v == null || v === '') return '';
+        if (typeof v === 'number' && !isNaN(v)) {
+            if (Number.isInteger(v)) return String(v);
+            return String(Math.round(v));
+        }
+        var s = String(v).trim();
+        if (/e[+-]/i.test(s)) {
+            var n = Number(s);
+            if (!isNaN(n)) return String(Math.round(n));
+        }
+        return s;
+    }
+
+    function idPofDesdeFilaObjeto(fila) {
+        var id = obtenerValorColumna(fila, [
+            'Id. POF', 'ID Pof', 'ID POF', 'Id POF', 'ID_POF', 'Id_POF',
+            'Id.POF', 'ID.POF', 'POF', 'Numero de propuesta', 'N° propuesta'
+        ]);
+        if (id !== '' && id != null) return valorCeldaIdPof(id);
+        var keys = Object.keys(fila || {});
+        var i, k;
+        for (i = 0; i < keys.length; i++) {
+            k = keys[i];
+            if (esColumnaIdPof(k)) return valorCeldaIdPof(fila[k]);
+        }
+        return '';
+    }
+
+    function motivoDesdeFilaObjeto(fila) {
+        var motivo = obtenerValorColumna(fila, [
+            'Motivo exclusion', 'Motivo exclusión', 'MOTIVO EXCLUSION', 'Motivo Exclusion',
+            'Motivo', 'MOTIVO', 'Observacion', 'Observación', 'Observaciones'
+        ]);
+        if (motivo !== '' && motivo != null) return String(motivo).trim();
+        var keys = Object.keys(fila || {});
+        var i, k;
+        for (i = 0; i < keys.length; i++) {
+            k = keys[i];
+            if (esColumnaMotivoExclusion(k)) return String(fila[k] || '').trim();
+        }
+        return '';
+    }
+
     function esCensOAnexoCens(nombre) {
         var n = normalizar(nombre).replace(/[.]/g, '');
         n = n.replace(/\s+/g, ' ').trim();
@@ -1111,7 +1178,7 @@
         });
         var keys = Object.keys(map);
         if (!keys.length) {
-            setStatusExcluir('El archivo no tiene Id. POF reconocibles.', true);
+            setStatusExcluir('No se encontró columna Id. POF en el archivo. Usá encabezado "Id. POF" o una lista en la columna A.', true);
             return;
         }
         var motivoDefault = obtenerMotivoExclusion();
@@ -1163,30 +1230,66 @@
         var registros = [];
         workbook.SheetNames.forEach(function (sheetName) {
             var worksheet = workbook.Sheets[sheetName];
+            var rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (!rawJson.length) return;
+
+            var headerRowIndex = -1;
+            var idCol = -1;
+            var motivoCol = -1;
+            var i, j, headers, row;
+
+            for (i = 0; i < Math.min(15, rawJson.length); i++) {
+                row = rawJson[i] || [];
+                for (j = 0; j < row.length; j++) {
+                    if (esColumnaIdPof(row[j])) {
+                        headerRowIndex = i;
+                        idCol = j;
+                        break;
+                    }
+                }
+                if (headerRowIndex >= 0) break;
+            }
+
+            if (headerRowIndex >= 0) {
+                headers = rawJson[headerRowIndex] || [];
+                for (j = 0; j < headers.length; j++) {
+                    if (j !== idCol && esColumnaMotivoExclusion(headers[j])) motivoCol = j;
+                }
+                var countAntes = registros.length;
+                for (i = headerRowIndex + 1; i < rawJson.length; i++) {
+                    row = rawJson[i] || [];
+                    var idHdr = valorCeldaIdPof(row[idCol]);
+                    if (!idHdr) continue;
+                    registros.push({
+                        id: idHdr,
+                        motivo: motivoCol >= 0 ? String(row[motivoCol] || '').trim() : ''
+                    });
+                }
+                if (registros.length > countAntes) return;
+            }
+
+            // Fallback: objetos con sheet_to_json (encabezados en fila 1)
             var json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
             if (json.length) {
                 json.forEach(function (fila) {
-                    var id = obtenerValorColumna(fila, ['Id. POF', 'ID Pof', 'ID_POF', 'Id POF', 'POF', 'Numero de propuesta']);
-                    if (id === '' || id == null) return;
-                    var motivo = obtenerValorColumna(fila, [
-                        'Motivo exclusion', 'Motivo exclusión', 'MOTIVO EXCLUSION', 'Motivo Exclusion',
-                        'Motivo', 'MOTIVO', 'Observacion', 'Observación'
-                    ]);
-                    registros.push({ id: String(id).trim(), motivo: String(motivo || '').trim() });
+                    var idObj = idPofDesdeFilaObjeto(fila);
+                    if (!idObj) return;
+                    registros.push({ id: idObj, motivo: motivoDesdeFilaObjeto(fila) });
                 });
-                return;
+                if (registros.length) return;
             }
-            var aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-            aoa.forEach(function (row, idx) {
-                if (!row || !row.length) return;
-                if (idx === 0 && normalizar(String(row[0])).indexOf('pof') >= 0) return;
-                var v = row[0];
-                if (v === '' || v == null) return;
+
+            // Lista simple: columna A = Id. POF, B = motivo opcional
+            for (i = 0; i < rawJson.length; i++) {
+                row = rawJson[i] || [];
+                var idSimple = valorCeldaIdPof(row[0]);
+                if (!idSimple) continue;
+                if (i === 0 && esColumnaIdPof(idSimple)) continue;
                 registros.push({
-                    id: String(v).trim(),
+                    id: idSimple,
                     motivo: row[1] != null ? String(row[1]).trim() : ''
                 });
-            });
+            }
         });
         return registros;
     }
