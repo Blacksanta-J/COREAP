@@ -87,23 +87,41 @@
         }
         .excl-box {
             margin-top: 10px; padding: 8px 10px; border-radius: 8px;
-            background: var(--input-bg); border: 1px solid var(--border);
+            background: rgba(185, 28, 28, 0.08);
+            border: 1px solid rgba(185, 28, 28, 0.38);
+        }
+        html[data-theme="dark"] .excl-box {
+            background: rgba(251, 138, 138, 0.1);
+            border-color: rgba(251, 138, 138, 0.35);
         }
         .excl-box summary {
-            cursor: pointer; font-size: 12px; font-weight: 700; color: var(--heading);
+            cursor: pointer; font-size: 12px; font-weight: 700; color: #b91c1c;
             list-style: none; display: flex; align-items: center; gap: 6px;
         }
+        html[data-theme="dark"] .excl-box summary { color: #fb8a8a; }
         .excl-box summary::-webkit-details-marker { display: none; }
-        .excl-box summary::before { content: '▸'; font-size: 10px; color: var(--muted); }
+        .excl-box summary::before { content: '▸'; font-size: 10px; color: inherit; }
         .excl-box[open] summary::before { content: '▾'; }
         .excl-body { margin-top: 8px; }
         .excl-actions {
             display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end;
         }
         .excl-actions .field { flex: 1; min-width: 120px; max-width: 220px; }
-        .excl-actions .field label { font-size: 9px; margin-bottom: 2px; }
+        .excl-actions .field label { font-size: 9px; margin-bottom: 2px; color: #b91c1c; }
+        html[data-theme="dark"] .excl-actions .field label { color: #fb8a8a; }
         .excl-actions input[type="text"], .excl-actions select {
             margin-top: 0; padding: 5px 8px; font-size: 12px;
+        }
+        .excl-btn-pair {
+            display: flex; gap: 6px; flex: 1 1 calc(50% - 3px); min-width: 140px;
+        }
+        .excl-btn-pair button {
+            flex: 1 1 0;
+            width: auto !important;
+            min-width: 0;
+            margin: 0 !important;
+            padding: 5px 10px !important;
+            font-size: 11px !important;
         }
         .excl-actions button, .excl-actions label.file-btn {
             width: auto; margin: 0; padding: 5px 10px; font-size: 11px; cursor: pointer;
@@ -178,6 +196,12 @@
         .cols-grid label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); font-weight: 400; cursor: pointer; }
         .cols-grid input { width: auto; margin: 0; }
         .toolbar-inline { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .toolbar-inline.toolbar-equal > button {
+            flex: 1 1 calc(50% - 3px);
+            width: auto !important;
+            min-width: 0;
+            max-width: none;
+        }
         .toolbar-inline button { width: auto; margin-top: 0; padding: 7px 11px; font-size: 12px; }
         .carga-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
         .carga-item {
@@ -185,7 +209,14 @@
             border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--input-bg);
         }
         .carga-item .meta { font-size: 11px; color: var(--muted); }
-        .carga-item button { width: auto; margin: 0; padding: 6px 10px; font-size: 11px; }
+        .carga-item .carga-actions { flex: 0 0 auto; }
+        .carga-item button {
+            width: auto !important;
+            margin: 0 !important;
+            padding: 5px 12px !important;
+            font-size: 11px !important;
+            flex: 0 0 auto;
+        }
         .muted { color: var(--muted); font-size: 12px; }
         .pager { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); }
         .pager button { width: auto; margin: 0; padding: 6px 10px; font-size: 11px; }
@@ -216,6 +247,7 @@
         .portal-tool-panel button.secondary,
         .portal-tool-panel .toolbar-inline button,
         .portal-tool-panel .excl-actions button,
+        .portal-tool-panel .excl-btn-pair button,
         .portal-tool-panel .carga-item button,
         .portal-tool-panel .pager button,
         .portal-tool-panel button.btn-row {
@@ -226,6 +258,11 @@
             letter-spacing: .2px;
             text-transform: none;
             font-weight: 600;
+        }
+        .portal-tool-panel .toolbar-inline.toolbar-equal > button,
+        .portal-tool-panel .excl-btn-pair > button,
+        .portal-tool-panel .carga-item button {
+            width: auto !important;
         }
         .portal-tool-panel button.btn-primary {
             padding: 8px 14px;
@@ -319,7 +356,7 @@
     <div id="pane-base" class="tab-pane">
         <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. En cada filtro podés escribir o elegir de la lista en el mismo campo. Los filtros también alimentan el informe.</p>
         <div class="filters-grid" id="filtrosBase"></div>
-        <div class="toolbar-inline">
+        <div class="toolbar-inline toolbar-equal">
             <button type="button" class="secondary" id="btnLimpiarFiltros">Limpiar filtros</button>
             <button type="button" class="secondary" id="btnExportarBase">Exportar vista (Excel)</button>
         </div>
@@ -343,8 +380,10 @@
                     <label class="file-btn secondary" title="Archivo con Id. POF y opcional Motivo">Desde archivo
                         <input type="file" id="fileExcluir" accept=".csv, .xls, .xlsx" />
                     </label>
-                    <button type="button" class="secondary" id="btnIncluirSeleccion" disabled title="Seleccioná filas">Incluir</button>
-                    <button type="button" class="secondary" id="btnExcluirSeleccion" disabled title="Seleccioná filas">Excluir</button>
+                    <div class="excl-btn-pair">
+                        <button type="button" class="secondary" id="btnIncluirSeleccion" disabled title="Seleccioná filas">Incluir</button>
+                        <button type="button" class="secondary" id="btnExcluirSeleccion" disabled title="Seleccioná filas">Excluir</button>
+                    </div>
                 </div>
                 <p class="excl-hint">Al excluir indicá el motivo. Archivo: columnas <strong>Id. POF</strong> y opcional <strong>Motivo</strong>.</p>
                 <div id="statusExcluir" class="muted"></div>
@@ -353,7 +392,7 @@
 
         <details open style="margin-top:16px;">
             <summary style="cursor:pointer;font-weight:700;color:var(--heading);">Columnas visibles</summary>
-            <div class="toolbar-inline" style="margin-top:10px;">
+            <div class="toolbar-inline toolbar-equal" style="margin-top:10px;">
                 <button type="button" class="secondary" id="btnColsTodas">Todas</button>
                 <button type="button" class="secondary" id="btnColsDefault">Recomendadas</button>
             </div>
@@ -367,7 +406,7 @@
     <div id="pane-informe" class="tab-pane">
         <p style="margin-top:12px;">Cantidad de vacantes agrupadas por Área, Cargo, Asignatura y Especialidad. Filtrá también por CODES (ID de establecimiento) y mes. Las vacantes <strong>excluidas</strong> no entran en el informe.</p>
         <div class="filters-grid" id="filtrosInforme"></div>
-        <div class="toolbar-inline">
+        <div class="toolbar-inline toolbar-equal">
             <button type="button" class="secondary" id="btnLimpiarInforme">Limpiar filtros</button>
             <button type="button" class="secondary" id="btnExportarInforme">Exportar informe (Excel)</button>
         </div>
@@ -1006,7 +1045,7 @@
                 + '<div class="meta">' + escapeHtml(c.filas || 0) + ' vacantes · ' + escapeHtml(c.archivo || '') + '<br>'
                 + escapeHtml((c.nombre || c.email || '') + (c.createdAt ? ' · ' + new Date(c.createdAt).toLocaleString('es-AR') : ''))
                 + '</div></div>'
-                + '<button type="button" class="secondary btn-del-carga" data-id="' + escapeHtml(c.id) + '">Quitar</button>'
+                + '<div class="carga-actions"><button type="button" class="secondary btn-del-carga" data-id="' + escapeHtml(c.id) + '">Quitar</button></div>'
                 + '</div>';
         }).join('');
         el.querySelectorAll('.btn-del-carga').forEach(function (btn) {
