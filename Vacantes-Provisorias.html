@@ -253,7 +253,7 @@
             Se usa la misma codificación que <strong>Eleves Concursos (Control)</strong>: unificación de hojas, mapeo de áreas y turnos, CODES → <strong>ESTABLECIMIENTO ID</strong>, y valores fijos (Sit. Rev. INTERINO, Base/Ascenso y Tipo de Listado = 3).
             <br><strong>Regla extra de Área:</strong> si el código de área es <strong>A</strong> y el nombre de la escuela es <em>CENS</em> o <em>ANEXO CENS</em>, el área queda <strong>Secundaria Adultos</strong>; si es <strong>A</strong> y no es CENS, queda <strong>Adultos Primaria</strong>.
             <br>Una nueva carga del mismo mes <strong>reemplaza</strong> las vacantes de ese mes.
-            <br>La base se guarda en la <strong>nube</strong> para consultarla desde distintos lugares (con el mismo permiso de usuario).
+            <br>Al procesar, la base se <strong>sube y modifica directo en la nube</strong> (Firebase). Se ve desde cualquier lugar con el mismo permiso de usuario.
         </div>
 
         <button class="btn-primary" id="btnCargar" type="button">Procesar y agregar a la base</button>
@@ -264,7 +264,6 @@
                 <span class="sync-badge" id="syncBadge">Base</span>
                 <span class="sync-msg" id="syncMsg">Cargando estado…</span>
             </div>
-            <button type="button" class="secondary" id="btnSyncNube" title="Sube las cargas de este navegador a la nube">Sincronizar a la nube</button>
         </div>
 
         <h3 style="margin:22px 0 0;font-size:16px;color:var(--heading);">Cargas guardadas</h3>
@@ -353,7 +352,7 @@
                 <li><strong>Filtros:</strong> en un solo campo podés escribir o elegir de la lista.</li>
                 <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF y motivo). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
-                <li><strong>Base:</strong> se guarda en la <em>nube</em> (Firebase) para verla desde cualquier lugar con tu usuario. También queda copia en este navegador.</li>
+                <li><strong>Base:</strong> se sube y modifica directo en la <em>nube</em> (Firebase). No hace falta sincronizar: cada carga o exclusión queda en la nube al instante.</li>
             </ul>
         </div>
     </div>
@@ -1370,7 +1369,6 @@
     function updateSyncStatus(data) {
         var badge = document.getElementById('syncBadge');
         var msg = document.getElementById('syncMsg');
-        var btn = document.getElementById('btnSyncNube');
         if (!badge || !msg) return;
         var source = (data && data.source) || state.source || '';
         var warning = (data && data.warning) || state.warning || '';
@@ -1379,20 +1377,16 @@
         if (source === 'firestore') {
             badge.classList.add('is-cloud');
             badge.textContent = 'Nube';
-            msg.textContent = (data && data.syncedFromLocal)
-                ? ('Sincronizado a la nube · ' + n + ' vacantes. ' + (warning || ''))
-                : ('Base compartida en la nube · ' + n + ' vacantes. Se ve desde cualquier lugar con tu usuario.');
-        } else if (source === 'local') {
-            badge.classList.add('is-local');
-            badge.textContent = 'Solo local';
-            msg.textContent = warning
-                || ('Guardado solo en este navegador · ' + n + ' vacantes. Usá “Sincronizar a la nube” para compartirlo.');
-        } else {
+            msg.textContent = 'Base en la nube · ' + n + ' vacantes. Cambios se guardan directo en Firebase.';
+        } else if (source === 'empty') {
             badge.classList.add('is-empty');
             badge.textContent = 'Sin datos';
-            msg.textContent = warning || 'Todavía no hay vacantes cargadas.';
+            msg.textContent = warning || 'Todavía no hay vacantes en la nube. Procesá una carga para subirla.';
+        } else {
+            badge.classList.add('is-empty');
+            badge.textContent = 'Nube';
+            msg.textContent = warning || 'Esperando datos de la nube…';
         }
-        if (btn) btn.disabled = !n && source !== 'local';
     }
 
     function recargarBase() {
@@ -1553,15 +1547,12 @@
                         });
                     }
                     var extra = result.removed ? (' Se quitaron ' + result.removed + ' duplicados de Id. POF.') : '';
-                    var nube = saved.source === 'firestore'
-                        ? ' Guardado en la nube (disponible desde otros lugares).'
-                        : ' Guardado solo en este navegador.';
                     var warn = saved.warning ? (' Aviso: ' + saved.warning) : '';
-                    setStatus('Listo: ' + result.filas.length + ' vacantes del mes ' + mes + '.' + extra + nube + warn);
+                    setStatus('Listo: ' + result.filas.length + ' vacantes del mes ' + mes + ' subidas a la nube.' + extra + warn);
                     fileInput.value = '';
                     return recargarBase();
                 }).catch(function (err) {
-                    setStatus((err && err.message) || 'No se pudo guardar la carga.', true);
+                    setStatus((err && err.message) || 'No se pudo guardar la carga en la nube.', true);
                 });
             } catch (err) {
                 console.error(err);
@@ -1569,24 +1560,6 @@
             }
         };
         reader.readAsArrayBuffer(file);
-    };
-
-    document.getElementById('btnSyncNube').onclick = function () {
-        var btn = document.getElementById('btnSyncNube');
-        if (!PortalAuth.pushLocalVacantesToCloud) {
-            setStatus('Esta versión no tiene sync a la nube. Recargá la página.', true);
-            return;
-        }
-        btn.disabled = true;
-        setStatus('Subiendo la base a la nube…');
-        PortalAuth.pushLocalVacantesToCloud().then(function (res) {
-            setStatus((res && res.message) || 'Sincronización lista.');
-            return recargarBase();
-        }).catch(function (err) {
-            setStatus((err && err.message) || 'No se pudo sincronizar a la nube.', true);
-        }).then(function () {
-            btn.disabled = false;
-        });
     };
 
     var infoOverlay = document.getElementById('infoOverlay');

@@ -1891,7 +1891,7 @@
 
   /**
    * Guarda una carga mensual de vacantes (reemplaza el período si ya existía).
-   * Escribe IndexedDB y Firestore (nube) para compartir entre equipos/lugares.
+   * Escribe directo en Firestore (nube). IndexedDB solo como caché local después.
    */
   function saveVacantesCarga(details) {
     details = details || {};
@@ -1913,29 +1913,17 @@
     if (!meta.periodo) {
       return Promise.reject(new Error('Indicá el período (mes) de la carga.'));
     }
-    return saveVacantesCargaIdb(meta, rows).then(function () {
-      if (!firestoreVacantesReady()) {
-        return {
-          ok: true,
-          meta: meta,
-          source: 'local',
-          warning: 'Firebase no está disponible. La carga quedó solo en este navegador.'
-        };
-      }
-      return ensureFirebaseAuthForWrite().then(function () {
-        return saveVacantesCargaFirestore(meta, rows);
-      }).then(function () {
-        return { ok: true, meta: meta, source: 'firestore' };
-      }).catch(function (err) {
-        console.warn('Vacantes: no se pudo guardar en Firestore', err);
-        return {
-          ok: true,
-          meta: meta,
-          source: 'local',
-          warning: (err && err.message)
-            || 'No se pudo guardar en la nube. Quedó solo en este navegador.'
-        };
+    if (!firestoreVacantesReady()) {
+      return Promise.reject(new Error('Firebase no está disponible. No se puede guardar en la nube.'));
+    }
+    return ensureFirebaseAuthForWrite().then(function () {
+      return saveVacantesCargaFirestore(meta, rows);
+    }).then(function () {
+      return saveVacantesCargaIdb(meta, rows).catch(function (err) {
+        console.warn('Vacantes: caché local no actualizada', err);
       });
+    }).then(function () {
+      return { ok: true, meta: meta, source: 'firestore' };
     });
   }
 
@@ -1944,70 +1932,11 @@
     if (!user || !canAccessVacantes(user)) {
       return Promise.reject(new Error('No tenés permiso para ver vacantes provisorias.'));
     }
-    if (!firestoreVacantesReady()) return listVacantesCargasIdb();
+    if (!firestoreVacantesReady()) {
+      return Promise.reject(new Error('Firebase no está disponible. No se puede leer la nube.'));
+    }
     return ensureFirebaseAuthForWrite().then(function () {
       return listVacantesCargasFirestore();
-    }).then(function (list) {
-      if (list && list.length) return list;
-      return listVacantesCargasIdb();
-    }).catch(function (err) {
-      console.warn('Vacantes: listado Firestore', err);
-      return listVacantesCargasIdb();
-    });
-  }
-
-  function pushLocalVacantesToCloud() {
-    var user = currentUser();
-    if (!user || !canAccessVacantes(user)) {
-      return Promise.reject(new Error('No tenés permiso para sincronizar vacantes.'));
-    }
-    if (!firestoreVacantesReady()) {
-      return Promise.reject(new Error('Firebase no está disponible en este entorno.'));
-    }
-    return ensureFirebaseAuthForWrite().then(function () {
-      return loadVacantesRowsIdb();
-    }).then(function (local) {
-      var cargas = local.cargas || [];
-      if (!cargas.length) {
-        return { ok: true, synced: 0, source: 'firestore', message: 'No hay cargas locales para subir.' };
-      }
-      var rowsAll = local.rows || [];
-      // Reconstruir filas por carga usando meta.filas y orden de chunks en IDB
-      return Promise.all([idbGetAll('cargas'), idbGetAll('chunks')]).then(function (pair) {
-        var chunks = pair[1] || [];
-        var byCarga = {};
-        chunks.forEach(function (ch) {
-          if (!byCarga[ch.cargaId]) byCarga[ch.cargaId] = [];
-          byCarga[ch.cargaId].push(ch);
-        });
-        Object.keys(byCarga).forEach(function (id) {
-          byCarga[id].sort(function (a, b) { return (a.index || 0) - (b.index || 0); });
-        });
-        var chain = Promise.resolve();
-        var synced = 0;
-        cargas.forEach(function (meta) {
-          var parts = byCarga[meta.id] || [];
-          var rows = [];
-          parts.forEach(function (ch) {
-            (ch.rows || []).forEach(function (r) { rows.push(r); });
-          });
-          if (!rows.length && meta.filas && rowsAll.length) {
-            /* fallback vacío: no inventar filas */
-          }
-          chain = chain.then(function () {
-            return saveVacantesCargaFirestore(Object.assign({}, meta, { filas: rows.length }), rows)
-              .then(function () { synced += 1; });
-          });
-        });
-        return chain.then(function () {
-          return {
-            ok: true,
-            synced: synced,
-            source: 'firestore',
-            message: 'Se subieron ' + synced + ' carga(s) a la nube.'
-          };
-        });
-      });
     });
   }
 
@@ -2017,51 +1946,18 @@
       return Promise.reject(new Error('No tenés permiso para ver vacantes provisorias.'));
     }
     if (!firestoreVacantesReady()) {
-      return loadVacantesRowsIdb().then(function (data) {
-        data.source = 'local';
-        data.warning = 'Firebase no disponible: viendo solo este navegador.';
-        return data;
-      });
+      return Promise.reject(new Error('Firebase no está disponible. No se puede leer la nube.'));
     }
     return ensureFirebaseAuthForWrite().then(function () {
       return loadVacantesRowsFirestore();
     }).then(function (data) {
-      if (data && data.rows && data.rows.length) {
-        return mirrorVacantesCloudToIdb(data).then(function () {
-          return data;
-        }).catch(function () { return data; });
+      if (!data || !data.rows || !data.rows.length) {
+        return { cargas: (data && data.cargas) || [], rows: [], source: 'empty' };
       }
-      // Nube vacía: si hay datos locales, subirlos para compartir entre lugares
-      return loadVacantesRowsIdb().then(function (local) {
-        if (!local.rows || !local.rows.length) {
-          local.source = 'empty';
-          return local;
-        }
-        return pushLocalVacantesToCloud().then(function (syncRes) {
-          return loadVacantesRowsFirestore().then(function (cloud) {
-            if (cloud && cloud.rows && cloud.rows.length) {
-              cloud.syncedFromLocal = true;
-              cloud.warning = syncRes && syncRes.message;
-              return cloud;
-            }
-            local.source = 'local';
-            local.warning = (syncRes && syncRes.message) || 'No se pudo confirmar la nube.';
-            return local;
-          });
-        }).catch(function (err) {
-          local.source = 'local';
-          local.warning = (err && err.message)
-            || 'Hay datos locales pero no se pudieron subir a la nube.';
-          return local;
-        });
-      });
-    }).catch(function (err) {
-      console.warn('Vacantes: lectura Firestore', err);
-      return loadVacantesRowsIdb().then(function (local) {
-        local.source = 'local';
-        local.warning = (err && err.message)
-          || 'No se pudo leer la nube. Mostrando datos de este navegador.';
-        return local;
+      return mirrorVacantesCloudToIdb(data).then(function () {
+        return data;
+      }).catch(function () {
+        return data;
       });
     });
   }
@@ -2072,16 +1968,17 @@
       return Promise.reject(new Error('No tenés permiso para borrar vacantes provisorias.'));
     }
     if (!cargaId) return Promise.reject(new Error('Falta el identificador de la carga.'));
-    return deleteVacantesCargaIdb(cargaId).then(function () {
-      if (!firestoreVacantesReady()) return { ok: true };
-      return ensureFirebaseAuthForWrite().then(function () {
-        return deleteVacantesCargaFirestore(cargaId);
-      }).then(function () {
-        return { ok: true, source: 'firestore' };
-      }).catch(function (err) {
-        console.warn('Vacantes: no se pudo borrar en Firestore', err);
-        return { ok: true, warning: (err && err.message) || '' };
+    if (!firestoreVacantesReady()) {
+      return Promise.reject(new Error('Firebase no está disponible. No se puede borrar en la nube.'));
+    }
+    return ensureFirebaseAuthForWrite().then(function () {
+      return deleteVacantesCargaFirestore(cargaId);
+    }).then(function () {
+      return deleteVacantesCargaIdb(cargaId).catch(function (err) {
+        console.warn('Vacantes: caché local no borrada', err);
       });
+    }).then(function () {
+      return { ok: true, source: 'firestore' };
     });
   }
 
@@ -2147,7 +2044,6 @@
     listVacantesCargas: listVacantesCargas,
     loadVacantesRows: loadVacantesRows,
     deleteVacantesCarga: deleteVacantesCarga,
-    pushLocalVacantesToCloud: pushLocalVacantesToCloud,
     roleLabel: roleLabel,
     rolesLabel: rolesLabel,
     describePermissions: describePermissions,
