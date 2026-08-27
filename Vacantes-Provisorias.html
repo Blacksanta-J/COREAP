@@ -152,6 +152,32 @@
         .info-content li { margin-bottom: 8px; }
         .info-content strong { color: var(--heading); }
         .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        /* Compactar botones frente a portal-theme (width 100% / padding grande) */
+        .portal-tool-panel button.btn-primary,
+        .portal-tool-panel button.secondary,
+        .portal-tool-panel .toolbar-inline button,
+        .portal-tool-panel .excl-actions button,
+        .portal-tool-panel .carga-item button,
+        .portal-tool-panel .pager button,
+        .portal-tool-panel button.btn-row {
+            width: auto;
+            max-width: 100%;
+            padding: 7px 12px;
+            font-size: 12px;
+            letter-spacing: .2px;
+            text-transform: none;
+            font-weight: 600;
+        }
+        .portal-tool-panel button.btn-primary {
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+        .portal-tool-panel .excl-actions label.file-btn {
+            padding: 7px 12px;
+            font-size: 12px;
+            text-transform: none;
+            letter-spacing: .2px;
+        }
     </style>
 <link rel="stylesheet" href="portal-obelisco.css"></head>
 <body class="portal-tool-body">
