@@ -43,10 +43,38 @@
         }
         button.theme-toggle:hover, button.info-close:hover { background: var(--btn-secondary-hover); }
         .label-text { text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: var(--muted); }
-        input[type="file"], input[type="month"], select, input[type="search"] {
+        input[type="file"], input[type="month"], select, input[type="search"], input[type="text"] {
             margin: 8px 0 0 0; display: block; width: 100%; color: var(--text); background: var(--input-bg);
             border: 1px solid var(--border); border-radius: 6px; padding: 10px; box-sizing: border-box; font: inherit;
         }
+        .filter-combo { position: relative; }
+        .filter-combo input { margin-top: 0; }
+        .filter-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        table.data tbody tr.excluida { background: rgba(185,28,28,.1); }
+        table.data tbody tr.excluida td { color: var(--muted); }
+        .badge-excl {
+            display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+            letter-spacing: .3px; text-transform: uppercase; background: rgba(185,28,28,.18); color: #b91c1c;
+        }
+        html[data-theme="dark"] .badge-excl { color: #fb8a8a; background: rgba(251,138,138,.18); }
+        .btn-row {
+            width: auto !important; margin: 0 !important; padding: 6px 10px !important; font-size: 11px !important;
+        }
+        .excl-box {
+            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+            background: var(--input-bg); border: 1px solid var(--border);
+        }
+        .excl-box h4 { margin: 0 0 8px; font-size: 14px; color: var(--heading); }
+        .excl-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+        .excl-actions .field { flex: 1; min-width: 180px; }
+        .excl-actions button, .excl-actions label.file-btn {
+            width: auto; margin: 0; padding: 10px 14px; font-size: 13px; cursor: pointer;
+        }
+        label.file-btn {
+            display: inline-flex; align-items: center; background: var(--btn-secondary); color: var(--btn-secondary-text);
+            border-radius: 6px; font-weight: 700;
+        }
+        label.file-btn input { display: none; }
         button.btn-primary { background-color: var(--btn); color: var(--btn-text); border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s; margin-top: 10px;}
         button.btn-primary:hover { background-color: var(--btn-hover); }
         button.secondary { background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s;}
@@ -138,7 +166,7 @@
     </nav>
 
     <div id="pane-carga" class="tab-pane active">
-        <label class="label-text" for="periodoInput">Período (mes)</label>
+        <label class="label-text" for="periodoInput">Mes</label>
         <input type="month" id="periodoInput" />
 
         <label class="label-text" for="fileInput">Archivo de vacantes</label>
@@ -147,7 +175,7 @@
         <div class="equiv-box">
             Se usa la misma codificación que <strong>Eleves Concursos (Control)</strong>: unificación de hojas, mapeo de áreas y turnos, CODES → <strong>ESTABLECIMIENTO ID</strong>, y valores fijos (Sit. Rev. INTERINO, Base/Ascenso y Tipo de Listado = 3).
             <br><strong>Regla extra de Área:</strong> si el código de área es <strong>A</strong> y el nombre de la escuela es <em>CENS</em> o <em>ANEXO CENS</em>, el área queda <strong>Secundaria Adultos</strong>; si es <strong>A</strong> y no es CENS, queda <strong>Adultos Primaria</strong>.
-            <br>Una nueva carga del mismo mes <strong>reemplaza</strong> las vacantes de ese período.
+            <br>Una nueva carga del mismo mes <strong>reemplaza</strong> las vacantes de ese mes.
         </div>
 
         <button class="btn-primary" id="btnCargar" type="button">Procesar y agregar a la base</button>
@@ -158,12 +186,34 @@
     </div>
 
     <div id="pane-base" class="tab-pane">
-        <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. Los filtros también alimentan el informe.</p>
+        <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. Podés escribir en los filtros o elegir de la lista. Los filtros también alimentan el informe.</p>
         <div class="filters-grid" id="filtrosBase"></div>
         <div class="toolbar-inline">
             <button type="button" class="secondary" id="btnLimpiarFiltros">Limpiar filtros</button>
             <button type="button" class="secondary" id="btnExportarBase">Exportar vista (Excel)</button>
         </div>
+
+        <div class="excl-box">
+            <h4>Excluir vacantes</h4>
+            <p class="muted" style="margin:0 0 10px;">Marcá vacantes para sacarlas del informe. Podés excluir de a una en la tabla o cargar un archivo con columna <strong>Id. POF</strong>.</p>
+            <div class="excl-actions">
+                <div class="field">
+                    <label for="filtroExcluidas">Vista de excluidas</label>
+                    <select id="filtroExcluidas">
+                        <option value="ocultar">Ocultar excluidas</option>
+                        <option value="todas">Mostrar todas</option>
+                        <option value="solo">Solo excluidas</option>
+                    </select>
+                </div>
+                <label class="file-btn secondary">Excluir desde archivo
+                    <input type="file" id="fileExcluir" accept=".csv, .xls, .xlsx" />
+                </label>
+                <button type="button" class="secondary" id="btnIncluirSeleccion" disabled title="Seleccioná filas en la tabla">Incluir seleccionadas</button>
+                <button type="button" class="secondary" id="btnExcluirSeleccion" disabled title="Seleccioná filas en la tabla">Excluir seleccionadas</button>
+            </div>
+            <div id="statusExcluir" class="muted" style="margin-top:8px;"></div>
+        </div>
+
         <details open style="margin-top:16px;">
             <summary style="cursor:pointer;font-weight:700;color:var(--heading);">Columnas visibles</summary>
             <div class="toolbar-inline" style="margin-top:10px;">
@@ -178,7 +228,7 @@
     </div>
 
     <div id="pane-informe" class="tab-pane">
-        <p style="margin-top:12px;">Cantidad de vacantes agrupadas por Área, Cargo, Asignatura y Especialidad. Filtrá también por CODES (ID de establecimiento) y período.</p>
+        <p style="margin-top:12px;">Cantidad de vacantes agrupadas por Área, Cargo, Asignatura y Especialidad. Filtrá también por CODES (ID de establecimiento) y mes. Las vacantes <strong>excluidas</strong> no entran en el informe.</p>
         <div class="filters-grid" id="filtrosInforme"></div>
         <div class="toolbar-inline">
             <button type="button" class="secondary" id="btnLimpiarInforme">Limpiar filtros</button>
@@ -204,9 +254,11 @@
         <div class="info-content">
             <ul>
                 <li><strong>Carga mensual:</strong> subí el archivo del mes. Se detecta la fila de encabezados (CODES / Área / Nombre) y se unifican todas las hojas.</li>
-                <li><strong>Formato:</strong> mismas columnas y mapeos que Eleves Concursos (Control), más la columna <em>PERIODO</em>.</li>
+                <li><strong>Formato:</strong> mismas columnas y mapeos que Eleves Concursos (Control), más la columna <em>MES</em>.</li>
                 <li><strong>Área A:</strong> CENS o ANEXO CENS → Secundaria Adultos; resto → Adultos Primaria.</li>
                 <li><strong>CODES:</strong> el ID de establecimiento del archivo (columna CODES) se guarda como ESTABLECIMIENTO ID y se puede filtrar en base e informe.</li>
+                <li><strong>Filtros:</strong> podés escribir el valor o elegir de la lista sugerida.</li>
+                <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
                 <li><strong>Base:</strong> se guarda en este navegador y, si hay Firebase, también en la nube para el equipo.</li>
             </ul>
@@ -232,29 +284,31 @@
         "t": "Tarde", "va": "Varios", "v": "Vespertino", "n": "NOCHE"
     };
     var COLUMNAS_RESULTADO = [
-        "PERIODO",
+        "MES",
         "AREA", "BASE/ASCENSO", "ESTABLECIMIENTO ID", "TIPO DE LISTADO", "COD DE AREA",
         "Numero de Escuela", "Nombre de la escuela", "Direccion", "Distrito", "CODIGO CARGO",
         "DESCRIPCION CARGO", "CODIGO ASIGNATURA", "DESCRIPCION ASIGNATURA", "CODIGO ESPECIALIDAD",
         "DESCRIPCION ESPECIALIDAD", "TURNO", "Motivo de la Vacante", "Sit. Rev.", "Cant. Horas",
         "HORARIO A CUMPLIR", "Observación", "AÑO", "DOCENTE", "Novedad Mayor 60 dias habiles",
         "FECHA DESDE", "FECHA HASTA", "FECHA PUBLICACION", "HORA PUBLICACION", "FECHA APERTURA",
-        "HORA APERTURA", "CONTINUIDAD", "Numero de propuesta", "Id. POF"
+        "HORA APERTURA", "CONTINUIDAD", "Numero de propuesta", "Id. POF", "EXCLUIDA"
     ];
     var COLUMNAS_DEFAULT = [
-        "PERIODO", "AREA", "ESTABLECIMIENTO ID", "Numero de Escuela", "Nombre de la escuela",
+        "MES", "AREA", "ESTABLECIMIENTO ID", "Numero de Escuela", "Nombre de la escuela",
         "Distrito", "CODIGO CARGO", "DESCRIPCION CARGO", "CODIGO ASIGNATURA", "DESCRIPCION ASIGNATURA",
         "CODIGO ESPECIALIDAD", "DESCRIPCION ESPECIALIDAD", "TURNO", "Motivo de la Vacante",
         "Cant. Horas", "DOCENTE"
     ];
-    var COLS_STORAGE = 'vacantes-provisorias-cols-v1';
+    var COLS_STORAGE = 'vacantes-provisorias-cols-v2';
     var PAGE_SIZE = 80;
+    var FILTER_KEYS = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes'];
 
     var state = {
         cargas: [],
         rows: [],
         page: 0,
-        source: ''
+        source: '',
+        seleccion: {}
     };
 
     var normalizar = function (s) {
@@ -351,7 +405,48 @@
         return { filas: out, removed: removed };
     }
 
-    function codificarFilas(datosUnificados, periodo) {
+    function normalizarExcluida(v) {
+        var s = String(v == null ? '' : v).trim().toUpperCase();
+        return (s === 'SI' || s === 'SÍ' || s === '1' || s === 'TRUE' || s === 'X' || s === 'EXCLUIDA') ? 'SI' : '';
+    }
+
+    function esExcluida(fila) {
+        return normalizarExcluida(fila && fila.EXCLUIDA) === 'SI';
+    }
+
+    function mesDeFila(fila) {
+        return String((fila && (fila.MES != null && fila.MES !== '' ? fila.MES : fila.PERIODO)) || '').trim();
+    }
+
+    function migrarFilaLegacy(fila) {
+        var out = Object.assign({}, fila || {});
+        if (out.MES == null || out.MES === '') {
+            if (out.PERIODO != null && out.PERIODO !== '') out.MES = out.PERIODO;
+        }
+        delete out.PERIODO;
+        out.EXCLUIDA = normalizarExcluida(out.EXCLUIDA);
+        delete out._idx;
+        return out;
+    }
+
+    function filaParaGuardar(fila) {
+        var out = migrarFilaLegacy(fila);
+        var ordenada = {};
+        COLUMNAS_RESULTADO.forEach(function (col) {
+            ordenada[col] = out[col] !== undefined ? out[col] : '';
+        });
+        return ordenada;
+    }
+
+    function idPofDeFila(fila) {
+        return String(
+            fila && fila['Id. POF'] != null && fila['Id. POF'] !== ''
+                ? fila['Id. POF']
+                : (fila && fila['Numero de propuesta'] != null ? fila['Numero de propuesta'] : '')
+        ).trim();
+    }
+
+    function codificarFilas(datosUnificados, mes) {
         var fechaActual = new Date();
         var anioActual = fechaActual.getFullYear();
         var dataFinal = datosUnificados.map(function (fila) {
@@ -417,7 +512,7 @@
 
             var idPof = obtenerValorColumna(fila, ['ID Pof', 'Id. POF']);
             var nuevaFila = {
-                PERIODO: periodo,
+                MES: mes,
                 AREA: areaFinal,
                 'BASE/ASCENSO': 3,
                 'ESTABLECIMIENTO ID': obtenerValorColumna(fila, ['codes', 'CODES', 'ESTABLECIMIENTO ID']),
@@ -450,7 +545,8 @@
                 'HORA APERTURA': '',
                 CONTINUIDAD: obtenerValorColumna(fila, ['CONTINUIDAD', 'Continuidad']),
                 'Numero de propuesta': idPof,
-                'Id. POF': idPof
+                'Id. POF': idPof,
+                EXCLUIDA: ''
             };
             var filaOrdenada = {};
             COLUMNAS_RESULTADO.forEach(function (col) {
@@ -466,7 +562,15 @@
             var raw = localStorage.getItem(COLS_STORAGE);
             var parsed = raw ? JSON.parse(raw) : null;
             if (Array.isArray(parsed) && parsed.length) {
-                return parsed.filter(function (c) { return COLUMNAS_RESULTADO.indexOf(c) !== -1; });
+                return parsed.map(function (c) { return c === 'PERIODO' ? 'MES' : c; })
+                    .filter(function (c) { return COLUMNAS_RESULTADO.indexOf(c) !== -1; });
+            }
+            // Migrar preferencia v1 (PERIODO → MES)
+            var legacy = localStorage.getItem('vacantes-provisorias-cols-v1');
+            parsed = legacy ? JSON.parse(legacy) : null;
+            if (Array.isArray(parsed) && parsed.length) {
+                return parsed.map(function (c) { return c === 'PERIODO' ? 'MES' : c; })
+                    .filter(function (c) { return COLUMNAS_RESULTADO.indexOf(c) !== -1; });
             }
         } catch (e) {}
         return COLUMNAS_DEFAULT.slice();
@@ -509,33 +613,32 @@
         return desc || cod || '(Vacío)';
     }
 
-    function fillSelect(el, values, firstLabel) {
-        var current = el.value;
-        el.innerHTML = '';
-        var opt0 = document.createElement('option');
-        opt0.value = '';
-        opt0.textContent = firstLabel || 'Todas';
-        el.appendChild(opt0);
-        values.forEach(function (v) {
-            var opt = document.createElement('option');
-            opt.value = v;
-            opt.textContent = v;
-            el.appendChild(opt);
-        });
-        if (current && values.indexOf(current) !== -1) el.value = current;
+    function fillDatalist(el, values) {
+        if (!el) return;
+        var listId = el.getAttribute('list');
+        var dl = listId ? document.getElementById(listId) : null;
+        if (!dl) return;
+        dl.innerHTML = values.map(function (v) {
+            return '<option value="' + escapeHtml(v) + '"></option>';
+        }).join('');
     }
 
     function buildFilterSelects(containerId, prefix) {
-        var html = [
-            ['periodo', 'Período'],
+        var fields = [
+            ['mes', 'Mes'],
             ['area', 'Área'],
             ['cargo', 'Cargo'],
             ['asig', 'Asignatura'],
             ['esp', 'Especialidad'],
             ['codes', 'CODES / ID establecimiento']
-        ].map(function (pair) {
-            return '<div class="field"><label for="' + prefix + pair[0] + '">' + pair[1] + '</label>'
-                + '<select id="' + prefix + pair[0] + '"></select></div>';
+        ];
+        var html = fields.map(function (pair) {
+            var id = prefix + pair[0];
+            var listId = id + 'List';
+            return '<div class="field filter-combo"><label for="' + id + '">' + pair[1] + '</label>'
+                + '<input type="text" id="' + id + '" list="' + listId + '" autocomplete="off" spellcheck="false" placeholder="Escribir o elegir…">'
+                + '<datalist id="' + listId + '"></datalist>'
+                + '<div class="filter-hint">Escribí o elegí de la lista</div></div>';
         }).join('');
         document.getElementById(containerId).innerHTML = html;
     }
@@ -543,18 +646,18 @@
     function refreshFilterOptions() {
         var rows = state.rows;
         ['f', 'i'].forEach(function (prefix) {
-            fillSelect(document.getElementById(prefix + 'periodo'), uniqueSorted(rows.map(function (r) { return r.PERIODO; })), 'Todos');
-            fillSelect(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
-            fillSelect(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
-            fillSelect(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
-            fillSelect(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
-            fillSelect(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
+            fillDatalist(document.getElementById(prefix + 'mes'), uniqueSorted(rows.map(mesDeFila)));
+            fillDatalist(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
+            fillDatalist(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
+            fillDatalist(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
+            fillDatalist(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
+            fillDatalist(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
         });
     }
 
     function readFilters(prefix) {
         return {
-            periodo: document.getElementById(prefix + 'periodo').value,
+            mes: document.getElementById(prefix + 'mes').value,
             area: document.getElementById(prefix + 'area').value,
             cargo: document.getElementById(prefix + 'cargo').value,
             asig: document.getElementById(prefix + 'asig').value,
@@ -564,32 +667,68 @@
     }
 
     function clearFilters(prefix) {
-        ['periodo', 'area', 'cargo', 'asig', 'esp', 'codes'].forEach(function (k) {
+        FILTER_KEYS.forEach(function (k) {
             document.getElementById(prefix + k).value = '';
         });
     }
 
+    function matchFiltroTexto(cellVal, filtroVal) {
+        var q = String(filtroVal == null ? '' : filtroVal).trim();
+        if (!q) return true;
+        var cell = String(cellVal == null ? '' : cellVal).trim();
+        if (!cell) cell = '(Vacío)';
+        var qn = normalizar(q);
+        var cn = normalizar(cell);
+        if (cn === qn) return true;
+        return cn.indexOf(qn) >= 0;
+    }
+
     function aplicaFiltros(fila, f) {
-        if (f.periodo && String(fila.PERIODO || '') !== f.periodo) return false;
-        if (f.area && String(fila.AREA || '').trim() !== f.area && (String(fila.AREA || '').trim() || '(Vacío)') !== f.area) return false;
-        if (f.cargo && cargoLabel(fila) !== f.cargo) return false;
-        if (f.asig && asigLabel(fila) !== f.asig) return false;
-        if (f.esp && espLabel(fila) !== f.esp) return false;
-        if (f.codes) {
-            var codes = String(fila['ESTABLECIMIENTO ID'] == null ? '' : fila['ESTABLECIMIENTO ID']).trim() || '(Vacío)';
-            if (codes !== f.codes) return false;
-        }
+        if (f.mes && !matchFiltroTexto(mesDeFila(fila), f.mes)) return false;
+        if (f.area && !matchFiltroTexto(fila.AREA, f.area)) return false;
+        if (f.cargo && !matchFiltroTexto(cargoLabel(fila), f.cargo)) return false;
+        if (f.asig && !matchFiltroTexto(asigLabel(fila), f.asig)) return false;
+        if (f.esp && !matchFiltroTexto(espLabel(fila), f.esp)) return false;
+        if (f.codes && !matchFiltroTexto(fila['ESTABLECIMIENTO ID'], f.codes)) return false;
         return true;
+    }
+
+    function vistaExcluidas() {
+        var el = document.getElementById('filtroExcluidas');
+        return el ? el.value : 'ocultar';
     }
 
     function filasFiltradas(prefix) {
         var f = readFilters(prefix);
-        return state.rows.filter(function (r) { return aplicaFiltros(r, f); });
+        var rows = state.rows.filter(function (r) { return aplicaFiltros(r, f); });
+        if (prefix === 'i') {
+            rows = rows.filter(function (r) { return !esExcluida(r); });
+        } else if (prefix === 'f') {
+            var vista = vistaExcluidas();
+            if (vista === 'ocultar') rows = rows.filter(function (r) { return !esExcluida(r); });
+            else if (vista === 'solo') rows = rows.filter(function (r) { return esExcluida(r); });
+        }
+        return rows;
     }
 
     function escapeHtml(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setStatusExcluir(msg, isError) {
+        var el = document.getElementById('statusExcluir');
+        if (!el) return;
+        el.style.color = isError ? 'var(--error)' : 'var(--muted)';
+        el.textContent = msg || '';
+    }
+
+    function actualizarBotonesSeleccion() {
+        var n = Object.keys(state.seleccion).length;
+        var btnEx = document.getElementById('btnExcluirSeleccion');
+        var btnIn = document.getElementById('btnIncluirSeleccion');
+        if (btnEx) btnEx.disabled = n === 0;
+        if (btnIn) btnIn.disabled = n === 0;
     }
 
     function renderCargas() {
@@ -628,7 +767,7 @@
             inp.addEventListener('change', function () {
                 var cols = Array.prototype.filter.call(grid.querySelectorAll('input:checked'), function () { return true; })
                     .map(function (i) { return i.getAttribute('data-col'); });
-                if (!cols.length) cols = ['PERIODO', 'AREA'];
+                if (!cols.length) cols = ['MES', 'AREA'];
                 guardarColumnasVisibles(cols);
                 renderTablaBase();
             });
@@ -636,10 +775,12 @@
     }
 
     function renderStats(elId, total, filtradas) {
+        var excluidas = state.rows.filter(esExcluida).length;
         document.getElementById(elId).innerHTML =
             '<div class="stat-card"><div class="n">' + total + '</div><div class="l">En la base</div></div>'
             + '<div class="stat-card"><div class="n">' + filtradas + '</div><div class="l">Con filtros</div></div>'
-            + '<div class="stat-card"><div class="n">' + state.cargas.length + '</div><div class="l">Períodos cargados</div></div>';
+            + '<div class="stat-card"><div class="n">' + excluidas + '</div><div class="l">Excluidas</div></div>'
+            + '<div class="stat-card"><div class="n">' + state.cargas.length + '</div><div class="l">Meses cargados</div></div>';
     }
 
     function renderTablaBase() {
@@ -650,11 +791,28 @@
         if (state.page >= totalPages) state.page = 0;
         var start = state.page * PAGE_SIZE;
         var pageRows = filtradas.slice(start, start + PAGE_SIZE);
-        var thead = '<tr>' + cols.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
+        var thead = '<tr><th><input type="checkbox" id="chkAllPage" title="Seleccionar página"></th><th></th>'
+            + cols.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
         var tbody = pageRows.map(function (r) {
-            return '<tr>' + cols.map(function (c) { return '<td>' + escapeHtml(r[c]) + '</td>'; }).join('') + '</tr>';
+            var idx = r._idx;
+            var excl = esExcluida(r);
+            var checked = state.seleccion[idx] ? ' checked' : '';
+            var badge = excl ? ' <span class="badge-excl">Excluida</span>' : '';
+            var btnLabel = excl ? 'Incluir' : 'Excluir';
+            var cells = cols.map(function (c) {
+                if (c === 'EXCLUIDA') {
+                    return '<td>' + (excl ? '<span class="badge-excl">SI</span>' : '') + '</td>';
+                }
+                return '<td>' + escapeHtml(r[c]) + '</td>';
+            }).join('');
+            return '<tr class="' + (excl ? 'excluida' : '') + '" data-idx="' + idx + '">'
+                + '<td><input type="checkbox" class="chk-row" data-idx="' + idx + '"' + checked + '></td>'
+                + '<td><button type="button" class="secondary btn-row btn-toggle-excl" data-idx="' + idx + '">' + btnLabel + '</button>' + badge + '</td>'
+                + cells + '</tr>';
         }).join('');
-        if (!pageRows.length) tbody = '<tr><td colspan="' + cols.length + '" class="muted">No hay vacantes para estos filtros.</td></tr>';
+        if (!pageRows.length) {
+            tbody = '<tr><td colspan="' + (cols.length + 2) + '" class="muted">No hay vacantes para estos filtros.</td></tr>';
+        }
         document.querySelector('#tablaBase thead').innerHTML = thead;
         document.querySelector('#tablaBase tbody').innerHTML = tbody;
         document.getElementById('pagerBase').innerHTML =
@@ -665,6 +823,34 @@
         var next = document.getElementById('pgNext');
         if (prev) prev.onclick = function () { state.page -= 1; renderTablaBase(); };
         if (next) next.onclick = function () { state.page += 1; renderTablaBase(); };
+
+        var chkAll = document.getElementById('chkAllPage');
+        if (chkAll) {
+            chkAll.onchange = function () {
+                pageRows.forEach(function (r) {
+                    if (chkAll.checked) state.seleccion[r._idx] = true;
+                    else delete state.seleccion[r._idx];
+                });
+                renderTablaBase();
+            };
+        }
+        document.querySelectorAll('#tablaBase .chk-row').forEach(function (chk) {
+            chk.addEventListener('change', function () {
+                var i = Number(chk.getAttribute('data-idx'));
+                if (chk.checked) state.seleccion[i] = true;
+                else delete state.seleccion[i];
+                actualizarBotonesSeleccion();
+            });
+        });
+        document.querySelectorAll('#tablaBase .btn-toggle-excl').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = Number(btn.getAttribute('data-idx'));
+                var fila = state.rows[i];
+                if (!fila) return;
+                setExcluidaIndices([i], !esExcluida(fila));
+            });
+        });
+        actualizarBotonesSeleccion();
         renderStats('statsBase', state.rows.length, filtradas.length);
     }
 
@@ -711,8 +897,10 @@
     }
 
     function bindFilterSelects(prefix, onChange) {
-        ['periodo', 'area', 'cargo', 'asig', 'esp', 'codes'].forEach(function (k) {
-            document.getElementById(prefix + k).addEventListener('change', onChange);
+        FILTER_KEYS.forEach(function (k) {
+            var el = document.getElementById(prefix + k);
+            el.addEventListener('input', onChange);
+            el.addEventListener('change', onChange);
         });
     }
 
@@ -722,12 +910,125 @@
         el.innerText = msg || '';
     }
 
+    function persistMesesAfectados(indices) {
+        var meses = {};
+        (indices || []).forEach(function (i) {
+            var fila = state.rows[i];
+            if (!fila) return;
+            var mes = mesDeFila(fila);
+            if (mes) meses[mes] = true;
+        });
+        var lista = Object.keys(meses);
+        if (!lista.length) return Promise.resolve();
+        var chain = Promise.resolve();
+        lista.forEach(function (mes) {
+            chain = chain.then(function () {
+                var rowsMes = state.rows.filter(function (r) { return mesDeFila(r) === mes; })
+                    .map(filaParaGuardar);
+                var carga = (state.cargas || []).find(function (c) { return String(c.periodo) === mes; });
+                return PortalAuth.saveVacantesCarga({
+                    id: carga && carga.id,
+                    periodo: mes,
+                    archivo: (carga && carga.archivo) || '',
+                    rows: rowsMes,
+                    detalle: 'Actualización de exclusiones'
+                });
+            });
+        });
+        return chain.then(function () { return recargarBase(); });
+    }
+
+    function setExcluidaIndices(indices, excluir) {
+        var touched = [];
+        (indices || []).forEach(function (i) {
+            var fila = state.rows[i];
+            if (!fila) return;
+            fila.EXCLUIDA = excluir ? 'SI' : '';
+            touched.push(i);
+        });
+        if (!touched.length) {
+            setStatusExcluir('No se encontraron vacantes para actualizar.', true);
+            return;
+        }
+        setStatusExcluir((excluir ? 'Excluyendo' : 'Incluyendo') + ' ' + touched.length + ' vacante(s)…');
+        persistMesesAfectados(touched).then(function () {
+            state.seleccion = {};
+            setStatusExcluir((excluir ? 'Excluidas' : 'Incluidas') + ': ' + touched.length + ' vacante(s).');
+            renderTablaBase();
+            renderInforme();
+        }).catch(function (err) {
+            setStatusExcluir((err && err.message) || 'No se pudieron guardar las exclusiones.', true);
+        });
+    }
+
+    function excluirPorIdsPof(ids) {
+        var set = {};
+        (ids || []).forEach(function (id) {
+            var k = String(id || '').trim().toLowerCase();
+            if (k) set[k] = true;
+        });
+        var keys = Object.keys(set);
+        if (!keys.length) {
+            setStatusExcluir('El archivo no tiene Id. POF reconocibles.', true);
+            return;
+        }
+        var indices = [];
+        state.rows.forEach(function (r, i) {
+            var id = idPofDeFila(r).toLowerCase();
+            if (id && set[id]) {
+                r.EXCLUIDA = 'SI';
+                indices.push(i);
+            }
+        });
+        if (!indices.length) {
+            setStatusExcluir('Ningún Id. POF del archivo coincide con la base (' + keys.length + ' en archivo).', true);
+            return;
+        }
+        setStatusExcluir('Excluyendo ' + indices.length + ' vacante(s) desde archivo…');
+        persistMesesAfectados(indices).then(function () {
+            state.seleccion = {};
+            setStatusExcluir('Excluidas desde archivo: ' + indices.length + ' de ' + keys.length + ' Id. POF.');
+            renderTablaBase();
+            renderInforme();
+        }).catch(function (err) {
+            setStatusExcluir((err && err.message) || 'No se pudieron guardar las exclusiones.', true);
+        });
+    }
+
+    function leerIdsPofDeWorkbook(workbook) {
+        var ids = [];
+        workbook.SheetNames.forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            var json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            if (json.length) {
+                json.forEach(function (fila) {
+                    var id = obtenerValorColumna(fila, ['Id. POF', 'ID Pof', 'ID_POF', 'Id POF', 'POF', 'Numero de propuesta']);
+                    if (id !== '' && id != null) ids.push(String(id).trim());
+                });
+                return;
+            }
+            var aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            aoa.forEach(function (row, idx) {
+                if (!row || !row.length) return;
+                if (idx === 0 && normalizar(String(row[0])).indexOf('pof') >= 0) return;
+                var v = row[0];
+                if (v !== '' && v != null) ids.push(String(v).trim());
+            });
+        });
+        return ids;
+    }
+
     function recargarBase() {
         return PortalAuth.loadVacantesRows().then(function (data) {
             state.cargas = data.cargas || [];
-            state.rows = data.rows || [];
+            state.rows = (data.rows || []).map(function (r, i) {
+                var m = migrarFilaLegacy(r);
+                m._idx = i;
+                return m;
+            });
             state.source = data.source || '';
             state.page = 0;
+            state.seleccion = {};
             renderCargas();
             refreshFilterOptions();
             renderTablaBase();
@@ -735,13 +1036,13 @@
         });
     }
 
-    function periodoDefault() {
+    function mesDefault() {
         var now = new Date();
         var m = String(now.getMonth() + 1).padStart(2, '0');
         return now.getFullYear() + '-' + m;
     }
 
-    document.getElementById('periodoInput').value = periodoDefault();
+    document.getElementById('periodoInput').value = mesDefault();
     buildFilterSelects('filtrosBase', 'f');
     buildFilterSelects('filtrosInforme', 'i');
     renderColsGrid();
@@ -765,18 +1066,53 @@
         renderTablaBase();
     };
 
+    document.getElementById('filtroExcluidas').onchange = function () {
+        state.page = 0;
+        renderTablaBase();
+    };
+
+    document.getElementById('btnExcluirSeleccion').onclick = function () {
+        var indices = Object.keys(state.seleccion).map(Number);
+        setExcluidaIndices(indices, true);
+    };
+    document.getElementById('btnIncluirSeleccion').onclick = function () {
+        var indices = Object.keys(state.seleccion).map(Number);
+        setExcluidaIndices(indices, false);
+    };
+
+    document.getElementById('fileExcluir').onchange = function () {
+        var fileInput = document.getElementById('fileExcluir');
+        if (!fileInput.files.length) return;
+        var file = fileInput.files[0];
+        setStatusExcluir('Leyendo archivo de exclusiones…');
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                var workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                var ids = leerIdsPofDeWorkbook(workbook);
+                excluirPorIdsPof(ids);
+            } catch (err) {
+                console.error(err);
+                setStatusExcluir((err && err.message) || 'No se pudo leer el archivo de exclusiones.', true);
+            }
+            fileInput.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
     document.getElementById('btnExportarBase').onclick = function () {
         var cols = leerColumnasVisibles();
+        if (cols.indexOf('EXCLUIDA') === -1) cols = cols.concat(['EXCLUIDA']);
         var filtradas = filasFiltradas('f');
         if (!filtradas.length) { alert('No hay filas para exportar.'); return; }
         var data = filtradas.map(function (r) {
             var o = {};
-            cols.forEach(function (c) { o[c] = r[c]; });
+            cols.forEach(function (c) { o[c] = c === 'EXCLUIDA' ? (esExcluida(r) ? 'SI' : '') : r[c]; });
             return o;
         });
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data, { header: cols }), 'Vacantes');
-        XLSX.writeFile(wb, 'Vacantes_Provisorias_' + periodoDefault() + '.xlsx');
+        XLSX.writeFile(wb, 'Vacantes_Provisorias_' + mesDefault() + '.xlsx');
     };
 
     document.getElementById('btnExportarInforme').onclick = function () {
@@ -787,13 +1123,13 @@
         aoa.push(['TOTAL', '', '', '', filtradas.length]);
         var wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Informe');
-        XLSX.writeFile(wb, 'Informe_Vacantes_Provisorias_' + periodoDefault() + '.xlsx');
+        XLSX.writeFile(wb, 'Informe_Vacantes_Provisorias_' + mesDefault() + '.xlsx');
     };
 
     document.getElementById('btnCargar').onclick = function () {
         var fileInput = document.getElementById('fileInput');
-        var periodo = document.getElementById('periodoInput').value;
-        if (!periodo) { setStatus('Indicá el período (mes) de la carga.', true); return; }
+        var mes = document.getElementById('periodoInput').value;
+        if (!mes) { setStatus('Indicá el mes de la carga.', true); return; }
         if (!fileInput.files.length) { setStatus('Cargá el archivo de vacantes.', true); return; }
         var file = fileInput.files[0];
         setStatus('Procesando archivo…');
@@ -803,7 +1139,7 @@
                 var workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 var crudas = leerFilasArchivo(workbook);
                 if (!crudas.length) throw new Error('El archivo no contiene datos o no se reconoció el encabezado.');
-                var result = codificarFilas(crudas, periodo);
+                var result = codificarFilas(crudas, mes);
                 var areasA = {};
                 result.filas.forEach(function (r) {
                     if (r.AREA === 'Secundaria Adultos' || r.AREA === 'Adultos Primaria') {
@@ -811,7 +1147,7 @@
                     }
                 });
                 PortalAuth.saveVacantesCarga({
-                    periodo: periodo,
+                    periodo: mes,
                     archivo: file.name,
                     rows: result.filas,
                     detalle: 'Duplicados Id. POF: ' + result.removed
@@ -826,15 +1162,15 @@
                             archivoSalida: '',
                             filas: result.filas.length,
                             area: Object.keys(areasA).join(' / '),
-                            detalle: 'Período ' + periodo + '. Duplicados Id. POF: ' + result.removed
+                            detalle: 'Mes ' + mes + '. Duplicados Id. POF: ' + result.removed
                                 + '. Área A: ' + JSON.stringify(areasA),
-                            extras: { periodo: periodo, duplicadosEliminados: result.removed, source: saved.source }
+                            extras: { periodo: mes, mes: mes, duplicadosEliminados: result.removed, source: saved.source }
                         });
                     }
                     var extra = result.removed ? (' Se quitaron ' + result.removed + ' duplicados de Id. POF.') : '';
                     var nube = saved.source === 'firestore' ? ' Guardado también en la nube.' : ' Guardado en este navegador.';
                     var warn = saved.warning ? (' Aviso: ' + saved.warning) : '';
-                    setStatus('Listo: ' + result.filas.length + ' vacantes del período ' + periodo + '.' + extra + nube + warn);
+                    setStatus('Listo: ' + result.filas.length + ' vacantes del mes ' + mes + '.' + extra + nube + warn);
                     fileInput.value = '';
                     return recargarBase();
                 }).catch(function (err) {
