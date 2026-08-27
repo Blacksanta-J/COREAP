@@ -323,6 +323,7 @@
                 <li><strong>Formato:</strong> mismas columnas y mapeos que Eleves Concursos (Control), más la columna <em>MES</em>.</li>
                 <li><strong>Área A:</strong> CENS o ANEXO CENS → Secundaria Adultos; resto → Adultos Primaria.</li>
                 <li><strong>CODES:</strong> el ID de establecimiento del archivo (columna CODES) se guarda como ESTABLECIMIENTO ID y se puede filtrar en base e informe.</li>
+                <li><strong>Período:</strong> año de concurso (ej. 2026 = vacantes de 2025-04 a 2026-03).</li>
                 <li><strong>Filtros:</strong> podés escribir el valor o elegir de la lista sugerida.</li>
                 <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF y motivo). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
@@ -367,8 +368,8 @@
     ];
     var COLS_STORAGE = 'vacantes-provisorias-cols-v2';
     var PAGE_SIZE = 80;
-    var FILTER_KEYS_BASE = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes', 'idpof'];
-    var FILTER_KEYS_INFORME = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes'];
+    var FILTER_KEYS_BASE = ['periodo', 'mes', 'area', 'cargo', 'asig', 'esp', 'codes', 'idpof'];
+    var FILTER_KEYS_INFORME = ['periodo', 'mes', 'area', 'cargo', 'asig', 'esp', 'codes'];
     var FILTER_KEYS = FILTER_KEYS_BASE;
 
     var state = {
@@ -551,6 +552,40 @@
 
     function mesDeFila(fila) {
         return String((fila && (fila.MES != null && fila.MES !== '' ? fila.MES : fila.PERIODO)) || '').trim();
+    }
+
+    /** Período de concurso: ej. 2026 → meses 2025-04 a 2026-03 */
+    function rangoPeriodoConcurso(anioPeriodo) {
+        var y = parseInt(String(anioPeriodo || '').trim(), 10);
+        if (isNaN(y)) return null;
+        return { desde: (y - 1) + '-04', hasta: y + '-03' };
+    }
+
+    function periodoConcursoDeMes(mes) {
+        var s = String(mes || '').trim();
+        var parts = s.split('-');
+        if (parts.length !== 2) return '';
+        var anio = parseInt(parts[0], 10);
+        var mesNum = parseInt(parts[1], 10);
+        if (isNaN(anio) || isNaN(mesNum)) return '';
+        return mesNum >= 4 ? String(anio + 1) : String(anio);
+    }
+
+    function mesEnPeriodoConcurso(mes, anioPeriodo) {
+        var rango = rangoPeriodoConcurso(anioPeriodo);
+        if (!rango) return true;
+        var m = String(mes || '').trim();
+        if (!m) return false;
+        return m >= rango.desde && m <= rango.hasta;
+    }
+
+    function periodosDisponibles(rows) {
+        var set = {};
+        (rows || []).forEach(function (r) {
+            var p = periodoConcursoDeMes(mesDeFila(r));
+            if (p) set[p] = true;
+        });
+        return Object.keys(set).sort(function (a, b) { return Number(b) - Number(a); });
     }
 
     function migrarFilaLegacy(fila) {
@@ -765,6 +800,7 @@
     function buildFilterSelects(containerId, prefix, opts) {
         opts = opts || {};
         var fields = [
+            ['periodo', 'Período'],
             ['mes', 'Mes'],
             ['area', 'Área'],
             ['cargo', 'Cargo'],
@@ -778,10 +814,14 @@
         var html = fields.map(function (pair) {
             var id = prefix + pair[0];
             var listId = id + 'List';
-            var ph = pair[0] === 'idpof' ? 'Buscar Id. POF…' : 'Escribir o elegir…';
+            var ph = pair[0] === 'idpof' ? 'Buscar Id. POF…'
+                : (pair[0] === 'periodo' ? 'Ej: 2026' : 'Escribir o elegir…');
+            var hint = pair[0] === 'periodo'
+                ? '<div class="filter-hint" style="display:block">Ej. 2026 → 2025-04 a 2026-03</div>'
+                : '';
             return '<div class="field filter-combo"><label for="' + id + '">' + pair[1] + '</label>'
                 + '<input type="text" id="' + id + '" list="' + listId + '" autocomplete="off" spellcheck="false" placeholder="' + ph + '">'
-                + '<datalist id="' + listId + '"></datalist></div>';
+                + '<datalist id="' + listId + '"></datalist>' + hint + '</div>';
         }).join('');
         document.getElementById(containerId).innerHTML = html;
     }
@@ -789,6 +829,7 @@
     function refreshFilterOptions() {
         var rows = state.rows;
         ['f', 'i'].forEach(function (prefix) {
+            fillDatalist(document.getElementById(prefix + 'periodo'), periodosDisponibles(rows));
             fillDatalist(document.getElementById(prefix + 'mes'), uniqueSorted(rows.map(mesDeFila)));
             fillDatalist(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
             fillDatalist(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
@@ -832,6 +873,7 @@
     }
 
     function aplicaFiltros(fila, f) {
+        if (f.periodo && !mesEnPeriodoConcurso(mesDeFila(fila), f.periodo)) return false;
         if (f.mes && !matchFiltroTexto(mesDeFila(fila), f.mes)) return false;
         if (f.area && !matchFiltroTexto(fila.AREA, f.area)) return false;
         if (f.cargo && !matchFiltroTexto(cargoLabel(fila), f.cargo)) return false;
