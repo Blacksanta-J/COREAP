@@ -285,6 +285,7 @@
                 <li>Reemplaza códigos de cargo y marca <strong>CONTROLAR</strong> si el cargo no está en la tabla.</li>
                 <li>Vacía código/descripcion de asignatura y especialidad.</li>
                 <li>Novedad: <strong>1</strong> si Cant. Horas es 32; si no, <strong>2</strong>.</li>
+                <li>Si Cant. Horas viene vacío o en <strong>0</strong>, se carga <strong>1</strong>.</li>
                 <li>Publicación <strong>10:00</strong>. Apertura desde <strong>18:00</strong>, de a 10 minutos por código de cargo.</li>
             </ol>`
         },
@@ -1464,13 +1465,14 @@
                 }
 
                 // --- 4. CANT. HORAS ---
+                // Vacío o 0 → 1 (aplica a todas las áreas, incl. Curricular)
                 let cantHoras = newRow['Cant. Horas'];
-                if (!cantHoras || String(cantHoras).trim() === "") {
+                if (cantHoras == null || String(cantHoras).trim() === "") {
                     newRow['Cant. Horas'] = "1";
                 } else {
                     let numero = parseFloat(String(cantHoras).replace(',', '.'));
-                    if (!isNaN(numero)) {
-                        newRow['Cant. Horas'] = String(Math.floor(numero)); 
+                    if (!isNaN(numero) && Math.floor(numero) !== 0) {
+                        newRow['Cant. Horas'] = String(Math.floor(numero));
                     } else {
                         newRow['Cant. Horas'] = "1";
                     }
