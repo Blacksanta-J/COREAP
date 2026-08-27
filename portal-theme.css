@@ -619,51 +619,51 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   animation-delay: .15s;
 }
 
-/* Despega hacia la izquierda/arriba, lejos del texto, hasta salir de vista */
+/* Despega en diagonal hacia la derecha/arriba hasta salir de vista */
 @keyframes jayjay-takeoff {
   0% {
     transform: translate(0, 0) rotate(0deg) scale(1);
     opacity: 1;
   }
   12% {
-    transform: translate(-6px, 4px) rotate(8deg) scale(1.04);
+    transform: translate(4px, 4px) rotate(-8deg) scale(1.04);
     opacity: 1;
   }
   28% {
-    transform: translate(-36px, -32px) rotate(16deg) scale(1.08);
+    transform: translate(40px, -36px) rotate(-18deg) scale(1.08);
     opacity: 1;
   }
   55% {
-    transform: translate(-120px, -120px) rotate(24deg) scale(1.12);
+    transform: translate(140px, -130px) rotate(-28deg) scale(1.12);
     opacity: 1;
   }
   78% {
-    transform: translate(-240px, -240px) rotate(32deg) scale(1.15);
+    transform: translate(280px, -260px) rotate(-36deg) scale(1.15);
     opacity: .85;
   }
   100% {
-    transform: translate(-70vw, -90vh) rotate(40deg) scale(1.2);
+    transform: translate(70vw, -90vh) rotate(-44deg) scale(1.2);
     opacity: 0;
   }
 }
 
-/* Fuego saliendo hacia atrás (derecha del avión al volar a la izquierda) */
+/* Fuego saliendo hacia atrás (izquierda) mientras vuela a la derecha */
 @keyframes jayjay-flame {
   0% {
     opacity: .15;
-    transform: translate(-4px, 0) scaleX(.35) scaleY(.7) rotate(-8deg);
+    transform: translate(4px, 0) scaleX(.35) scaleY(.7) rotate(8deg);
   }
   35% {
     opacity: 1;
-    transform: translate(10px, 2px) scaleX(1.15) scaleY(1.05) rotate(4deg);
+    transform: translate(-10px, 2px) scaleX(1.15) scaleY(1.05) rotate(-4deg);
   }
   70% {
     opacity: .75;
-    transform: translate(22px, 4px) scaleX(1.45) scaleY(.85) rotate(8deg);
+    transform: translate(-22px, 4px) scaleX(1.45) scaleY(.85) rotate(-8deg);
   }
   100% {
     opacity: 0;
-    transform: translate(34px, 6px) scaleX(.6) scaleY(.4) rotate(12deg);
+    transform: translate(-34px, 6px) scaleX(.6) scaleY(.4) rotate(-12deg);
   }
 }
 
@@ -671,7 +671,7 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   .footer-jayjay-link:hover .footer-jayjay-flyer,
   .footer-jayjay-link:focus-visible .footer-jayjay-flyer {
     animation: none;
-    transform: translateX(-8px) rotate(4deg);
+    transform: translateX(8px) rotate(-4deg);
   }
   .footer-jayjay-link:hover .footer-jayjay-flame,
   .footer-jayjay-link:focus-visible .footer-jayjay-flame {
