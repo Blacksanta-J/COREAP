@@ -1647,7 +1647,7 @@
         var chunksStore = tx.objectStore('chunks');
         toDelete.forEach(function (c) { cargasStore.delete(c.id); });
         allChunks.forEach(function (ch) {
-          if (deleteIds[ch.cargaId]) chunksStore.delete(ch.id);
+          if (deleteIds[ch.cargaId] || ch.cargaId === meta.id) chunksStore.delete(ch.id);
         });
         cargasStore.put(meta);
         chunks.forEach(function (part, idx) {
@@ -1757,6 +1757,8 @@
     return ensureFirebaseAuthForWrite().then(function () {
       return deleteFirestoreCargasForPeriodo(meta.periodo, meta.id);
     }).then(function () {
+      return _firestore.collection(VACANTES_CHUNKS_COL).where('cargaId', '==', meta.id).get();
+    }).then(function (oldChunks) {
       var batch = _firestore.batch();
       var ops = 0;
       var chain = Promise.resolve();
@@ -1766,6 +1768,13 @@
         batch = _firestore.batch();
         ops = 0;
         return current.commit();
+      }
+      if (oldChunks && !oldChunks.empty) {
+        oldChunks.forEach(function (doc) {
+          batch.delete(doc.ref);
+          ops += 1;
+          if (ops >= 400) chain = chain.then(flush);
+        });
       }
       batch.set(_firestore.collection(VACANTES_CARGAS_COL).doc(meta.id), meta);
       ops += 1;
