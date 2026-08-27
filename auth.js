@@ -93,7 +93,8 @@
     'RRHH',
     'Listados',
     'APEL',
-    'JUNTA'
+    'JUNTA',
+    'Concursos'
   ];
 
   function normalizeReparticion(value) {
