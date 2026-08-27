@@ -43,10 +43,16 @@
         }
         button.theme-toggle:hover, button.info-close:hover { background: var(--btn-secondary-hover); }
         .label-text { text-align: left; display: block; font-size: 12px; font-weight: 700; margin-top: 12px; color: var(--muted); }
-        input[type="file"], input[type="month"], select, input[type="search"], input[type="text"] {
+        input[type="file"], input[type="month"], input[type="number"], select, input[type="search"], input[type="text"] {
             margin: 6px 0 0 0; display: block; width: 100%; color: var(--text); background: var(--input-bg);
             border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; box-sizing: border-box; font: inherit; font-size: 13px;
         }
+        .mes-carga-row {
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 4px;
+        }
+        .mes-carga-row .field { flex: 1; min-width: 140px; max-width: 220px; }
+        .mes-carga-row .field .label-text { margin-top: 12px; }
+        .mes-carga-row select, .mes-carga-row input[type="number"] { margin-top: 6px; }
         .filter-combo { position: relative; }
         .filter-combo input { margin-top: 0; padding: 7px 10px; font-size: 13px; width: 100%; }
         .filter-hint { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
@@ -243,8 +249,29 @@
     </nav>
 
     <div id="pane-carga" class="tab-pane active">
-        <label class="label-text" for="periodoInput">Mes</label>
-        <input type="month" id="periodoInput" />
+        <div class="mes-carga-row">
+            <div class="field">
+                <label class="label-text" for="periodoMes">Mes</label>
+                <select id="periodoMes" aria-label="Mes de la carga">
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            <div class="field">
+                <label class="label-text" for="periodoAnio">Año</label>
+                <input type="number" id="periodoAnio" min="2000" max="2100" step="1" inputmode="numeric" aria-label="Año de la carga" />
+            </div>
+        </div>
 
         <label class="label-text" for="fileInput">Archivo de vacantes</label>
         <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
@@ -1415,7 +1442,32 @@
         return now.getFullYear() + '-' + m;
     }
 
-    document.getElementById('periodoInput').value = mesDefault();
+    function leerPeriodoCarga() {
+        var mes = String((document.getElementById('periodoMes') || {}).value || '').trim();
+        var anio = String((document.getElementById('periodoAnio') || {}).value || '').trim();
+        if (!/^\d{4}$/.test(anio) || !/^(0[1-9]|1[0-2])$/.test(mes)) return '';
+        var y = parseInt(anio, 10);
+        if (y < 2000 || y > 2100) return '';
+        return anio + '-' + mes;
+    }
+
+    function setPeriodoCarga(yyyyMm) {
+        var raw = String(yyyyMm || '').trim();
+        var m = raw.match(/^(\d{4})-(\d{2})$/);
+        var mesEl = document.getElementById('periodoMes');
+        var anioEl = document.getElementById('periodoAnio');
+        if (!mesEl || !anioEl) return;
+        if (m) {
+            anioEl.value = m[1];
+            mesEl.value = m[2];
+            return;
+        }
+        var now = mesDefault().match(/^(\d{4})-(\d{2})$/);
+        anioEl.value = now[1];
+        mesEl.value = now[2];
+    }
+
+    setPeriodoCarga(mesDefault());
     buildFilterSelects('filtrosBase', 'f', { includeIdPof: true });
     buildFilterSelects('filtrosInforme', 'i', { includeIdPof: false });
     renderColsGrid();
@@ -1507,8 +1559,8 @@
 
     document.getElementById('btnCargar').onclick = function () {
         var fileInput = document.getElementById('fileInput');
-        var mes = document.getElementById('periodoInput').value;
-        if (!mes) { setStatus('Indicá el mes de la carga.', true); return; }
+        var mes = leerPeriodoCarga();
+        if (!mes) { setStatus('Indicá el mes y el año de la carga.', true); return; }
         if (!fileInput.files.length) { setStatus('Cargá el archivo de vacantes.', true); return; }
         var file = fileInput.files[0];
         setStatus('Procesando archivo…');
