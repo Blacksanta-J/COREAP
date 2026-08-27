@@ -35,21 +35,21 @@
         body.portal-tool-body { margin: 0; }
         .container { width: 100%; max-width: 100%; min-width: 0; text-align: left; box-sizing: border-box; }
         .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; min-width: 0; }
-        p { color: var(--muted); text-align: left; font-size: 14px; margin-top: 10px;}
+        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; min-width: 0; font-size: 18px; }
+        p { color: var(--muted); text-align: left; font-size: 13px; margin-top: 8px;}
         button.theme-toggle, button.info-close {
-            width: 42px; min-width: 42px; height: 42px; padding: 0; border-radius: 8px; border: none;
-            background: var(--toggle-bg); color: var(--heading); font-size: 18px; line-height: 1; cursor: pointer;
+            width: 34px; min-width: 34px; height: 34px; padding: 0; border-radius: 8px; border: none;
+            background: var(--toggle-bg); color: var(--heading); font-size: 15px; line-height: 1; cursor: pointer;
         }
         button.theme-toggle:hover, button.info-close:hover { background: var(--btn-secondary-hover); }
-        .label-text { text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: var(--muted); }
+        .label-text { text-align: left; display: block; font-size: 12px; font-weight: 700; margin-top: 12px; color: var(--muted); }
         input[type="file"], input[type="month"], select, input[type="search"], input[type="text"] {
-            margin: 8px 0 0 0; display: block; width: 100%; color: var(--text); background: var(--input-bg);
-            border: 1px solid var(--border); border-radius: 6px; padding: 10px; box-sizing: border-box; font: inherit;
+            margin: 6px 0 0 0; display: block; width: 100%; color: var(--text); background: var(--input-bg);
+            border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; box-sizing: border-box; font: inherit; font-size: 13px;
         }
         .filter-combo { position: relative; }
-        .filter-combo input { margin-top: 0; }
-        .filter-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .filter-combo input { margin-top: 0; padding: 7px 10px; font-size: 13px; }
+        .filter-hint { display: none; }
         table.data tbody tr.excluida { background: rgba(185,28,28,.1); }
         table.data tbody tr.excluida td { color: var(--muted); }
         .badge-excl {
@@ -58,80 +58,97 @@
         }
         html[data-theme="dark"] .badge-excl { color: #fb8a8a; background: rgba(251,138,138,.18); }
         .btn-row {
-            width: auto !important; margin: 0 !important; padding: 6px 10px !important; font-size: 11px !important;
+            width: auto !important; margin: 0 !important; padding: 4px 8px !important; font-size: 11px !important;
         }
         .excl-box {
-            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
             background: var(--input-bg); border: 1px solid var(--border);
         }
-        .excl-box h4 { margin: 0 0 8px; font-size: 14px; color: var(--heading); }
+        .excl-box h4 { margin: 0 0 6px; font-size: 13px; color: var(--heading); }
         .excl-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-        .excl-actions .field { flex: 1; min-width: 180px; }
+        .excl-actions .field { flex: 1; min-width: 160px; }
         .excl-actions button, .excl-actions label.file-btn {
-            width: auto; margin: 0; padding: 10px 14px; font-size: 13px; cursor: pointer;
+            width: auto; margin: 0; padding: 7px 12px; font-size: 12px; cursor: pointer;
         }
         label.file-btn {
             display: inline-flex; align-items: center; background: var(--btn-secondary); color: var(--btn-secondary-text);
             border-radius: 6px; font-weight: 700;
         }
         label.file-btn input { display: none; }
-        button.btn-primary { background-color: var(--btn); color: var(--btn-text); border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s; margin-top: 10px;}
+        button.btn-primary {
+            background-color: var(--btn); color: var(--btn-text); border: none; padding: 9px 14px; font-size: 13px;
+            border-radius: 6px; cursor: pointer; width: auto; max-width: 100%; transition: background-color 0.3s; margin-top: 10px;
+        }
         button.btn-primary:hover { background-color: var(--btn-hover); }
-        button.secondary { background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s;}
+        button.secondary {
+            background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none;
+            padding: 8px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; width: auto; transition: background-color 0.3s;
+        }
         button.secondary:hover { background-color: var(--btn-secondary-hover); }
-        #status { margin-top: 15px; font-weight: bold; color: var(--success); white-space: pre-wrap; }
+        #status { margin-top: 12px; font-weight: 600; font-size: 13px; color: var(--success); white-space: pre-wrap; }
         .error { color: var(--error) !important; }
         .equiv-box {
-            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
             background: var(--input-bg); border: 1px solid var(--border);
-            font-size: 13px; color: var(--text); line-height: 1.55;
+            font-size: 12px; color: var(--text); line-height: 1.5;
         }
         .equiv-box strong { color: var(--heading); }
         .filters-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 10px 12px; margin-top: 8px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px 10px; margin-top: 8px;
         }
         .filters-grid .field { min-width: 0; }
-        .filters-grid label { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px; }
+        .filters-grid label { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 3px; }
         .stats-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 10px; margin: 16px 0;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px; margin: 12px 0;
         }
         .stat-card {
             background: var(--input-bg); border: 1px solid var(--border);
-            border-radius: 8px; padding: 12px 14px;
+            border-radius: 8px; padding: 10px 12px;
         }
-        .stat-card .n { font-size: 22px; font-weight: 700; color: var(--heading); }
-        .stat-card .l { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+        .stat-card .n { font-size: 18px; font-weight: 700; color: var(--heading); }
+        .stat-card .l { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
         .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; }
         table.data { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); }
-        table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+        table.data th, table.data td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
         table.data th { position: sticky; top: 0; background: var(--input-bg); color: var(--muted); font-size: 10px; letter-spacing: .4px; text-transform: uppercase; z-index: 1; }
         table.data tbody tr:hover { background: rgba(0,150,136,.06); }
         table.data tfoot td { font-weight: 700; background: var(--input-bg); }
-        .cols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 10px; margin-top: 8px; }
-        .cols-grid label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); font-weight: 400; cursor: pointer; }
+        .cols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 8px; margin-top: 8px; }
+        .cols-grid label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); font-weight: 400; cursor: pointer; }
         .cols-grid input { width: auto; margin: 0; }
-        .toolbar-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        .toolbar-inline button { width: auto; margin-top: 0; padding: 10px 14px; font-size: 13px; }
-        .carga-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .toolbar-inline { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .toolbar-inline button { width: auto; margin-top: 0; padding: 7px 11px; font-size: 12px; }
+        .carga-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
         .carga-item {
             display: flex; justify-content: space-between; align-items: center; gap: 12px;
-            border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--input-bg);
+            border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--input-bg);
         }
-        .carga-item .meta { font-size: 12px; color: var(--muted); }
-        .carga-item button { width: auto; margin: 0; padding: 8px 12px; font-size: 12px; }
-        .muted { color: var(--muted); font-size: 13px; }
-        .pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--muted); }
-        .pager button { width: auto; margin: 0; padding: 8px 12px; font-size: 12px; }
+        .carga-item .meta { font-size: 11px; color: var(--muted); }
+        .carga-item button { width: auto; margin: 0; padding: 6px 10px; font-size: 11px; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .pager { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+        .pager button { width: auto; margin: 0; padding: 6px 10px; font-size: 11px; }
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
+        /* Menú de secciones más compacto */
+        #vacantesTabs.processor-tabs {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin: 10px 0 12px; width: auto; max-width: 100%;
+            grid-template-columns: none;
+        }
+        #vacantesTabs.processor-tabs button {
+            width: auto; flex: 0 0 auto; min-width: 0;
+            padding: 6px 12px; font-size: 12px; font-weight: 600;
+            border-radius: 6px; white-space: nowrap; line-height: 1.25;
+        }
         .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto;}
         .modal-overlay.visible { display: flex; }
-        .modal { background: var(--card); border-radius: 10px; padding: 24px; width: 100%; max-width: 560px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
-        .modal h3 { margin: 0 0 10px 0; color: var(--heading); font-size: 18px;}
-        .info-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
-        .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
+        .modal { background: var(--card); border-radius: 10px; padding: 20px; width: 100%; max-width: 560px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
+        .modal h3 { margin: 0 0 10px 0; color: var(--heading); font-size: 16px;}
+        .info-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;}
+        .info-content { font-size: 13px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
         .info-content li { margin-bottom: 8px; }
         .info-content strong { color: var(--heading); }
         .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
@@ -146,9 +163,9 @@
 <aside id="portal-sidebar"></aside>
 <div class="content portal-tool-content">
 <main class="portal-tool-main">
-<div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
-    <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Vacantes Provisorias</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Cargá vacantes mes a mes, aplicá el formato de Eleves Concursos y consultá la base con las columnas que elijas. El informe se filtra por Área, Cargo, Asignatura, Especialidad y CODES (ID de establecimiento).</p>
+<div class="page-intro" style="margin-bottom:14px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:14px 16px;box-shadow:var(--portal-shadow);">
+    <h1 style="font-size:22px;margin:0 0 4px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Vacantes Provisorias</h1>
+    <p style="margin:0;color:var(--portal-muted);font-size:13px;line-height:1.5;">Cargá vacantes mes a mes, aplicá el formato de Eleves Concursos y consultá la base con las columnas que elijas.</p>
 </div>
 
 <div class="portal-tool-panel container">
@@ -301,7 +318,9 @@
     ];
     var COLS_STORAGE = 'vacantes-provisorias-cols-v2';
     var PAGE_SIZE = 80;
-    var FILTER_KEYS = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes'];
+    var FILTER_KEYS_BASE = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes', 'idpof'];
+    var FILTER_KEYS_INFORME = ['mes', 'area', 'cargo', 'asig', 'esp', 'codes'];
+    var FILTER_KEYS = FILTER_KEYS_BASE;
 
     var state = {
         cargas: [],
@@ -623,7 +642,8 @@
         }).join('');
     }
 
-    function buildFilterSelects(containerId, prefix) {
+    function buildFilterSelects(containerId, prefix, opts) {
+        opts = opts || {};
         var fields = [
             ['mes', 'Mes'],
             ['area', 'Área'],
@@ -632,13 +652,16 @@
             ['esp', 'Especialidad'],
             ['codes', 'CODES / ID establecimiento']
         ];
+        if (opts.includeIdPof) {
+            fields.push(['idpof', 'Id. POF']);
+        }
         var html = fields.map(function (pair) {
             var id = prefix + pair[0];
             var listId = id + 'List';
+            var ph = pair[0] === 'idpof' ? 'Buscar Id. POF…' : 'Escribir o elegir…';
             return '<div class="field filter-combo"><label for="' + id + '">' + pair[1] + '</label>'
-                + '<input type="text" id="' + id + '" list="' + listId + '" autocomplete="off" spellcheck="false" placeholder="Escribir o elegir…">'
-                + '<datalist id="' + listId + '"></datalist>'
-                + '<div class="filter-hint">Escribí o elegí de la lista</div></div>';
+                + '<input type="text" id="' + id + '" list="' + listId + '" autocomplete="off" spellcheck="false" placeholder="' + ph + '">'
+                + '<datalist id="' + listId + '"></datalist></div>';
         }).join('');
         document.getElementById(containerId).innerHTML = html;
     }
@@ -652,23 +675,28 @@
             fillDatalist(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
             fillDatalist(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
             fillDatalist(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
+            var idPofEl = document.getElementById(prefix + 'idpof');
+            if (idPofEl) {
+                fillDatalist(idPofEl, uniqueSorted(rows.map(idPofDeFila)));
+            }
         });
     }
 
     function readFilters(prefix) {
-        return {
-            mes: document.getElementById(prefix + 'mes').value,
-            area: document.getElementById(prefix + 'area').value,
-            cargo: document.getElementById(prefix + 'cargo').value,
-            asig: document.getElementById(prefix + 'asig').value,
-            esp: document.getElementById(prefix + 'esp').value,
-            codes: document.getElementById(prefix + 'codes').value
-        };
+        var keys = prefix === 'i' ? FILTER_KEYS_INFORME : FILTER_KEYS_BASE;
+        var out = {};
+        keys.forEach(function (k) {
+            var el = document.getElementById(prefix + k);
+            out[k] = el ? el.value : '';
+        });
+        return out;
     }
 
     function clearFilters(prefix) {
-        FILTER_KEYS.forEach(function (k) {
-            document.getElementById(prefix + k).value = '';
+        var keys = prefix === 'i' ? FILTER_KEYS_INFORME : FILTER_KEYS_BASE;
+        keys.forEach(function (k) {
+            var el = document.getElementById(prefix + k);
+            if (el) el.value = '';
         });
     }
 
@@ -690,6 +718,7 @@
         if (f.asig && !matchFiltroTexto(asigLabel(fila), f.asig)) return false;
         if (f.esp && !matchFiltroTexto(espLabel(fila), f.esp)) return false;
         if (f.codes && !matchFiltroTexto(fila['ESTABLECIMIENTO ID'], f.codes)) return false;
+        if (f.idpof && !matchFiltroTexto(idPofDeFila(fila), f.idpof)) return false;
         return true;
     }
 
@@ -897,8 +926,10 @@
     }
 
     function bindFilterSelects(prefix, onChange) {
-        FILTER_KEYS.forEach(function (k) {
+        var keys = prefix === 'i' ? FILTER_KEYS_INFORME : FILTER_KEYS_BASE;
+        keys.forEach(function (k) {
             var el = document.getElementById(prefix + k);
+            if (!el) return;
             el.addEventListener('input', onChange);
             el.addEventListener('change', onChange);
         });
@@ -1043,8 +1074,8 @@
     }
 
     document.getElementById('periodoInput').value = mesDefault();
-    buildFilterSelects('filtrosBase', 'f');
-    buildFilterSelects('filtrosInforme', 'i');
+    buildFilterSelects('filtrosBase', 'f', { includeIdPof: true });
+    buildFilterSelects('filtrosInforme', 'i', { includeIdPof: false });
     renderColsGrid();
     bindFilterSelects('f', function () { state.page = 0; renderTablaBase(); });
     bindFilterSelects('i', renderInforme);
