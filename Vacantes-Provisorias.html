@@ -20,7 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260826-fastpages1"></script>
-<script src="auth.js?v=20260827-vacantes2"></script>
+<script src="auth.js?v=20260827-vacantes3"></script>
     <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'vacantes_provisorias' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'vacantes_provisorias' }); });</script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -85,6 +85,23 @@
         }
         .excl-hint { font-size: 10px; color: var(--muted); margin: 6px 0 0; line-height: 1.35; }
         #statusExcluir { margin-top: 4px; font-size: 11px; }
+        .sync-box {
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+            background: var(--input-bg); border: 1px solid var(--border);
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+        }
+        .sync-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; flex: 1; }
+        .sync-badge {
+            display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+            letter-spacing: .3px; text-transform: uppercase; background: rgba(0,150,136,.15); color: var(--heading);
+        }
+        .sync-badge.is-cloud { background: rgba(46,125,50,.2); color: #2e7d32; }
+        .sync-badge.is-local { background: rgba(245,124,0,.2); color: #e65100; }
+        .sync-badge.is-empty { background: rgba(120,120,120,.18); color: var(--muted); }
+        html[data-theme="dark"] .sync-badge.is-cloud { color: #81c784; }
+        html[data-theme="dark"] .sync-badge.is-local { color: #ffb74d; }
+        .sync-msg { font-size: 12px; color: var(--muted); line-height: 1.4; }
+        .sync-box button { margin: 0; width: auto; }
         table.data td.col-excl { min-width: 72px; }
         table.data td.col-motivo-excl { max-width: 180px; white-space: normal; font-size: 11px; color: var(--muted); }
         label.file-btn {
@@ -236,10 +253,19 @@
             Se usa la misma codificación que <strong>Eleves Concursos (Control)</strong>: unificación de hojas, mapeo de áreas y turnos, CODES → <strong>ESTABLECIMIENTO ID</strong>, y valores fijos (Sit. Rev. INTERINO, Base/Ascenso y Tipo de Listado = 3).
             <br><strong>Regla extra de Área:</strong> si el código de área es <strong>A</strong> y el nombre de la escuela es <em>CENS</em> o <em>ANEXO CENS</em>, el área queda <strong>Secundaria Adultos</strong>; si es <strong>A</strong> y no es CENS, queda <strong>Adultos Primaria</strong>.
             <br>Una nueva carga del mismo mes <strong>reemplaza</strong> las vacantes de ese mes.
+            <br>La base se guarda en la <strong>nube</strong> para consultarla desde distintos lugares (con el mismo permiso de usuario).
         </div>
 
         <button class="btn-primary" id="btnCargar" type="button">Procesar y agregar a la base</button>
         <div id="status"></div>
+
+        <div class="sync-box" id="syncBox">
+            <div class="sync-row">
+                <span class="sync-badge" id="syncBadge">Base</span>
+                <span class="sync-msg" id="syncMsg">Cargando estado…</span>
+            </div>
+            <button type="button" class="secondary" id="btnSyncNube" title="Sube las cargas de este navegador a la nube">Sincronizar a la nube</button>
+        </div>
 
         <h3 style="margin:22px 0 0;font-size:16px;color:var(--heading);">Cargas guardadas</h3>
         <div id="cargasList" class="carga-list"><p class="muted">Todavía no hay cargas.</p></div>
@@ -327,7 +353,7 @@
                 <li><strong>Filtros:</strong> en un solo campo podés escribir o elegir de la lista.</li>
                 <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF y motivo). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
-                <li><strong>Base:</strong> se guarda en este navegador y, si hay Firebase, también en la nube para el equipo.</li>
+                <li><strong>Base:</strong> se guarda en la <em>nube</em> (Firebase) para verla desde cualquier lugar con tu usuario. También queda copia en este navegador.</li>
             </ul>
         </div>
     </div>
@@ -377,6 +403,7 @@
         rows: [],
         page: 0,
         source: '',
+        warning: '',
         seleccion: {}
     };
 
@@ -1340,6 +1367,34 @@
         return leerExclusionesDeWorkbook(workbook).map(function (r) { return r.id; });
     }
 
+    function updateSyncStatus(data) {
+        var badge = document.getElementById('syncBadge');
+        var msg = document.getElementById('syncMsg');
+        var btn = document.getElementById('btnSyncNube');
+        if (!badge || !msg) return;
+        var source = (data && data.source) || state.source || '';
+        var warning = (data && data.warning) || state.warning || '';
+        var n = (state.rows || []).length;
+        badge.className = 'sync-badge';
+        if (source === 'firestore') {
+            badge.classList.add('is-cloud');
+            badge.textContent = 'Nube';
+            msg.textContent = (data && data.syncedFromLocal)
+                ? ('Sincronizado a la nube · ' + n + ' vacantes. ' + (warning || ''))
+                : ('Base compartida en la nube · ' + n + ' vacantes. Se ve desde cualquier lugar con tu usuario.');
+        } else if (source === 'local') {
+            badge.classList.add('is-local');
+            badge.textContent = 'Solo local';
+            msg.textContent = warning
+                || ('Guardado solo en este navegador · ' + n + ' vacantes. Usá “Sincronizar a la nube” para compartirlo.');
+        } else {
+            badge.classList.add('is-empty');
+            badge.textContent = 'Sin datos';
+            msg.textContent = warning || 'Todavía no hay vacantes cargadas.';
+        }
+        if (btn) btn.disabled = !n && source !== 'local';
+    }
+
     function recargarBase() {
         return PortalAuth.loadVacantesRows().then(function (data) {
             state.cargas = data.cargas || [];
@@ -1349,12 +1404,14 @@
                 return m;
             });
             state.source = data.source || '';
+            state.warning = data.warning || '';
             state.page = 0;
             state.seleccion = {};
             renderCargas();
             refreshFilterOptions();
             renderTablaBase();
             renderInforme();
+            updateSyncStatus(data);
         });
     }
 
@@ -1496,7 +1553,9 @@
                         });
                     }
                     var extra = result.removed ? (' Se quitaron ' + result.removed + ' duplicados de Id. POF.') : '';
-                    var nube = saved.source === 'firestore' ? ' Guardado también en la nube.' : ' Guardado en este navegador.';
+                    var nube = saved.source === 'firestore'
+                        ? ' Guardado en la nube (disponible desde otros lugares).'
+                        : ' Guardado solo en este navegador.';
                     var warn = saved.warning ? (' Aviso: ' + saved.warning) : '';
                     setStatus('Listo: ' + result.filas.length + ' vacantes del mes ' + mes + '.' + extra + nube + warn);
                     fileInput.value = '';
@@ -1510,6 +1569,24 @@
             }
         };
         reader.readAsArrayBuffer(file);
+    };
+
+    document.getElementById('btnSyncNube').onclick = function () {
+        var btn = document.getElementById('btnSyncNube');
+        if (!PortalAuth.pushLocalVacantesToCloud) {
+            setStatus('Esta versión no tiene sync a la nube. Recargá la página.', true);
+            return;
+        }
+        btn.disabled = true;
+        setStatus('Subiendo la base a la nube…');
+        PortalAuth.pushLocalVacantesToCloud().then(function (res) {
+            setStatus((res && res.message) || 'Sincronización lista.');
+            return recargarBase();
+        }).catch(function (err) {
+            setStatus((err && err.message) || 'No se pudo sincronizar a la nube.', true);
+        }).then(function () {
+            btn.disabled = false;
+        });
     };
 
     var infoOverlay = document.getElementById('infoOverlay');
