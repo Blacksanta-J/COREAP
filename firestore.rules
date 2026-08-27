@@ -55,6 +55,35 @@ service cloud.firestore {
       allow read, write: if isSeedAdmin() || isAdmin();
     }
 
+    function hasVacantesRole() {
+      let data = userData();
+      return data.role == 'admin'
+        || data.role == 'concursos'
+        || data.role == 'listados'
+        || (data.roles is list && (
+          'admin' in data.roles
+          || 'concursos' in data.roles
+          || 'listados' in data.roles
+        ));
+    }
+
+    function canVacantes() {
+      return isSeedAdmin() || (
+        isBue()
+        && exists(userDocPath(authEmail()))
+        && userData().active != false
+        && hasVacantesRole()
+      );
+    }
+
+    /* Cargas mensuales de Vacantes Provisorias */
+    match /vacantes_provisorias_cargas/{cargaId} {
+      allow read, create, update, delete: if canVacantes();
+    }
+    match /vacantes_provisorias_chunks/{chunkId} {
+      allow read, create, update, delete: if canVacantes();
+    }
+
     /* Log de ejecuciones de procesadores: escritura autenticada @bue; lectura solo admin */
     match /process_logs/{logId} {
       allow create: if isBue()

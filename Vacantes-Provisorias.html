@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal COREAP · Vacantes Provisorias</title>
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
+<script src="portal-theme.js"></script>
+    <script src="portal-header.js?v=20260825-sess2"></script>
+    <script src="portal-nav.js"></script>
+    <script src="portal-sidebar.js?v=20260827-vacantes1"></script>
+    <script src="portal-footer.js"></script>
+    <link rel="stylesheet" href="portal-theme.css">
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260826-fastpages1"></script>
+<script src="auth.js?v=20260827-vacantes1"></script>
+    <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'vacantes_provisorias' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'vacantes_provisorias' }); });</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: var(--portal-bg); --text: var(--portal-text); --card: var(--portal-surface); --heading: var(--portal-heading);
+            --muted: var(--portal-muted); --border: var(--portal-border); --input-bg: var(--portal-input-bg);
+            --btn: var(--portal-topbar-bg); --btn-hover: var(--portal-az-hover); --btn-text: var(--portal-am);
+            --btn-secondary: var(--portal-border); --btn-secondary-hover: var(--portal-cy-light); --btn-secondary-text: var(--portal-text);
+            --success: var(--portal-success); --error: var(--portal-error); --shadow: var(--portal-shadow-md);
+            --overlay: var(--portal-overlay); --toggle-bg: var(--portal-cy-light);
+        }
+        body.portal-tool-body { margin: 0; }
+        .container { width: 100%; max-width: 100%; min-width: 0; text-align: left; box-sizing: border-box; }
+        .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; min-width: 0; }
+        p { color: var(--muted); text-align: left; font-size: 14px; margin-top: 10px;}
+        button.theme-toggle, button.info-close {
+            width: 42px; min-width: 42px; height: 42px; padding: 0; border-radius: 8px; border: none;
+            background: var(--toggle-bg); color: var(--heading); font-size: 18px; line-height: 1; cursor: pointer;
+        }
+        button.theme-toggle:hover, button.info-close:hover { background: var(--btn-secondary-hover); }
+        .label-text { text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: var(--muted); }
+        input[type="file"], input[type="month"], select, input[type="search"] {
+            margin: 8px 0 0 0; display: block; width: 100%; color: var(--text); background: var(--input-bg);
+            border: 1px solid var(--border); border-radius: 6px; padding: 10px; box-sizing: border-box; font: inherit;
+        }
+        button.btn-primary { background-color: var(--btn); color: var(--btn-text); border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s; margin-top: 10px;}
+        button.btn-primary:hover { background-color: var(--btn-hover); }
+        button.secondary { background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s;}
+        button.secondary:hover { background-color: var(--btn-secondary-hover); }
+        #status { margin-top: 15px; font-weight: bold; color: var(--success); white-space: pre-wrap; }
+        .error { color: var(--error) !important; }
+        .equiv-box {
+            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+            background: var(--input-bg); border: 1px solid var(--border);
+            font-size: 13px; color: var(--text); line-height: 1.55;
+        }
+        .equiv-box strong { color: var(--heading); }
+        .filters-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 12px; margin-top: 8px;
+        }
+        .filters-grid .field { min-width: 0; }
+        .filters-grid label { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px; }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px; margin: 16px 0;
+        }
+        .stat-card {
+            background: var(--input-bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px 14px;
+        }
+        .stat-card .n { font-size: 22px; font-weight: 700; color: var(--heading); }
+        .stat-card .l { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+        .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; }
+        table.data { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); }
+        table.data th, table.data td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+        table.data th { position: sticky; top: 0; background: var(--input-bg); color: var(--muted); font-size: 10px; letter-spacing: .4px; text-transform: uppercase; z-index: 1; }
+        table.data tbody tr:hover { background: rgba(0,150,136,.06); }
+        table.data tfoot td { font-weight: 700; background: var(--input-bg); }
+        .cols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 10px; margin-top: 8px; }
+        .cols-grid label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); font-weight: 400; cursor: pointer; }
+        .cols-grid input { width: auto; margin: 0; }
+        .toolbar-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .toolbar-inline button { width: auto; margin-top: 0; padding: 10px 14px; font-size: 13px; }
+        .carga-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .carga-item {
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--input-bg);
+        }
+        .carga-item .meta { font-size: 12px; color: var(--muted); }
+        .carga-item button { width: auto; margin: 0; padding: 8px 12px; font-size: 12px; }
+        .muted { color: var(--muted); font-size: 13px; }
+        .pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+        .pager button { width: auto; margin: 0; padding: 8px 12px; font-size: 12px; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto;}
+        .modal-overlay.visible { display: flex; }
+        .modal { background: var(--card); border-radius: 10px; padding: 24px; width: 100%; max-width: 560px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
+        .modal h3 { margin: 0 0 10px 0; color: var(--heading); font-size: 18px;}
+        .info-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
+        .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
+        .info-content li { margin-bottom: 8px; }
+        .info-content strong { color: var(--heading); }
+        .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    </style>
+<link rel="stylesheet" href="portal-obelisco.css"></head>
+<body class="portal-tool-body">
+
+<div class="page-shell portal-tool-body">
+<header id="portal-header"></header>
+
+<div class="layout">
+<aside id="portal-sidebar"></aside>
+<div class="content portal-tool-content">
+<main class="portal-tool-main">
+<div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
+    <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Vacantes Provisorias</h1>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Cargá vacantes mes a mes, aplicá el formato de Eleves Concursos y consultá la base con las columnas que elijas. El informe se filtra por Área, Cargo, Asignatura, Especialidad y CODES (ID de establecimiento).</p>
+</div>
+
+<div class="portal-tool-panel container">
+    <div class="header-row">
+        <h2>Base de vacantes</h2>
+        <div class="header-actions">
+            <button type="button" class="theme-toggle" id="infoOpen" title="Cómo funciona" aria-label="Cómo funciona">ℹ</button>
+        </div>
+    </div>
+
+    <nav class="processor-tabs" id="vacantesTabs" aria-label="Secciones" role="tablist">
+        <button type="button" class="tab-btn active" aria-selected="true" onclick="switchTab(this,'pane-carga')">Carga mensual</button>
+        <button type="button" class="tab-btn" aria-selected="false" onclick="switchTab(this,'pane-base')">Base y columnas</button>
+        <button type="button" class="tab-btn" aria-selected="false" onclick="switchTab(this,'pane-informe')">Informe</button>
+    </nav>
+
+    <div id="pane-carga" class="tab-pane active">
+        <label class="label-text" for="periodoInput">Período (mes)</label>
+        <input type="month" id="periodoInput" />
+
+        <label class="label-text" for="fileInput">Archivo de vacantes</label>
+        <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
+
+        <div class="equiv-box">
+            Se usa la misma codificación que <strong>Eleves Concursos (Control)</strong>: unificación de hojas, mapeo de áreas y turnos, CODES → <strong>ESTABLECIMIENTO ID</strong>, y valores fijos (Sit. Rev. INTERINO, Base/Ascenso y Tipo de Listado = 3).
+            <br><strong>Regla extra de Área:</strong> si el código de área es <strong>A</strong> y el nombre de la escuela es <em>CENS</em> o <em>ANEXO CENS</em>, el área queda <strong>Secundaria Adultos</strong>; si es <strong>A</strong> y no es CENS, queda <strong>Adultos Primaria</strong>.
+            <br>Una nueva carga del mismo mes <strong>reemplaza</strong> las vacantes de ese período.
+        </div>
+
+        <button class="btn-primary" id="btnCargar" type="button">Procesar y agregar a la base</button>
+        <div id="status"></div>
+
+        <h3 style="margin:22px 0 0;font-size:16px;color:var(--heading);">Cargas guardadas</h3>
+        <div id="cargasList" class="carga-list"><p class="muted">Todavía no hay cargas.</p></div>
+    </div>
+
+    <div id="pane-base" class="tab-pane">
+        <p style="margin-top:12px;">Elegí qué columnas se ven en la plataforma y filtrá la base. Los filtros también alimentan el informe.</p>
+        <div class="filters-grid" id="filtrosBase"></div>
+        <div class="toolbar-inline">
+            <button type="button" class="secondary" id="btnLimpiarFiltros">Limpiar filtros</button>
+            <button type="button" class="secondary" id="btnExportarBase">Exportar vista (Excel)</button>
+        </div>
+        <details open style="margin-top:16px;">
+            <summary style="cursor:pointer;font-weight:700;color:var(--heading);">Columnas visibles</summary>
+            <div class="toolbar-inline" style="margin-top:10px;">
+                <button type="button" class="secondary" id="btnColsTodas">Todas</button>
+                <button type="button" class="secondary" id="btnColsDefault">Recomendadas</button>
+            </div>
+            <div class="cols-grid" id="colsGrid"></div>
+        </details>
+        <div class="stats-grid" id="statsBase"></div>
+        <div class="table-wrap"><table class="data" id="tablaBase"><thead></thead><tbody></tbody></table></div>
+        <div class="pager" id="pagerBase"></div>
+    </div>
+
+    <div id="pane-informe" class="tab-pane">
+        <p style="margin-top:12px;">Cantidad de vacantes agrupadas por Área, Cargo, Asignatura y Especialidad. Filtrá también por CODES (ID de establecimiento) y período.</p>
+        <div class="filters-grid" id="filtrosInforme"></div>
+        <div class="toolbar-inline">
+            <button type="button" class="secondary" id="btnLimpiarInforme">Limpiar filtros</button>
+            <button type="button" class="secondary" id="btnExportarInforme">Exportar informe (Excel)</button>
+        </div>
+        <div class="stats-grid" id="statsInforme"></div>
+        <div class="table-wrap"><table class="data" id="tablaInforme"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+    </div>
+</div>
+</main>
+</div>
+</div>
+
+<div class="portal-footer" id="portal-footer"></div>
+</div>
+
+<div id="infoOverlay" class="modal-overlay">
+    <div class="modal">
+        <div class="info-modal-head">
+            <h3 style="margin: 0;">Vacantes Provisorias</h3>
+            <button type="button" class="info-close" id="infoClose">✕</button>
+        </div>
+        <div class="info-content">
+            <ul>
+                <li><strong>Carga mensual:</strong> subí el archivo del mes. Se detecta la fila de encabezados (CODES / Área / Nombre) y se unifican todas las hojas.</li>
+                <li><strong>Formato:</strong> mismas columnas y mapeos que Eleves Concursos (Control), más la columna <em>PERIODO</em>.</li>
+                <li><strong>Área A:</strong> CENS o ANEXO CENS → Secundaria Adultos; resto → Adultos Primaria.</li>
+                <li><strong>CODES:</strong> el ID de establecimiento del archivo (columna CODES) se guarda como ESTABLECIMIENTO ID y se puede filtrar en base e informe.</li>
+                <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
+                <li><strong>Base:</strong> se guarda en este navegador y, si hay Firebase, también en la nube para el equipo.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var mapaAreas = {
+        "tt": "Tecnica", "p": "Primaria",
+        "b": "Artistica", "m": "Media", "i": "Inicial", "e": "Especial",
+        "sp": "Servicios Profesionales", "c": "Curricular", "s": "Normales"
+    };
+    var mapaCodArea = {
+        "tecnica": 16, "primaria": 2, "artistica": 8, "media": 5,
+        "inicial": 1, "especial": 6, "servicios profesionales": 9,
+        "curricular": 3, "normales": 7,
+        "secundaria adultos": "", "adultos primaria": ""
+    };
+    var mapaTurnos = {
+        "m": "Mañana", "c": "Completo", "d": "Completo",
+        "t": "Tarde", "va": "Varios", "v": "Vespertino", "n": "NOCHE"
+    };
+    var COLUMNAS_RESULTADO = [
+        "PERIODO",
+        "AREA", "BASE/ASCENSO", "ESTABLECIMIENTO ID", "TIPO DE LISTADO", "COD DE AREA",
+        "Numero de Escuela", "Nombre de la escuela", "Direccion", "Distrito", "CODIGO CARGO",
+        "DESCRIPCION CARGO", "CODIGO ASIGNATURA", "DESCRIPCION ASIGNATURA", "CODIGO ESPECIALIDAD",
+        "DESCRIPCION ESPECIALIDAD", "TURNO", "Motivo de la Vacante", "Sit. Rev.", "Cant. Horas",
+        "HORARIO A CUMPLIR", "Observación", "AÑO", "DOCENTE", "Novedad Mayor 60 dias habiles",
+        "FECHA DESDE", "FECHA HASTA", "FECHA PUBLICACION", "HORA PUBLICACION", "FECHA APERTURA",
+        "HORA APERTURA", "CONTINUIDAD", "Numero de propuesta", "Id. POF"
+    ];
+    var COLUMNAS_DEFAULT = [
+        "PERIODO", "AREA", "ESTABLECIMIENTO ID", "Numero de Escuela", "Nombre de la escuela",
+        "Distrito", "CODIGO CARGO", "DESCRIPCION CARGO", "CODIGO ASIGNATURA", "DESCRIPCION ASIGNATURA",
+        "CODIGO ESPECIALIDAD", "DESCRIPCION ESPECIALIDAD", "TURNO", "Motivo de la Vacante",
+        "Cant. Horas", "DOCENTE"
+    ];
+    var COLS_STORAGE = 'vacantes-provisorias-cols-v1';
+    var PAGE_SIZE = 80;
+
+    var state = {
+        cargas: [],
+        rows: [],
+        page: 0,
+        source: ''
+    };
+
+    var normalizar = function (s) {
+        return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    };
+
+    function getExcelDate(year, month, day) {
+        var utc = Date.UTC(year, month, day);
+        return (utc / 86400000) + 25569;
+    }
+
+    function obtenerValorColumna(fila, posiblesNombres) {
+        var keys = Object.keys(fila);
+        var i, nombre, foundKey;
+        for (i = 0; i < posiblesNombres.length; i++) {
+            nombre = normalizar(posiblesNombres[i]);
+            foundKey = keys.find(function (k) { return normalizar(k) === nombre; });
+            if (foundKey) return fila[foundKey];
+        }
+        return '';
+    }
+
+    function esCensOAnexoCens(nombre) {
+        var n = normalizar(nombre).replace(/[.]/g, '');
+        n = n.replace(/\s+/g, ' ').trim();
+        if (!n) return false;
+        if (/\banexo\s+cens\b/.test(n)) return true;
+        if (/\bcens\b/.test(n)) return true;
+        return false;
+    }
+
+    function resolverArea(rawArea, nombreEscuela) {
+        var normArea = normalizar(rawArea);
+        if (normArea === 'a' || normArea === 'primaria/secundaria adultos') {
+            return esCensOAnexoCens(nombreEscuela) ? 'Secundaria Adultos' : 'Adultos Primaria';
+        }
+        return mapaAreas[normArea] || rawArea;
+    }
+
+    function leerFilasArchivo(workbook) {
+        var datosUnificados = [];
+        workbook.SheetNames.forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            var rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (!rawJson.length) return;
+            var headerRowIndex = 0;
+            var i, j, rowStr, headers, row, obj, tieneDatos;
+            for (i = 0; i < Math.min(10, rawJson.length); i++) {
+                rowStr = rawJson[i].map(function (x) { return normalizar(String(x)); }).join('');
+                if (rowStr.indexOf('codes') !== -1 || rowStr.indexOf('area') !== -1 || rowStr.indexOf('nombre') !== -1) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+            headers = rawJson[headerRowIndex];
+            for (i = headerRowIndex + 1; i < rawJson.length; i++) {
+                row = rawJson[i];
+                obj = {};
+                tieneDatos = false;
+                for (j = 0; j < headers.length; j++) {
+                    if (headers[j]) {
+                        obj[headers[j]] = row[j];
+                        if (String(row[j]).trim() !== '') tieneDatos = true;
+                    }
+                }
+                if (tieneDatos) datosUnificados.push(obj);
+            }
+        });
+        return datosUnificados;
+    }
+
+    function eliminarDuplicadosIdPof(filas) {
+        var seen = Object.create(null);
+        var out = [];
+        var removed = 0;
+        (filas || []).forEach(function (fila) {
+            var id = String(
+                fila['Id. POF'] != null && fila['Id. POF'] !== ''
+                    ? fila['Id. POF']
+                    : (fila['Numero de propuesta'] != null ? fila['Numero de propuesta'] : '')
+            ).trim();
+            if (!id) {
+                out.push(fila);
+                return;
+            }
+            var key = id.toLowerCase();
+            if (seen[key]) {
+                removed += 1;
+                return;
+            }
+            seen[key] = true;
+            out.push(fila);
+        });
+        return { filas: out, removed: removed };
+    }
+
+    function codificarFilas(datosUnificados, periodo) {
+        var fechaActual = new Date();
+        var anioActual = fechaActual.getFullYear();
+        var dataFinal = datosUnificados.map(function (fila) {
+            var numEscuela = obtenerValorColumna(fila, ['Nr. Esc.', 'Numero de Escuela']);
+            if (!numEscuela || String(numEscuela).trim() === '') numEscuela = 1;
+
+            var codAsig = obtenerValorColumna(fila, ['Código de Asignatura Cabecera', 'Codigo de Asignatura Cabecera', 'Cod Asignatura Cabecera', 'Codigo Asignatura', 'Código Asignatura']);
+            if (!codAsig || String(codAsig).trim() === '0') {
+                codAsig = obtenerValorColumna(fila, ['Código Asignatura', 'Codigo Asignatura', 'Cod. Asignatura']);
+            }
+            if (String(codAsig).trim() === '0') codAsig = '';
+
+            var codEspec = obtenerValorColumna(fila, ['Cod.Espec.', 'Codigo Especialidad', 'Cod Espec']);
+            if (String(codEspec).trim() === '0') codEspec = '';
+
+            var distrito = obtenerValorColumna(fila, ['D.e.', 'Distrito']);
+            if (!distrito || String(distrito).trim() === '0') distrito = '1';
+
+            var motivo = obtenerValorColumna(fila, ['Motivo Vac..', 'Motivo Vac', 'Motivo de la Vacante']);
+            if (!motivo || String(motivo).trim() === '') motivo = '.';
+
+            var docente = obtenerValorColumna(fila, ['AyN Reemp.', 'Docente']);
+            if (!docente || String(docente).trim() === '') docente = '.';
+
+            var cantHoras = obtenerValorColumna(fila, ['Horas', 'Cant. Horas']);
+            if (!cantHoras || String(cantHoras).trim() === '0') {
+                cantHoras = 1;
+            } else {
+                cantHoras = Math.floor(parseFloat(String(cantHoras).replace(',', '.')));
+                if (isNaN(cantHoras) || cantHoras === 0) cantHoras = 1;
+            }
+
+            var codCargo = obtenerValorColumna(fila, ['Código Cargo Unificado', 'Codigo Cargo Unificado']);
+            if (!codCargo || String(codCargo).trim() === '0') {
+                codCargo = obtenerValorColumna(fila, ['Código Cargo', 'Codigo Cargo', 'Cod. Cargo']);
+            }
+
+            var nombreEscuela = obtenerValorColumna(fila, ['Nombre', 'Nombre de la escuela']);
+            var rawArea = obtenerValorColumna(fila, ['Area', 'AREA']);
+            var areaFinal = resolverArea(rawArea, nombreEscuela);
+            var codAreaFinal = mapaCodArea[normalizar(areaFinal)];
+            if (codAreaFinal === undefined) codAreaFinal = '';
+
+            var rawTurno = obtenerValorColumna(fila, ['Turno', 'TURNO']);
+            var turnoFinal = mapaTurnos[normalizar(rawTurno)] || rawTurno;
+
+            var fDesdeRaw = obtenerValorColumna(fila, ['F.Vacante', 'Fecha Desde', 'FECHA DESDE']);
+            var fDesdeExcel = fDesdeRaw;
+            if (typeof fDesdeRaw === 'string' && fDesdeRaw.trim() !== '') {
+                var parts = fDesdeRaw.split(/[-/]/);
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        fDesdeExcel = getExcelDate(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    } else {
+                        var d = parseInt(parts[0], 10);
+                        var m = parseInt(parts[1], 10) - 1;
+                        var y = parseInt(parts[2], 10);
+                        if (y < 100) y += 2000;
+                        fDesdeExcel = getExcelDate(y, m, d);
+                    }
+                }
+            }
+
+            var idPof = obtenerValorColumna(fila, ['ID Pof', 'Id. POF']);
+            var nuevaFila = {
+                PERIODO: periodo,
+                AREA: areaFinal,
+                'BASE/ASCENSO': 3,
+                'ESTABLECIMIENTO ID': obtenerValorColumna(fila, ['codes', 'CODES', 'ESTABLECIMIENTO ID']),
+                'TIPO DE LISTADO': 3,
+                'COD DE AREA': codAreaFinal,
+                'Numero de Escuela': numEscuela,
+                'Nombre de la escuela': nombreEscuela,
+                Direccion: obtenerValorColumna(fila, ['Direccion', 'Dirección']),
+                Distrito: distrito,
+                'CODIGO CARGO': codCargo,
+                'DESCRIPCION CARGO': obtenerValorColumna(fila, ['Descripción Cargo', 'Descripcion Cargo']),
+                'CODIGO ASIGNATURA': codAsig,
+                'DESCRIPCION ASIGNATURA': obtenerValorColumna(fila, ['Descripción Asignatura', 'Descripcion Asignatura']),
+                'CODIGO ESPECIALIDAD': codEspec,
+                'DESCRIPCION ESPECIALIDAD': obtenerValorColumna(fila, ['Espec.', 'Descripcion Especialidad']),
+                TURNO: turnoFinal,
+                'Motivo de la Vacante': motivo,
+                'Sit. Rev.': 'INTERINO',
+                'Cant. Horas': cantHoras,
+                'HORARIO A CUMPLIR': '.',
+                'Observación': obtenerValorColumna(fila, ['Observación', 'Observacion', 'Observaciones']),
+                'AÑO': anioActual,
+                DOCENTE: docente,
+                'Novedad Mayor 60 dias habiles': 2,
+                'FECHA DESDE': fDesdeExcel,
+                'FECHA HASTA': getExcelDate(anioActual, 11, 31),
+                'FECHA PUBLICACION': '',
+                'HORA PUBLICACION': '',
+                'FECHA APERTURA': '',
+                'HORA APERTURA': '',
+                CONTINUIDAD: obtenerValorColumna(fila, ['CONTINUIDAD', 'Continuidad']),
+                'Numero de propuesta': idPof,
+                'Id. POF': idPof
+            };
+            var filaOrdenada = {};
+            COLUMNAS_RESULTADO.forEach(function (col) {
+                filaOrdenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
+            });
+            return filaOrdenada;
+        });
+        return eliminarDuplicadosIdPof(dataFinal);
+    }
+
+    function leerColumnasVisibles() {
+        try {
+            var raw = localStorage.getItem(COLS_STORAGE);
+            var parsed = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(parsed) && parsed.length) {
+                return parsed.filter(function (c) { return COLUMNAS_RESULTADO.indexOf(c) !== -1; });
+            }
+        } catch (e) {}
+        return COLUMNAS_DEFAULT.slice();
+    }
+
+    function guardarColumnasVisibles(cols) {
+        try { localStorage.setItem(COLS_STORAGE, JSON.stringify(cols)); } catch (e) {}
+    }
+
+    function uniqueSorted(values) {
+        var seen = {};
+        var out = [];
+        values.forEach(function (v) {
+            var s = String(v == null ? '' : v).trim();
+            if (!s) s = '(Vacío)';
+            if (seen[s]) return;
+            seen[s] = true;
+            out.push(s);
+        });
+        out.sort(function (a, b) { return a.localeCompare(b, 'es'); });
+        return out;
+    }
+
+    function cargoLabel(fila) {
+        var cod = String(fila['CODIGO CARGO'] || '').trim();
+        var desc = String(fila['DESCRIPCION CARGO'] || '').trim();
+        if (cod && desc) return cod + ' — ' + desc;
+        return desc || cod || '(Vacío)';
+    }
+    function asigLabel(fila) {
+        var cod = String(fila['CODIGO ASIGNATURA'] || '').trim();
+        var desc = String(fila['DESCRIPCION ASIGNATURA'] || '').trim();
+        if (cod && desc) return cod + ' — ' + desc;
+        return desc || cod || '(Vacío)';
+    }
+    function espLabel(fila) {
+        var cod = String(fila['CODIGO ESPECIALIDAD'] || '').trim();
+        var desc = String(fila['DESCRIPCION ESPECIALIDAD'] || '').trim();
+        if (cod && desc) return cod + ' — ' + desc;
+        return desc || cod || '(Vacío)';
+    }
+
+    function fillSelect(el, values, firstLabel) {
+        var current = el.value;
+        el.innerHTML = '';
+        var opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = firstLabel || 'Todas';
+        el.appendChild(opt0);
+        values.forEach(function (v) {
+            var opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            el.appendChild(opt);
+        });
+        if (current && values.indexOf(current) !== -1) el.value = current;
+    }
+
+    function buildFilterSelects(containerId, prefix) {
+        var html = [
+            ['periodo', 'Período'],
+            ['area', 'Área'],
+            ['cargo', 'Cargo'],
+            ['asig', 'Asignatura'],
+            ['esp', 'Especialidad'],
+            ['codes', 'CODES / ID establecimiento']
+        ].map(function (pair) {
+            return '<div class="field"><label for="' + prefix + pair[0] + '">' + pair[1] + '</label>'
+                + '<select id="' + prefix + pair[0] + '"></select></div>';
+        }).join('');
+        document.getElementById(containerId).innerHTML = html;
+    }
+
+    function refreshFilterOptions() {
+        var rows = state.rows;
+        ['f', 'i'].forEach(function (prefix) {
+            fillSelect(document.getElementById(prefix + 'periodo'), uniqueSorted(rows.map(function (r) { return r.PERIODO; })), 'Todos');
+            fillSelect(document.getElementById(prefix + 'area'), uniqueSorted(rows.map(function (r) { return r.AREA; })));
+            fillSelect(document.getElementById(prefix + 'cargo'), uniqueSorted(rows.map(cargoLabel)));
+            fillSelect(document.getElementById(prefix + 'asig'), uniqueSorted(rows.map(asigLabel)));
+            fillSelect(document.getElementById(prefix + 'esp'), uniqueSorted(rows.map(espLabel)));
+            fillSelect(document.getElementById(prefix + 'codes'), uniqueSorted(rows.map(function (r) { return r['ESTABLECIMIENTO ID']; })));
+        });
+    }
+
+    function readFilters(prefix) {
+        return {
+            periodo: document.getElementById(prefix + 'periodo').value,
+            area: document.getElementById(prefix + 'area').value,
+            cargo: document.getElementById(prefix + 'cargo').value,
+            asig: document.getElementById(prefix + 'asig').value,
+            esp: document.getElementById(prefix + 'esp').value,
+            codes: document.getElementById(prefix + 'codes').value
+        };
+    }
+
+    function clearFilters(prefix) {
+        ['periodo', 'area', 'cargo', 'asig', 'esp', 'codes'].forEach(function (k) {
+            document.getElementById(prefix + k).value = '';
+        });
+    }
+
+    function aplicaFiltros(fila, f) {
+        if (f.periodo && String(fila.PERIODO || '') !== f.periodo) return false;
+        if (f.area && String(fila.AREA || '').trim() !== f.area && (String(fila.AREA || '').trim() || '(Vacío)') !== f.area) return false;
+        if (f.cargo && cargoLabel(fila) !== f.cargo) return false;
+        if (f.asig && asigLabel(fila) !== f.asig) return false;
+        if (f.esp && espLabel(fila) !== f.esp) return false;
+        if (f.codes) {
+            var codes = String(fila['ESTABLECIMIENTO ID'] == null ? '' : fila['ESTABLECIMIENTO ID']).trim() || '(Vacío)';
+            if (codes !== f.codes) return false;
+        }
+        return true;
+    }
+
+    function filasFiltradas(prefix) {
+        var f = readFilters(prefix);
+        return state.rows.filter(function (r) { return aplicaFiltros(r, f); });
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderCargas() {
+        var el = document.getElementById('cargasList');
+        if (!state.cargas.length) {
+            el.innerHTML = '<p class="muted">Todavía no hay cargas.</p>';
+            return;
+        }
+        el.innerHTML = state.cargas.map(function (c) {
+            return '<div class="carga-item">'
+                + '<div><strong>' + escapeHtml(c.periodo) + '</strong>'
+                + '<div class="meta">' + escapeHtml(c.filas || 0) + ' vacantes · ' + escapeHtml(c.archivo || '') + '<br>'
+                + escapeHtml((c.nombre || c.email || '') + (c.createdAt ? ' · ' + new Date(c.createdAt).toLocaleString('es-AR') : ''))
+                + '</div></div>'
+                + '<button type="button" class="secondary btn-del-carga" data-id="' + escapeHtml(c.id) + '">Quitar</button>'
+                + '</div>';
+        }).join('');
+        el.querySelectorAll('.btn-del-carga').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (!confirm('¿Quitar la carga de ' + btn.closest('.carga-item').querySelector('strong').textContent + '?')) return;
+                PortalAuth.deleteVacantesCarga(btn.getAttribute('data-id')).then(recargarBase).catch(function (err) {
+                    setStatus(err.message || 'No se pudo borrar.', true);
+                });
+            });
+        });
+    }
+
+    function renderColsGrid() {
+        var visibles = leerColumnasVisibles();
+        var grid = document.getElementById('colsGrid');
+        grid.innerHTML = COLUMNAS_RESULTADO.map(function (col) {
+            var checked = visibles.indexOf(col) !== -1 ? ' checked' : '';
+            return '<label><input type="checkbox" data-col="' + escapeHtml(col) + '"' + checked + '> ' + escapeHtml(col) + '</label>';
+        }).join('');
+        grid.querySelectorAll('input').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var cols = Array.prototype.filter.call(grid.querySelectorAll('input:checked'), function () { return true; })
+                    .map(function (i) { return i.getAttribute('data-col'); });
+                if (!cols.length) cols = ['PERIODO', 'AREA'];
+                guardarColumnasVisibles(cols);
+                renderTablaBase();
+            });
+        });
+    }
+
+    function renderStats(elId, total, filtradas) {
+        document.getElementById(elId).innerHTML =
+            '<div class="stat-card"><div class="n">' + total + '</div><div class="l">En la base</div></div>'
+            + '<div class="stat-card"><div class="n">' + filtradas + '</div><div class="l">Con filtros</div></div>'
+            + '<div class="stat-card"><div class="n">' + state.cargas.length + '</div><div class="l">Períodos cargados</div></div>';
+    }
+
+    function renderTablaBase() {
+        var cols = leerColumnasVisibles();
+        if (!cols.length) cols = COLUMNAS_DEFAULT.slice();
+        var filtradas = filasFiltradas('f');
+        var totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+        if (state.page >= totalPages) state.page = 0;
+        var start = state.page * PAGE_SIZE;
+        var pageRows = filtradas.slice(start, start + PAGE_SIZE);
+        var thead = '<tr>' + cols.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
+        var tbody = pageRows.map(function (r) {
+            return '<tr>' + cols.map(function (c) { return '<td>' + escapeHtml(r[c]) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+        if (!pageRows.length) tbody = '<tr><td colspan="' + cols.length + '" class="muted">No hay vacantes para estos filtros.</td></tr>';
+        document.querySelector('#tablaBase thead').innerHTML = thead;
+        document.querySelector('#tablaBase tbody').innerHTML = tbody;
+        document.getElementById('pagerBase').innerHTML =
+            '<button type="button" class="secondary" id="pgPrev"' + (state.page === 0 ? ' disabled' : '') + '>Anterior</button>'
+            + '<span>Página ' + (state.page + 1) + ' / ' + totalPages + ' · ' + filtradas.length + ' filas</span>'
+            + '<button type="button" class="secondary" id="pgNext"' + (state.page >= totalPages - 1 ? ' disabled' : '') + '>Siguiente</button>';
+        var prev = document.getElementById('pgPrev');
+        var next = document.getElementById('pgNext');
+        if (prev) prev.onclick = function () { state.page -= 1; renderTablaBase(); };
+        if (next) next.onclick = function () { state.page += 1; renderTablaBase(); };
+        renderStats('statsBase', state.rows.length, filtradas.length);
+    }
+
+    function construirInforme(filas) {
+        var agrupado = {};
+        filas.forEach(function (fila) {
+            var area = String(fila.AREA || '').trim() || '(Sin área)';
+            var cargo = cargoLabel(fila);
+            var asig = asigLabel(fila);
+            var esp = espLabel(fila);
+            var clave = [area, cargo, asig, esp].join('||');
+            if (!agrupado[clave]) {
+                agrupado[clave] = { area: area, cargo: cargo, asig: asig, esp: esp, cantidad: 0 };
+            }
+            agrupado[clave].cantidad += 1;
+        });
+        var items = Object.keys(agrupado).map(function (k) { return agrupado[k]; });
+        items.sort(function (a, b) {
+            var cmp = a.area.localeCompare(b.area, 'es');
+            if (cmp) return cmp;
+            cmp = a.cargo.localeCompare(b.cargo, 'es');
+            if (cmp) return cmp;
+            cmp = a.asig.localeCompare(b.asig, 'es');
+            if (cmp) return cmp;
+            return a.esp.localeCompare(b.esp, 'es');
+        });
+        return items;
+    }
+
+    function renderInforme() {
+        var filtradas = filasFiltradas('i');
+        var items = construirInforme(filtradas);
+        var thead = '<tr><th>Área</th><th>Cargo</th><th>Asignatura</th><th>Especialidad</th><th>Cantidad</th></tr>';
+        var tbody = items.map(function (it) {
+            return '<tr><td>' + escapeHtml(it.area) + '</td><td>' + escapeHtml(it.cargo) + '</td><td>'
+                + escapeHtml(it.asig) + '</td><td>' + escapeHtml(it.esp) + '</td><td>' + it.cantidad + '</td></tr>';
+        }).join('');
+        if (!items.length) tbody = '<tr><td colspan="5" class="muted">No hay datos para el informe.</td></tr>';
+        document.querySelector('#tablaInforme thead').innerHTML = thead;
+        document.querySelector('#tablaInforme tbody').innerHTML = tbody;
+        document.querySelector('#tablaInforme tfoot').innerHTML =
+            '<tr><td colspan="4">TOTAL</td><td>' + filtradas.length + '</td></tr>';
+        renderStats('statsInforme', state.rows.length, filtradas.length);
+    }
+
+    function bindFilterSelects(prefix, onChange) {
+        ['periodo', 'area', 'cargo', 'asig', 'esp', 'codes'].forEach(function (k) {
+            document.getElementById(prefix + k).addEventListener('change', onChange);
+        });
+    }
+
+    function setStatus(msg, isError) {
+        var el = document.getElementById('status');
+        el.className = isError ? 'error' : '';
+        el.innerText = msg || '';
+    }
+
+    function recargarBase() {
+        return PortalAuth.loadVacantesRows().then(function (data) {
+            state.cargas = data.cargas || [];
+            state.rows = data.rows || [];
+            state.source = data.source || '';
+            state.page = 0;
+            renderCargas();
+            refreshFilterOptions();
+            renderTablaBase();
+            renderInforme();
+        });
+    }
+
+    function periodoDefault() {
+        var now = new Date();
+        var m = String(now.getMonth() + 1).padStart(2, '0');
+        return now.getFullYear() + '-' + m;
+    }
+
+    document.getElementById('periodoInput').value = periodoDefault();
+    buildFilterSelects('filtrosBase', 'f');
+    buildFilterSelects('filtrosInforme', 'i');
+    renderColsGrid();
+    bindFilterSelects('f', function () { state.page = 0; renderTablaBase(); });
+    bindFilterSelects('i', renderInforme);
+
+    document.getElementById('btnLimpiarFiltros').onclick = function () {
+        clearFilters('f'); state.page = 0; renderTablaBase();
+    };
+    document.getElementById('btnLimpiarInforme').onclick = function () {
+        clearFilters('i'); renderInforme();
+    };
+    document.getElementById('btnColsTodas').onclick = function () {
+        guardarColumnasVisibles(COLUMNAS_RESULTADO.slice());
+        renderColsGrid();
+        renderTablaBase();
+    };
+    document.getElementById('btnColsDefault').onclick = function () {
+        guardarColumnasVisibles(COLUMNAS_DEFAULT.slice());
+        renderColsGrid();
+        renderTablaBase();
+    };
+
+    document.getElementById('btnExportarBase').onclick = function () {
+        var cols = leerColumnasVisibles();
+        var filtradas = filasFiltradas('f');
+        if (!filtradas.length) { alert('No hay filas para exportar.'); return; }
+        var data = filtradas.map(function (r) {
+            var o = {};
+            cols.forEach(function (c) { o[c] = r[c]; });
+            return o;
+        });
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data, { header: cols }), 'Vacantes');
+        XLSX.writeFile(wb, 'Vacantes_Provisorias_' + periodoDefault() + '.xlsx');
+    };
+
+    document.getElementById('btnExportarInforme').onclick = function () {
+        var filtradas = filasFiltradas('i');
+        var items = construirInforme(filtradas);
+        var aoa = [['AREA', 'CARGO', 'ASIGNATURA', 'ESPECIALIDAD', 'CANTIDAD VACANTES']];
+        items.forEach(function (it) { aoa.push([it.area, it.cargo, it.asig, it.esp, it.cantidad]); });
+        aoa.push(['TOTAL', '', '', '', filtradas.length]);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Informe');
+        XLSX.writeFile(wb, 'Informe_Vacantes_Provisorias_' + periodoDefault() + '.xlsx');
+    };
+
+    document.getElementById('btnCargar').onclick = function () {
+        var fileInput = document.getElementById('fileInput');
+        var periodo = document.getElementById('periodoInput').value;
+        if (!periodo) { setStatus('Indicá el período (mes) de la carga.', true); return; }
+        if (!fileInput.files.length) { setStatus('Cargá el archivo de vacantes.', true); return; }
+        var file = fileInput.files[0];
+        setStatus('Procesando archivo…');
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                var workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                var crudas = leerFilasArchivo(workbook);
+                if (!crudas.length) throw new Error('El archivo no contiene datos o no se reconoció el encabezado.');
+                var result = codificarFilas(crudas, periodo);
+                var areasA = {};
+                result.filas.forEach(function (r) {
+                    if (r.AREA === 'Secundaria Adultos' || r.AREA === 'Adultos Primaria') {
+                        areasA[r.AREA] = (areasA[r.AREA] || 0) + 1;
+                    }
+                });
+                PortalAuth.saveVacantesCarga({
+                    periodo: periodo,
+                    archivo: file.name,
+                    rows: result.filas,
+                    detalle: 'Duplicados Id. POF: ' + result.removed
+                }).then(function (saved) {
+                    if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                        PortalAuth.logProcessRun({
+                            module: 'vacantes_provisorias',
+                            moduleLabel: 'Vacantes Provisorias',
+                            procesador: 'carga_mensual',
+                            procesadorLabel: 'Carga mensual',
+                            archivoOrigen: file.name || '',
+                            archivoSalida: '',
+                            filas: result.filas.length,
+                            area: Object.keys(areasA).join(' / '),
+                            detalle: 'Período ' + periodo + '. Duplicados Id. POF: ' + result.removed
+                                + '. Área A: ' + JSON.stringify(areasA),
+                            extras: { periodo: periodo, duplicadosEliminados: result.removed, source: saved.source }
+                        });
+                    }
+                    var extra = result.removed ? (' Se quitaron ' + result.removed + ' duplicados de Id. POF.') : '';
+                    var nube = saved.source === 'firestore' ? ' Guardado también en la nube.' : ' Guardado en este navegador.';
+                    var warn = saved.warning ? (' Aviso: ' + saved.warning) : '';
+                    setStatus('Listo: ' + result.filas.length + ' vacantes del período ' + periodo + '.' + extra + nube + warn);
+                    fileInput.value = '';
+                    return recargarBase();
+                }).catch(function (err) {
+                    setStatus((err && err.message) || 'No se pudo guardar la carga.', true);
+                });
+            } catch (err) {
+                console.error(err);
+                setStatus((err && err.message) || 'No se pudo leer el archivo. Revisá el formato de columnas.', true);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    var infoOverlay = document.getElementById('infoOverlay');
+    document.getElementById('infoOpen').onclick = function () { infoOverlay.classList.add('visible'); };
+    document.getElementById('infoClose').onclick = function () { infoOverlay.classList.remove('visible'); };
+    infoOverlay.addEventListener('click', function (e) {
+        if (e.target === infoOverlay) infoOverlay.classList.remove('visible');
+    });
+
+    PortalAuth.ready().then(function () {
+        var user = PortalAuth.requireAuth({ module: 'vacantes_provisorias' });
+        if (!user) return;
+        if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+            PortalHeader.fillUserMenu(user);
+        }
+        recargarBase().catch(function (err) {
+            setStatus((err && err.message) || 'No se pudo leer la base.', true);
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

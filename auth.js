@@ -44,6 +44,7 @@
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
     control_pof: 'control_pof',
+    vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
     admin_logs: 'admin_logs'
   };
@@ -64,12 +65,13 @@
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
       MODULES.control_pof,
+      MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
       MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto]),
-    concursos: MANUALES.concat([MODULES.eleves_concursos]),
-    listados: MANUALES.concat([MODULES.control_pof]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.vacantes_provisorias]),
+    listados: MANUALES.concat([MODULES.control_pof, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
   };
 
@@ -1567,6 +1569,397 @@
       });
   }
 
+  var VACANTES_CARGAS_COL = 'vacantes_provisorias_cargas';
+  var VACANTES_CHUNKS_COL = 'vacantes_provisorias_chunks';
+  var VACANTES_IDB_NAME = 'coreap-vacantes-provisorias';
+  var VACANTES_IDB_VERSION = 1;
+  var VACANTES_CHUNK_SIZE = 80;
+
+  function vacantesCargaId() {
+    return 'vp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function openVacantesIdb() {
+    return new Promise(function (resolve, reject) {
+      if (!global.indexedDB) {
+        reject(new Error('IndexedDB no está disponible en este navegador.'));
+        return;
+      }
+      var req = indexedDB.open(VACANTES_IDB_NAME, VACANTES_IDB_VERSION);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('cargas')) {
+          db.createObjectStore('cargas', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('chunks')) {
+          db.createObjectStore('chunks', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error('No se pudo abrir IndexedDB.')); };
+    });
+  }
+
+  function idbTxDone(tx) {
+    return new Promise(function (resolve, reject) {
+      tx.oncomplete = function () { resolve(); };
+      tx.onerror = function () { reject(tx.error); };
+      tx.onabort = function () { reject(tx.error || new Error('Transacción abortada.')); };
+    });
+  }
+
+  function idbGetAll(storeName) {
+    return openVacantesIdb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(storeName, 'readonly');
+        var req = tx.objectStore(storeName).getAll();
+        req.onsuccess = function () { resolve(req.result || []); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function chunkRows(rows, size) {
+    var out = [];
+    var i;
+    for (i = 0; i < rows.length; i += size) {
+      out.push(rows.slice(i, i + size));
+    }
+    if (!out.length) out.push([]);
+    return out;
+  }
+
+  function saveVacantesCargaIdb(meta, rows) {
+    var chunks = chunkRows(rows || [], VACANTES_CHUNK_SIZE);
+    meta.chunkCount = chunks.length;
+    meta.filas = (rows || []).length;
+    return Promise.all([idbGetAll('cargas'), idbGetAll('chunks')]).then(function (pair) {
+      var cargas = pair[0] || [];
+      var allChunks = pair[1] || [];
+      var toDelete = cargas.filter(function (c) {
+        return c.periodo === meta.periodo && c.id !== meta.id;
+      });
+      var deleteIds = {};
+      toDelete.forEach(function (c) { deleteIds[c.id] = true; });
+      return openVacantesIdb().then(function (db) {
+        var tx = db.transaction(['cargas', 'chunks'], 'readwrite');
+        var cargasStore = tx.objectStore('cargas');
+        var chunksStore = tx.objectStore('chunks');
+        toDelete.forEach(function (c) { cargasStore.delete(c.id); });
+        allChunks.forEach(function (ch) {
+          if (deleteIds[ch.cargaId]) chunksStore.delete(ch.id);
+        });
+        cargasStore.put(meta);
+        chunks.forEach(function (part, idx) {
+          chunksStore.put({
+            id: meta.id + '_' + idx,
+            cargaId: meta.id,
+            periodo: meta.periodo,
+            index: idx,
+            rows: part
+          });
+        });
+        return idbTxDone(tx);
+      });
+    }).then(function () { return meta; });
+  }
+
+  function listVacantesCargasIdb() {
+    return idbGetAll('cargas').then(function (list) {
+      return list.sort(function (a, b) {
+        return String(b.periodo || '').localeCompare(String(a.periodo || ''))
+          || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      });
+    });
+  }
+
+  function loadVacantesRowsIdb() {
+    return Promise.all([idbGetAll('cargas'), idbGetAll('chunks')]).then(function (pair) {
+      var cargas = pair[0] || [];
+      var chunks = pair[1] || [];
+      var cargaIds = {};
+      cargas.forEach(function (c) { cargaIds[c.id] = true; });
+      chunks.sort(function (a, b) {
+        var cmp = String(a.cargaId || '').localeCompare(String(b.cargaId || ''));
+        if (cmp) return cmp;
+        return (a.index || 0) - (b.index || 0);
+      });
+      var rows = [];
+      chunks.forEach(function (ch) {
+        if (!cargaIds[ch.cargaId]) return;
+        (ch.rows || []).forEach(function (r) { rows.push(r); });
+      });
+      return { cargas: cargas, rows: rows };
+    });
+  }
+
+  function deleteVacantesCargaIdb(cargaId) {
+    return openVacantesIdb().then(function (db) {
+      return idbGetAll('chunks').then(function (chunks) {
+        var tx = db.transaction(['cargas', 'chunks'], 'readwrite');
+        tx.objectStore('cargas').delete(cargaId);
+        chunks.forEach(function (ch) {
+          if (ch.cargaId === cargaId) tx.objectStore('chunks').delete(ch.id);
+        });
+        return idbTxDone(tx);
+      });
+    });
+  }
+
+  function firestoreVacantesReady() {
+    return !!(initFirebase() && _firestore);
+  }
+
+  function deleteFirestoreCargasForPeriodo(periodo, keepId) {
+    if (!firestoreVacantesReady()) return Promise.resolve();
+    return _firestore.collection(VACANTES_CARGAS_COL).where('periodo', '==', periodo).get()
+      .then(function (snap) {
+        var ids = [];
+        snap.forEach(function (doc) {
+          if (doc.id !== keepId) ids.push(doc.id);
+        });
+        if (!ids.length) return;
+        return _firestore.collection(VACANTES_CHUNKS_COL).get().then(function (chunkSnap) {
+          var batch = _firestore.batch();
+          var ops = 0;
+          var chain = Promise.resolve();
+          function flush() {
+            if (!ops) return Promise.resolve();
+            var current = batch;
+            batch = _firestore.batch();
+            ops = 0;
+            return current.commit();
+          }
+          chunkSnap.forEach(function (doc) {
+            var d = doc.data() || {};
+            if (ids.indexOf(d.cargaId) === -1) return;
+            batch.delete(doc.ref);
+            ops += 1;
+            if (ops >= 400) {
+              chain = chain.then(flush);
+            }
+          });
+          ids.forEach(function (id) {
+            batch.delete(_firestore.collection(VACANTES_CARGAS_COL).doc(id));
+            ops += 1;
+            if (ops >= 400) chain = chain.then(flush);
+          });
+          return chain.then(flush);
+        });
+      });
+  }
+
+  function saveVacantesCargaFirestore(meta, rows) {
+    if (!firestoreVacantesReady()) return Promise.resolve(null);
+    var chunks = chunkRows(rows || [], VACANTES_CHUNK_SIZE);
+    meta.chunkCount = chunks.length;
+    meta.filas = (rows || []).length;
+    return ensureFirebaseAuthForWrite().then(function () {
+      return deleteFirestoreCargasForPeriodo(meta.periodo, meta.id);
+    }).then(function () {
+      var batch = _firestore.batch();
+      var ops = 0;
+      var chain = Promise.resolve();
+      function flush() {
+        if (!ops) return Promise.resolve();
+        var current = batch;
+        batch = _firestore.batch();
+        ops = 0;
+        return current.commit();
+      }
+      batch.set(_firestore.collection(VACANTES_CARGAS_COL).doc(meta.id), meta);
+      ops += 1;
+      chunks.forEach(function (part, idx) {
+        batch.set(_firestore.collection(VACANTES_CHUNKS_COL).doc(meta.id + '_' + idx), {
+          cargaId: meta.id,
+          periodo: meta.periodo,
+          index: idx,
+          rows: part
+        });
+        ops += 1;
+        if (ops >= 400) chain = chain.then(flush);
+      });
+      return chain.then(flush);
+    }).then(function () { return meta; });
+  }
+
+  function listVacantesCargasFirestore() {
+    if (!firestoreVacantesReady()) return Promise.resolve(null);
+    return _firestore.collection(VACANTES_CARGAS_COL).get().then(function (snap) {
+      var list = [];
+      snap.forEach(function (doc) {
+        var d = doc.data() || {};
+        d.id = doc.id;
+        list.push(d);
+      });
+      list.sort(function (a, b) {
+        return String(b.periodo || '').localeCompare(String(a.periodo || ''))
+          || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      });
+      return list;
+    });
+  }
+
+  function loadVacantesRowsFirestore() {
+    if (!firestoreVacantesReady()) return Promise.resolve(null);
+    return Promise.all([
+      _firestore.collection(VACANTES_CARGAS_COL).get(),
+      _firestore.collection(VACANTES_CHUNKS_COL).get()
+    ]).then(function (pair) {
+      var cargas = [];
+      var cargaIds = {};
+      pair[0].forEach(function (doc) {
+        var d = doc.data() || {};
+        d.id = doc.id;
+        cargas.push(d);
+        cargaIds[doc.id] = true;
+      });
+      var chunks = [];
+      pair[1].forEach(function (doc) {
+        var d = doc.data() || {};
+        d.id = doc.id;
+        chunks.push(d);
+      });
+      chunks.sort(function (a, b) {
+        var cmp = String(a.cargaId || '').localeCompare(String(b.cargaId || ''));
+        if (cmp) return cmp;
+        return (a.index || 0) - (b.index || 0);
+      });
+      var rows = [];
+      chunks.forEach(function (ch) {
+        if (!cargaIds[ch.cargaId]) return;
+        (ch.rows || []).forEach(function (r) { rows.push(r); });
+      });
+      return { cargas: cargas, rows: rows, source: 'firestore' };
+    });
+  }
+
+  function deleteVacantesCargaFirestore(cargaId) {
+    if (!firestoreVacantesReady()) return Promise.resolve();
+    return ensureFirebaseAuthForWrite().then(function () {
+      return _firestore.collection(VACANTES_CHUNKS_COL).where('cargaId', '==', cargaId).get();
+    }).then(function (snap) {
+      var batch = _firestore.batch();
+      var ops = 0;
+      var chain = Promise.resolve();
+      function flush() {
+        if (!ops) return Promise.resolve();
+        var current = batch;
+        batch = _firestore.batch();
+        ops = 0;
+        return current.commit();
+      }
+      snap.forEach(function (doc) {
+        batch.delete(doc.ref);
+        ops += 1;
+        if (ops >= 400) chain = chain.then(flush);
+      });
+      batch.delete(_firestore.collection(VACANTES_CARGAS_COL).doc(cargaId));
+      ops += 1;
+      return chain.then(flush);
+    });
+  }
+
+  function canAccessVacantes(user) {
+    return canAccess(MODULES.vacantes_provisorias, user);
+  }
+
+  /**
+   * Guarda una carga mensual de vacantes (reemplaza el período si ya existía).
+   * Escribe IndexedDB siempre; Firestore si hay sesión Firebase.
+   */
+  function saveVacantesCarga(details) {
+    details = details || {};
+    var user = currentUser();
+    if (!user || !canAccessVacantes(user)) {
+      return Promise.reject(new Error('No tenés permiso para cargar vacantes provisorias.'));
+    }
+    var rows = Array.isArray(details.rows) ? details.rows : [];
+    var meta = {
+      id: details.id || vacantesCargaId(),
+      periodo: String(details.periodo || '').trim(),
+      archivo: String(details.archivo || ''),
+      filas: rows.length,
+      createdAt: new Date().toISOString(),
+      email: normalizeEmail(user.email),
+      nombre: displayName(user),
+      detalle: String(details.detalle || '')
+    };
+    if (!meta.periodo) {
+      return Promise.reject(new Error('Indicá el período (mes) de la carga.'));
+    }
+    return saveVacantesCargaIdb(meta, rows).then(function () {
+      if (!firestoreVacantesReady()) {
+        return { ok: true, meta: meta, source: 'local' };
+      }
+      return saveVacantesCargaFirestore(meta, rows).then(function () {
+        return { ok: true, meta: meta, source: 'firestore' };
+      }).catch(function (err) {
+        console.warn('Vacantes: no se pudo guardar en Firestore', err);
+        return { ok: true, meta: meta, source: 'local', warning: (err && err.message) || 'Sin sync en la nube' };
+      });
+    });
+  }
+
+  function listVacantesCargas() {
+    var user = currentUser();
+    if (!user || !canAccessVacantes(user)) {
+      return Promise.reject(new Error('No tenés permiso para ver vacantes provisorias.'));
+    }
+    if (!firestoreVacantesReady()) return listVacantesCargasIdb();
+    return listVacantesCargasFirestore().then(function (list) {
+      if (list && list.length) return list;
+      return listVacantesCargasIdb();
+    }).catch(function (err) {
+      console.warn('Vacantes: listado Firestore', err);
+      return listVacantesCargasIdb();
+    });
+  }
+
+  function loadVacantesRows() {
+    var user = currentUser();
+    if (!user || !canAccessVacantes(user)) {
+      return Promise.reject(new Error('No tenés permiso para ver vacantes provisorias.'));
+    }
+    if (!firestoreVacantesReady()) {
+      return loadVacantesRowsIdb().then(function (data) {
+        data.source = 'local';
+        return data;
+      });
+    }
+    return loadVacantesRowsFirestore().then(function (data) {
+      if (data && data.rows && data.rows.length) return data;
+      return loadVacantesRowsIdb().then(function (local) {
+        local.source = local.rows && local.rows.length ? 'local' : 'empty';
+        return local;
+      });
+    }).catch(function (err) {
+      console.warn('Vacantes: lectura Firestore', err);
+      return loadVacantesRowsIdb().then(function (local) {
+        local.source = 'local';
+        local.warning = (err && err.message) || '';
+        return local;
+      });
+    });
+  }
+
+  function deleteVacantesCarga(cargaId) {
+    var user = currentUser();
+    if (!user || !canAccessVacantes(user)) {
+      return Promise.reject(new Error('No tenés permiso para borrar vacantes provisorias.'));
+    }
+    if (!cargaId) return Promise.reject(new Error('Falta el identificador de la carga.'));
+    return deleteVacantesCargaIdb(cargaId).then(function () {
+      if (!firestoreVacantesReady()) return { ok: true };
+      return deleteVacantesCargaFirestore(cargaId).then(function () {
+        return { ok: true };
+      }).catch(function (err) {
+        console.warn('Vacantes: no se pudo borrar en Firestore', err);
+        return { ok: true, warning: (err && err.message) || '' };
+      });
+    });
+  }
+
   function describePermissions(roleOrUser) {
     var map = {
       acto_publico: 'Acto Público',
@@ -1576,6 +1969,7 @@
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
       control_pof: 'Control POF',
+      vacantes_provisorias: 'Vacantes Provisorias',
       admin_usuarios: 'Gestión de usuarios',
       admin_logs: 'Log de procesos'
     };
@@ -1624,6 +2018,10 @@
     removeUser: removeUser,
     logProcessRun: logProcessRun,
     listProcessLogs: listProcessLogs,
+    saveVacantesCarga: saveVacantesCarga,
+    listVacantesCargas: listVacantesCargas,
+    loadVacantesRows: loadVacantesRows,
+    deleteVacantesCarga: deleteVacantesCarga,
     roleLabel: roleLabel,
     rolesLabel: rolesLabel,
     describePermissions: describePermissions,
