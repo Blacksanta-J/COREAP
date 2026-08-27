@@ -48,11 +48,30 @@
             border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; box-sizing: border-box; font: inherit; font-size: 13px;
         }
         .mes-carga-row {
-            display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 4px;
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; margin-top: 4px;
         }
-        .mes-carga-row .field { flex: 1; min-width: 140px; max-width: 220px; }
-        .mes-carga-row .field .label-text { margin-top: 12px; }
-        .mes-carga-row select, .mes-carga-row input[type="number"] { margin-top: 6px; }
+        .mes-carga-row .field {
+            flex: 1 1 160px; min-width: 140px; max-width: 220px;
+            display: flex; flex-direction: column;
+        }
+        .mes-carga-row .field .label-text {
+            margin-top: 12px; margin-bottom: 0;
+        }
+        .mes-carga-row select,
+        .mes-carga-row input[type="number"] {
+            margin: 6px 0 0 0 !important;
+            padding: 7px 10px !important;
+            height: 38px;
+            line-height: 1.2;
+            box-sizing: border-box;
+            width: 100%;
+            color: var(--text);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font: inherit;
+            font-size: 13px;
+        }
         .filter-combo { position: relative; }
         .filter-combo input { margin-top: 0; padding: 7px 10px; font-size: 13px; width: 100%; }
         .filter-hint { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
