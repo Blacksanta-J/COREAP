@@ -332,6 +332,7 @@
                 <li>Procesa <strong>Base y Ascenso</strong>.</li>
                 <li>Pide el <strong>catálogo de combinaciones</strong> (una hoja: CODIGO CARGO, CODIGO ASIGNATURA, CODIGO ESPECIALIDAD). La coincidencia es exacta.</li>
                 <li>Lo que no matchea va a la hoja <strong>Sin coincidencia</strong>.</li>
+                <li>Códigos: Media <strong>1567→15677</strong>, <strong>1556→15667</strong>; Artística <strong>1556→15561</strong>.</li>
                 <li>Publicación <strong>10:00</strong>. Apertura desde <strong>18:00</strong>, de a 5 minutos por combinación, primero Ascenso y después Base.</li>
                 <li>Cargo <strong>1582</strong>: publicación 16:00 y apertura desde 19:30 (también de a 5 minutos).</li>
                 <li>Novedad queda en <strong>2</strong>. No recodifica 1081 ni 691.</li>
@@ -876,6 +877,19 @@
         return texto;
     }
 
+    /** Equivalencias fijas de código cargo según área (Elevador Acto). */
+    function equivalenciaCargoPorArea(cargo, ctx) {
+        var c = normalizarCodigo(cargo);
+        if (!c) return cargo;
+        if (ctx.isMedia) {
+            if (c === "1567") return "15677";
+            if (c === "1556") return "15667";
+        }
+        if (ctx.isArtistica && c === "1556") return "15561";
+        if (ctx.usaReglasNormales && c === "1556") return "155661";
+        return cargo;
+    }
+
     function valorPorNombres(row, candidatos) {
         const wanted = candidatos.map(normalizarNombreCol);
         const key = Object.keys(row || {}).find(k => wanted.includes(normalizarNombreCol(k)));
@@ -1395,6 +1409,11 @@
                         newRow['TEMP_VACIA'] = "CONTROLAR";
                     }
                 } else if (isServiciosProf || usaReglasMedia || usaReglasNormales) {
+                    nuevoCargo = equivalenciaCargoPorArea(cargo, {
+                        isMedia: isMedia,
+                        isArtistica: isArtistica,
+                        usaReglasNormales: usaReglasNormales
+                    });
                     let numericCargo = Number(nuevoCargo);
                     newRow['CODIGO CARGO'] = (!isNaN(numericCargo) && String(nuevoCargo).trim() !== "") ? numericCargo : nuevoCargo;
                 } else if (isPrimariaAdultos) {
