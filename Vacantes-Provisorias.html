@@ -61,15 +61,32 @@
             width: auto !important; margin: 0 !important; padding: 4px 8px !important; font-size: 11px !important;
         }
         .excl-box {
-            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+            margin-top: 10px; padding: 8px 10px; border-radius: 8px;
             background: var(--input-bg); border: 1px solid var(--border);
         }
-        .excl-box h4 { margin: 0 0 6px; font-size: 13px; color: var(--heading); }
-        .excl-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-        .excl-actions .field { flex: 1; min-width: 160px; }
-        .excl-actions button, .excl-actions label.file-btn {
-            width: auto; margin: 0; padding: 7px 12px; font-size: 12px; cursor: pointer;
+        .excl-box summary {
+            cursor: pointer; font-size: 12px; font-weight: 700; color: var(--heading);
+            list-style: none; display: flex; align-items: center; gap: 6px;
         }
+        .excl-box summary::-webkit-details-marker { display: none; }
+        .excl-box summary::before { content: '▸'; font-size: 10px; color: var(--muted); }
+        .excl-box[open] summary::before { content: '▾'; }
+        .excl-body { margin-top: 8px; }
+        .excl-actions {
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end;
+        }
+        .excl-actions .field { flex: 1; min-width: 120px; max-width: 220px; }
+        .excl-actions .field label { font-size: 9px; margin-bottom: 2px; }
+        .excl-actions input[type="text"], .excl-actions select {
+            margin-top: 0; padding: 5px 8px; font-size: 12px;
+        }
+        .excl-actions button, .excl-actions label.file-btn {
+            width: auto; margin: 0; padding: 5px 10px; font-size: 11px; cursor: pointer;
+        }
+        .excl-hint { font-size: 10px; color: var(--muted); margin: 6px 0 0; line-height: 1.35; }
+        #statusExcluir { margin-top: 4px; font-size: 11px; }
+        table.data td.col-excl { min-width: 72px; }
+        table.data td.col-motivo-excl { max-width: 180px; white-space: normal; font-size: 11px; color: var(--muted); }
         label.file-btn {
             display: inline-flex; align-items: center; background: var(--btn-secondary); color: var(--btn-secondary-text);
             border-radius: 6px; font-weight: 700;
@@ -236,26 +253,32 @@
             <button type="button" class="secondary" id="btnExportarBase">Exportar vista (Excel)</button>
         </div>
 
-        <div class="excl-box">
-            <h4>Excluir vacantes</h4>
-            <p class="muted" style="margin:0 0 10px;">Marcá vacantes para sacarlas del informe. Podés excluir de a una en la tabla o cargar un archivo con columna <strong>Id. POF</strong>.</p>
-            <div class="excl-actions">
-                <div class="field">
-                    <label for="filtroExcluidas">Vista de excluidas</label>
-                    <select id="filtroExcluidas">
-                        <option value="ocultar">Ocultar excluidas</option>
-                        <option value="todas">Mostrar todas</option>
-                        <option value="solo">Solo excluidas</option>
-                    </select>
+        <details class="excl-box">
+            <summary>Excluir vacantes</summary>
+            <div class="excl-body">
+                <div class="excl-actions">
+                    <div class="field">
+                        <label for="motivoExclusion">Motivo</label>
+                        <input type="text" id="motivoExclusion" placeholder="Motivo de exclusión…" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label for="filtroExcluidas">Vista</label>
+                        <select id="filtroExcluidas">
+                            <option value="ocultar">Ocultar excluidas</option>
+                            <option value="todas">Mostrar todas</option>
+                            <option value="solo">Solo excluidas</option>
+                        </select>
+                    </div>
+                    <label class="file-btn secondary" title="Archivo con Id. POF y opcional Motivo">Desde archivo
+                        <input type="file" id="fileExcluir" accept=".csv, .xls, .xlsx" />
+                    </label>
+                    <button type="button" class="secondary" id="btnIncluirSeleccion" disabled title="Seleccioná filas">Incluir</button>
+                    <button type="button" class="secondary" id="btnExcluirSeleccion" disabled title="Seleccioná filas">Excluir</button>
                 </div>
-                <label class="file-btn secondary">Excluir desde archivo
-                    <input type="file" id="fileExcluir" accept=".csv, .xls, .xlsx" />
-                </label>
-                <button type="button" class="secondary" id="btnIncluirSeleccion" disabled title="Seleccioná filas en la tabla">Incluir seleccionadas</button>
-                <button type="button" class="secondary" id="btnExcluirSeleccion" disabled title="Seleccioná filas en la tabla">Excluir seleccionadas</button>
+                <p class="excl-hint">Al excluir indicá el motivo. Archivo: columnas <strong>Id. POF</strong> y opcional <strong>Motivo</strong>.</p>
+                <div id="statusExcluir" class="muted"></div>
             </div>
-            <div id="statusExcluir" class="muted" style="margin-top:8px;"></div>
-        </div>
+        </details>
 
         <details open style="margin-top:16px;">
             <summary style="cursor:pointer;font-weight:700;color:var(--heading);">Columnas visibles</summary>
@@ -301,7 +324,7 @@
                 <li><strong>Área A:</strong> CENS o ANEXO CENS → Secundaria Adultos; resto → Adultos Primaria.</li>
                 <li><strong>CODES:</strong> el ID de establecimiento del archivo (columna CODES) se guarda como ESTABLECIMIENTO ID y se puede filtrar en base e informe.</li>
                 <li><strong>Filtros:</strong> podés escribir el valor o elegir de la lista sugerida.</li>
-                <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF). Quedan marcadas y no entran al informe.</li>
+                <li><strong>Exclusiones:</strong> excluí vacantes de a una o muchas (archivo con Id. POF y motivo). Quedan marcadas y no entran al informe.</li>
                 <li><strong>Columnas:</strong> marcá cuáles querés ver. La preferencia queda en este navegador.</li>
                 <li><strong>Base:</strong> se guarda en este navegador y, si hay Firebase, también en la nube para el equipo.</li>
             </ul>
@@ -334,7 +357,7 @@
         "DESCRIPCION ESPECIALIDAD", "TURNO", "Motivo de la Vacante", "Sit. Rev.", "Cant. Horas",
         "HORARIO A CUMPLIR", "Observación", "AÑO", "DOCENTE", "Novedad Mayor 60 dias habiles",
         "FECHA DESDE", "FECHA HASTA", "FECHA PUBLICACION", "HORA PUBLICACION", "FECHA APERTURA",
-        "HORA APERTURA", "CONTINUIDAD", "Numero de propuesta", "Id. POF", "EXCLUIDA"
+        "HORA APERTURA", "CONTINUIDAD", "Numero de propuesta", "Id. POF", "EXCLUIDA", "MOTIVO EXCLUSION"
     ];
     var COLUMNAS_DEFAULT = [
         "MES", "AREA", "ESTABLECIMIENTO ID", "Numero de Escuela", "Nombre de la escuela",
@@ -470,6 +493,9 @@
         }
         delete out.PERIODO;
         out.EXCLUIDA = normalizarExcluida(out.EXCLUIDA);
+        out['MOTIVO EXCLUSION'] = String(out['MOTIVO EXCLUSION'] || out.MOTIVO_EXCLUSION || out.motivoExclusion || '').trim();
+        delete out.MOTIVO_EXCLUSION;
+        delete out.motivoExclusion;
         delete out._idx;
         return out;
     }
@@ -591,7 +617,8 @@
                 CONTINUIDAD: obtenerValorColumna(fila, ['CONTINUIDAD', 'Continuidad']),
                 'Numero de propuesta': idPof,
                 'Id. POF': idPof,
-                EXCLUIDA: ''
+                EXCLUIDA: '',
+                'MOTIVO EXCLUSION': ''
             };
             var filaOrdenada = {};
             COLUMNAS_RESULTADO.forEach(function (col) {
@@ -838,35 +865,63 @@
             + '<div class="stat-card"><div class="n">' + state.cargas.length + '</div><div class="l">Meses cargados</div></div>';
     }
 
+    function columnasVistaBase(cols) {
+        var base = cols.filter(function (c) {
+            return c !== 'EXCLUIDA' && c !== 'MOTIVO EXCLUSION';
+        });
+        var out = [];
+        var inserted = false;
+        base.forEach(function (c) {
+            out.push(c);
+            if (c === 'MES') {
+                out.push('EXCLUIDA');
+                out.push('MOTIVO EXCLUSION');
+                inserted = true;
+            }
+        });
+        if (!inserted) {
+            out.unshift('MOTIVO EXCLUSION');
+            out.unshift('EXCLUIDA');
+        }
+        return out;
+    }
+
+    function celdaVistaBase(r, c, idx) {
+        var excl = esExcluida(r);
+        if (c === 'EXCLUIDA') {
+            var btnLabel = excl ? 'Incluir' : 'Excluir';
+            var badge = excl ? '<span class="badge-excl">SI</span> ' : '';
+            return '<td class="col-excl">' + badge
+                + '<button type="button" class="secondary btn-row btn-toggle-excl" data-idx="' + idx + '">' + btnLabel + '</button></td>';
+        }
+        if (c === 'MOTIVO EXCLUSION') {
+            return '<td class="col-motivo-excl">' + (excl ? escapeHtml(r['MOTIVO EXCLUSION'] || '') : '') + '</td>';
+        }
+        return '<td>' + escapeHtml(r[c]) + '</td>';
+    }
+
     function renderTablaBase() {
         var cols = leerColumnasVisibles();
         if (!cols.length) cols = COLUMNAS_DEFAULT.slice();
+        var colsVista = columnasVistaBase(cols);
         var filtradas = filasFiltradas('f');
         var totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
         if (state.page >= totalPages) state.page = 0;
         var start = state.page * PAGE_SIZE;
         var pageRows = filtradas.slice(start, start + PAGE_SIZE);
-        var thead = '<tr><th><input type="checkbox" id="chkAllPage" title="Seleccionar página"></th><th></th>'
-            + cols.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
+        var thead = '<tr><th><input type="checkbox" id="chkAllPage" title="Seleccionar página"></th>'
+            + colsVista.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') + '</tr>';
         var tbody = pageRows.map(function (r) {
             var idx = r._idx;
             var excl = esExcluida(r);
             var checked = state.seleccion[idx] ? ' checked' : '';
-            var badge = excl ? ' <span class="badge-excl">Excluida</span>' : '';
-            var btnLabel = excl ? 'Incluir' : 'Excluir';
-            var cells = cols.map(function (c) {
-                if (c === 'EXCLUIDA') {
-                    return '<td>' + (excl ? '<span class="badge-excl">SI</span>' : '') + '</td>';
-                }
-                return '<td>' + escapeHtml(r[c]) + '</td>';
-            }).join('');
+            var cells = colsVista.map(function (c) { return celdaVistaBase(r, c, idx); }).join('');
             return '<tr class="' + (excl ? 'excluida' : '') + '" data-idx="' + idx + '">'
                 + '<td><input type="checkbox" class="chk-row" data-idx="' + idx + '"' + checked + '></td>'
-                + '<td><button type="button" class="secondary btn-row btn-toggle-excl" data-idx="' + idx + '">' + btnLabel + '</button>' + badge + '</td>'
                 + cells + '</tr>';
         }).join('');
         if (!pageRows.length) {
-            tbody = '<tr><td colspan="' + (cols.length + 2) + '" class="muted">No hay vacantes para estos filtros.</td></tr>';
+            tbody = '<tr><td colspan="' + (colsVista.length + 1) + '" class="muted">No hay vacantes para estos filtros.</td></tr>';
         }
         document.querySelector('#tablaBase thead').innerHTML = thead;
         document.querySelector('#tablaBase tbody').innerHTML = tbody;
@@ -902,7 +957,13 @@
                 var i = Number(btn.getAttribute('data-idx'));
                 var fila = state.rows[i];
                 if (!fila) return;
-                setExcluidaIndices([i], !esExcluida(fila));
+                if (esExcluida(fila)) {
+                    setExcluidaIndices([i], false);
+                } else {
+                    var motivo = validarMotivoExclusion();
+                    if (!motivo) return;
+                    setExcluidaIndices([i], true, motivo);
+                }
             });
         });
         actualizarBotonesSeleccion();
@@ -967,6 +1028,22 @@
         el.innerText = msg || '';
     }
 
+    function obtenerMotivoExclusion() {
+        var el = document.getElementById('motivoExclusion');
+        return el ? String(el.value || '').trim() : '';
+    }
+
+    function validarMotivoExclusion() {
+        var motivo = obtenerMotivoExclusion();
+        if (!motivo) {
+            setStatusExcluir('Indicá el motivo de exclusión.', true);
+            var inp = document.getElementById('motivoExclusion');
+            if (inp) inp.focus();
+            return null;
+        }
+        return motivo;
+    }
+
     function persistMesesAfectados(indices) {
         var meses = {};
         (indices || []).forEach(function (i) {
@@ -995,12 +1072,19 @@
         return chain.then(function () { return recargarBase(); });
     }
 
-    function setExcluidaIndices(indices, excluir) {
+    function setExcluidaIndices(indices, excluir, motivo, motivosPorIndice) {
         var touched = [];
         (indices || []).forEach(function (i) {
             var fila = state.rows[i];
             if (!fila) return;
-            fila.EXCLUIDA = excluir ? 'SI' : '';
+            if (excluir) {
+                var m = (motivosPorIndice && motivosPorIndice[i]) || motivo || '';
+                fila.EXCLUIDA = 'SI';
+                fila['MOTIVO EXCLUSION'] = String(m).trim();
+            } else {
+                fila.EXCLUIDA = '';
+                fila['MOTIVO EXCLUSION'] = '';
+            }
             touched.push(i);
         });
         if (!touched.length) {
@@ -1018,29 +1102,46 @@
         });
     }
 
-    function excluirPorIdsPof(ids) {
-        var set = {};
-        (ids || []).forEach(function (id) {
-            var k = String(id || '').trim().toLowerCase();
-            if (k) set[k] = true;
+    function excluirPorRegistros(registros) {
+        var map = {};
+        (registros || []).forEach(function (item) {
+            var id = String(item.id || '').trim().toLowerCase();
+            if (!id) return;
+            map[id] = String(item.motivo || '').trim();
         });
-        var keys = Object.keys(set);
+        var keys = Object.keys(map);
         if (!keys.length) {
             setStatusExcluir('El archivo no tiene Id. POF reconocibles.', true);
             return;
         }
+        var motivoDefault = obtenerMotivoExclusion();
         var indices = [];
+        var errorMotivo = null;
         state.rows.forEach(function (r, i) {
+            if (errorMotivo) return;
             var id = idPofDeFila(r).toLowerCase();
-            if (id && set[id]) {
-                r.EXCLUIDA = 'SI';
-                indices.push(i);
+            if (!id || !map[id]) return;
+            var motivo = map[id] || motivoDefault;
+            if (!motivo) {
+                errorMotivo = 'Falta motivo para Id. POF ' + idPofDeFila(r) + '. Completalo arriba o en el archivo.';
+                return;
             }
+            indices.push(i);
         });
+        if (errorMotivo) {
+            setStatusExcluir(errorMotivo, true);
+            return;
+        }
         if (!indices.length) {
             setStatusExcluir('Ningún Id. POF del archivo coincide con la base (' + keys.length + ' en archivo).', true);
             return;
         }
+        indices.forEach(function (i) {
+            var r = state.rows[i];
+            var id = idPofDeFila(r).toLowerCase();
+            r.EXCLUIDA = 'SI';
+            r['MOTIVO EXCLUSION'] = map[id] || motivoDefault;
+        });
         setStatusExcluir('Excluyendo ' + indices.length + ' vacante(s) desde archivo…');
         persistMesesAfectados(indices).then(function () {
             state.seleccion = {};
@@ -1052,15 +1153,26 @@
         });
     }
 
-    function leerIdsPofDeWorkbook(workbook) {
-        var ids = [];
+    function excluirPorIdsPof(ids) {
+        excluirPorRegistros((ids || []).map(function (id) {
+            return { id: id, motivo: obtenerMotivoExclusion() };
+        }));
+    }
+
+    function leerExclusionesDeWorkbook(workbook) {
+        var registros = [];
         workbook.SheetNames.forEach(function (sheetName) {
             var worksheet = workbook.Sheets[sheetName];
             var json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
             if (json.length) {
                 json.forEach(function (fila) {
                     var id = obtenerValorColumna(fila, ['Id. POF', 'ID Pof', 'ID_POF', 'Id POF', 'POF', 'Numero de propuesta']);
-                    if (id !== '' && id != null) ids.push(String(id).trim());
+                    if (id === '' || id == null) return;
+                    var motivo = obtenerValorColumna(fila, [
+                        'Motivo exclusion', 'Motivo exclusión', 'MOTIVO EXCLUSION', 'Motivo Exclusion',
+                        'Motivo', 'MOTIVO', 'Observacion', 'Observación'
+                    ]);
+                    registros.push({ id: String(id).trim(), motivo: String(motivo || '').trim() });
                 });
                 return;
             }
@@ -1069,10 +1181,18 @@
                 if (!row || !row.length) return;
                 if (idx === 0 && normalizar(String(row[0])).indexOf('pof') >= 0) return;
                 var v = row[0];
-                if (v !== '' && v != null) ids.push(String(v).trim());
+                if (v === '' || v == null) return;
+                registros.push({
+                    id: String(v).trim(),
+                    motivo: row[1] != null ? String(row[1]).trim() : ''
+                });
             });
         });
-        return ids;
+        return registros;
+    }
+
+    function leerIdsPofDeWorkbook(workbook) {
+        return leerExclusionesDeWorkbook(workbook).map(function (r) { return r.id; });
     }
 
     function recargarBase() {
@@ -1130,7 +1250,9 @@
 
     document.getElementById('btnExcluirSeleccion').onclick = function () {
         var indices = Object.keys(state.seleccion).map(Number);
-        setExcluidaIndices(indices, true);
+        var motivo = validarMotivoExclusion();
+        if (!motivo) return;
+        setExcluidaIndices(indices, true, motivo);
     };
     document.getElementById('btnIncluirSeleccion').onclick = function () {
         var indices = Object.keys(state.seleccion).map(Number);
@@ -1146,8 +1268,8 @@
         reader.onload = function (e) {
             try {
                 var workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                var ids = leerIdsPofDeWorkbook(workbook);
-                excluirPorIdsPof(ids);
+                var registros = leerExclusionesDeWorkbook(workbook);
+                excluirPorRegistros(registros);
             } catch (err) {
                 console.error(err);
                 setStatusExcluir((err && err.message) || 'No se pudo leer el archivo de exclusiones.', true);
@@ -1159,16 +1281,20 @@
 
     document.getElementById('btnExportarBase').onclick = function () {
         var cols = leerColumnasVisibles();
-        if (cols.indexOf('EXCLUIDA') === -1) cols = cols.concat(['EXCLUIDA']);
+        var exportCols = columnasVistaBase(cols);
+        if (exportCols.indexOf('EXCLUIDA') === -1) exportCols = ['EXCLUIDA', 'MOTIVO EXCLUSION'].concat(exportCols);
         var filtradas = filasFiltradas('f');
         if (!filtradas.length) { alert('No hay filas para exportar.'); return; }
         var data = filtradas.map(function (r) {
             var o = {};
-            cols.forEach(function (c) { o[c] = c === 'EXCLUIDA' ? (esExcluida(r) ? 'SI' : '') : r[c]; });
+            exportCols.forEach(function (c) {
+                if (c === 'EXCLUIDA') o[c] = esExcluida(r) ? 'SI' : '';
+                else o[c] = r[c];
+            });
             return o;
         });
         var wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data, { header: cols }), 'Vacantes');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data, { header: exportCols }), 'Vacantes');
         XLSX.writeFile(wb, 'Vacantes_Provisorias_' + mesDefault() + '.xlsx');
     };
 
