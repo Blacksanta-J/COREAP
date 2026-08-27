@@ -529,6 +529,8 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   display: inline-block;
   text-decoration: none;
   line-height: 0;
+  position: relative;
+  z-index: 5;
 }
 
 .footer-jayjay-wrap {
@@ -539,6 +541,15 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   overflow: visible;
 }
 
+.footer-jayjay-flyer {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  transform-origin: 40% 55%;
+  will-change: transform;
+}
+
 .footer-jayjay {
   position: relative;
   z-index: 2;
@@ -546,93 +557,118 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   width: auto;
   display: block;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
-  transform-origin: 30% 70%;
-  transition: transform .25s ease;
-  will-change: transform;
 }
 
+/* Llamas pegadas a los motores del avión (viajan con él) */
 .footer-jayjay-flame {
   position: absolute;
-  left: 6px;
-  bottom: 14px;
-  width: 10px;
-  height: 18px;
-  border-radius: 60% 60% 40% 40%;
-  background: radial-gradient(circle at 50% 20%, #fff59d 0%, #ff9800 35%, #f44336 70%, transparent 100%);
-  opacity: 0;
-  transform: scale(0.2) translateX(0);
-  pointer-events: none;
   z-index: 1;
-  filter: blur(0.2px);
-  box-shadow: 0 0 8px 2px rgba(255, 120, 0, .55);
+  pointer-events: none;
+  opacity: 0;
+  border-radius: 50% 50% 40% 40%;
+  background:
+    radial-gradient(circle at 70% 40%, #fffde7 0%, #ffeb3b 18%, #ff9800 48%, #f44336 78%, transparent 100%);
+  box-shadow:
+    0 0 6px 2px rgba(255, 160, 0, .7),
+    0 0 14px 4px rgba(255, 80, 0, .45);
+  transform-origin: right center;
+  filter: blur(0.3px);
 }
 
-.footer-jayjay-flame--a { left: 8px; bottom: 12px; }
-.footer-jayjay-flame--b { left: 18px; bottom: 10px; width: 12px; height: 22px; }
-.footer-jayjay-flame--c { left: 28px; bottom: 14px; width: 9px; height: 16px; }
+/* Motores / escape: detrás-abajo del avioncito */
+.footer-jayjay-flame--a {
+  width: 22px; height: 12px;
+  left: -2px; bottom: 18px;
+}
+.footer-jayjay-flame--b {
+  width: 28px; height: 14px;
+  left: 6px; bottom: 10px;
+}
+.footer-jayjay-flame--c {
+  width: 20px; height: 11px;
+  left: 14px; bottom: 20px;
+}
+.footer-jayjay-flame--d {
+  width: 26px; height: 13px;
+  left: 0; bottom: 6px;
+}
 
-.footer-jayjay-link:hover .footer-jayjay,
-.footer-jayjay-link:focus-visible .footer-jayjay {
-  animation: jayjay-takeoff .85s cubic-bezier(.2, .8, .2, 1) both;
+.footer-jayjay-link:hover .footer-jayjay-flyer,
+.footer-jayjay-link:focus-visible .footer-jayjay-flyer {
+  animation: jayjay-takeoff 1.15s cubic-bezier(.22, .7, .2, 1) forwards;
 }
 
 .footer-jayjay-link:hover .footer-jayjay-flame,
 .footer-jayjay-link:focus-visible .footer-jayjay-flame {
-  animation: jayjay-flame .45s ease-out infinite;
+  animation: jayjay-flame .28s ease-out infinite;
 }
 
 .footer-jayjay-link:hover .footer-jayjay-flame--b,
 .footer-jayjay-link:focus-visible .footer-jayjay-flame--b {
-  animation-delay: .08s;
+  animation-delay: .05s;
 }
-
 .footer-jayjay-link:hover .footer-jayjay-flame--c,
 .footer-jayjay-link:focus-visible .footer-jayjay-flame--c {
-  animation-delay: .16s;
+  animation-delay: .1s;
+}
+.footer-jayjay-link:hover .footer-jayjay-flame--d,
+.footer-jayjay-link:focus-visible .footer-jayjay-flame--d {
+  animation-delay: .15s;
 }
 
+/* Despega hasta salir completamente de la vista */
 @keyframes jayjay-takeoff {
   0% {
     transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
   }
-  18% {
-    transform: translate(-2px, 4px) rotate(-8deg) scale(1.02);
+  12% {
+    transform: translate(-4px, 6px) rotate(-10deg) scale(1.04);
+    opacity: 1;
   }
-  40% {
-    transform: translate(10px, -18px) rotate(-18deg) scale(1.05);
+  28% {
+    transform: translate(18px, -28px) rotate(-22deg) scale(1.08);
+    opacity: 1;
   }
-  70% {
-    transform: translate(28px, -42px) rotate(-28deg) scale(1.08);
+  55% {
+    transform: translate(90px, -110px) rotate(-32deg) scale(1.12);
+    opacity: 1;
+  }
+  78% {
+    transform: translate(180px, -220px) rotate(-40deg) scale(1.15);
+    opacity: .85;
   }
   100% {
-    transform: translate(46px, -58px) rotate(-34deg) scale(1.1);
+    transform: translate(70vw, -90vh) rotate(-48deg) scale(1.2);
+    opacity: 0;
   }
 }
 
+/* Fuego saliendo hacia atrás desde el avión */
 @keyframes jayjay-flame {
   0% {
-    opacity: 0;
-    transform: translateX(2px) scaleY(0.4) scaleX(0.6);
+    opacity: .15;
+    transform: translate(4px, 0) scaleX(.35) scaleY(.7) rotate(8deg);
   }
-  25% {
+  35% {
     opacity: 1;
-    transform: translateX(-4px) scaleY(1.1) scaleX(1);
+    transform: translate(-10px, 2px) scaleX(1.15) scaleY(1.05) rotate(-4deg);
   }
-  55% {
-    opacity: .9;
-    transform: translateX(-12px) scaleY(1.35) scaleX(.85);
+  70% {
+    opacity: .75;
+    transform: translate(-22px, 4px) scaleX(1.45) scaleY(.85) rotate(-8deg);
   }
   100% {
     opacity: 0;
-    transform: translateX(-22px) scaleY(.5) scaleX(.4);
+    transform: translate(-34px, 6px) scaleX(.6) scaleY(.4) rotate(-12deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .footer-jayjay-link:hover .footer-jayjay,
-  .footer-jayjay-link:focus-visible .footer-jayjay {
+  .footer-jayjay-link:hover .footer-jayjay-flyer,
+  .footer-jayjay-link:focus-visible .footer-jayjay-flyer {
     animation: none;
-    transform: translateX(6px) rotate(-3deg);
+    transform: translateX(8px) rotate(-4deg);
   }
   .footer-jayjay-link:hover .footer-jayjay-flame,
   .footer-jayjay-link:focus-visible .footer-jayjay-flame {
