@@ -619,6 +619,45 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   animation-delay: .15s;
 }
 
+/* Clic: rebote tipo DVD por la pantalla */
+.footer-jayjay-link.is-dvd-bounce {
+  position: fixed;
+  z-index: 10050;
+  margin: 0;
+  cursor: pointer;
+  transition: none;
+}
+
+.footer-jayjay-link.is-dvd-bounce .footer-jayjay-flyer {
+  animation: none !important;
+  transition: transform .12s ease-out;
+}
+
+.footer-jayjay-link.is-dvd-bounce .footer-jayjay-flame {
+  animation: jayjay-flame .28s ease-out infinite;
+  opacity: 1;
+}
+
+.footer-jayjay-link.is-dvd-bounce .footer-jayjay-flame--b {
+  animation-delay: .05s;
+}
+.footer-jayjay-link.is-dvd-bounce .footer-jayjay-flame--c {
+  animation-delay: .1s;
+}
+.footer-jayjay-link.is-dvd-bounce .footer-jayjay-flame--d {
+  animation-delay: .15s;
+}
+
+.footer-jayjay-link.is-dvd-pop .footer-jayjay-wrap {
+  animation: jayjay-dvd-pop .28s ease-out;
+}
+
+@keyframes jayjay-dvd-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
 /* Despega en diagonal hacia la derecha/arriba hasta salir de vista */
 @keyframes jayjay-takeoff {
   0% {
@@ -677,6 +716,9 @@ html[data-theme="dark"] .portal-tool-panel button:not(.theme-toggle):not(.info-c
   .footer-jayjay-link:focus-visible .footer-jayjay-flame {
     animation: none;
     opacity: 0;
+  }
+  .footer-jayjay-link.is-dvd-bounce .footer-jayjay-flyer {
+    transform: none;
   }
 }
 
