@@ -24,6 +24,7 @@
         { href: 'Elevador.html', label: 'Eleves Acto', icon: '📄', module: 'eleves_acto' },
         { href: 'Elevador-Control.html', label: 'Eleves Concursos', icon: '🏆', module: 'eleves_concursos' },
         { href: 'Control-POF.html', label: 'Control POF', icon: '🔎', module: 'control_pof' },
+        { href: 'POF-APEL.html', label: 'POF APEL', icon: '📑', module: 'pof_apel' },
         { href: 'Vacantes-Provisorias.html', label: 'Vacantes Provisorias', icon: '📌', module: 'vacantes_provisorias' }
       ]
     },

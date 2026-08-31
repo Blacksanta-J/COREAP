@@ -111,6 +111,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
           <option value="eleves_acto">Eleves Acto Público</option>
           <option value="eleves_concursos">Eleves Concursos</option>
           <option value="control_pof">Control POF</option>
+          <option value="pof_apel">POF APEL</option>
           <option value="vacantes_provisorias">Vacantes Provisorias</option>
         </select>
       </div>
@@ -179,6 +180,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     if (mod === 'eleves_concursos') return '<span class="badge concursos">Concursos</span>';
     if (mod === 'eleves_acto') return '<span class="badge acto">Acto</span>';
     if (mod === 'control_pof') return '<span class="badge pof">POF</span>';
+    if (mod === 'pof_apel') return '<span class="badge pof">APEL</span>';
     if (mod === 'vacantes_provisorias') return '<span class="badge concursos">Vacantes</span>';
     return '<span class="badge">' + (mod || '—') + '</span>';
   }

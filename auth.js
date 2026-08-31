@@ -44,6 +44,7 @@
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
     control_pof: 'control_pof',
+    pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
     admin_logs: 'admin_logs'
@@ -65,11 +66,12 @@
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
       MODULES.control_pof,
+      MODULES.pof_apel,
       MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
       MODULES.admin_logs
     ],
-    apel: MANUALES.concat([MODULES.eleves_acto]),
+    apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel]),
     concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.vacantes_provisorias]),
     listados: MANUALES.concat([MODULES.control_pof, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
@@ -1992,6 +1994,7 @@
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
       control_pof: 'Control POF',
+      pof_apel: 'POF APEL',
       vacantes_provisorias: 'Vacantes Provisorias',
       admin_usuarios: 'Gestión de usuarios',
       admin_logs: 'Log de procesos'
