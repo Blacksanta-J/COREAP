@@ -91,25 +91,25 @@
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">POF APEL</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Transformá la <strong>BASE HARBOUR</strong> al formato <strong>POF para APEL</strong> y cruzá por <strong>ID POF</strong>.</p>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Subí la <strong>BASE HARBOUR</strong> y descargá el Excel en formato POF para APEL.</p>
 </div>
 
 <div class="portal-tool-panel container">
     <div class="header-row">
-        <h2>Cruce Harbour → POF APEL</h2>
+        <h2>BASE HARBOUR → POF APEL</h2>
         <div class="header-actions">
             <button type="button" class="theme-toggle" id="infoOpen" title="Cómo funciona" aria-label="Cómo funciona">ℹ</button>
         </div>
     </div>
 
-    <label class="label-text" for="fileHarbour">1. BASE HARBOUR</label>
+    <label class="label-text" for="fileHarbour">BASE HARBOUR</label>
     <input type="file" id="fileHarbour" accept=".csv, .xls, .xlsx" />
 
-    <label class="label-text" for="filePof">2. POF para APEL</label>
-    <input type="file" id="filePof" accept=".csv, .xls, .xlsx" />
-
     <div class="equiv-box">
-        <strong>Equivalencia de columnas</strong> (BASE HARBOUR → POF para APEL):
+        <strong>Columnas de salida</strong> (en este orden):
+        <code>DNI · COD AREA · ID CARGO · ID ASIGNATURA · ID ESPECIALIDAD · FECHA COMIENZO · TURNO · HORAS · ID ESTABLECIMIENTO · ID POF</code>
+        <br><br>
+        <strong>Equivalencia desde Harbour:</strong>
         <table>
             <thead><tr><th>BASE HARBOUR</th><th>POF para APEL</th></tr></thead>
             <tbody>
@@ -144,8 +144,6 @@
             </tbody>
         </table>
         <span style="font-size:12px;color:var(--muted);">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</span>
-        <br><br>
-        El cruce se hace por <strong>ID POF</strong>. Se eliminan duplicados de ID POF en el resultado (se conserva la primera aparición).
     </div>
 
     <button class="btn-primary" id="btnProcesar" type="button">Procesar y descargar</button>
@@ -167,14 +165,11 @@
         </div>
         <div class="info-content">
             <ul>
-                <li><strong>Archivo 1 (BASE HARBOUR):</strong> se detecta la fila de encabezados y se leen todas las hojas con datos.</li>
+                <li><strong>Archivo (BASE HARBOUR):</strong> se detecta la fila de encabezados y se leen todas las hojas con datos.</li>
+                <li><strong>Salida:</strong> un Excel con las columnas DNI, COD AREA, ID CARGO, ID ASIGNATURA, ID ESPECIALIDAD, FECHA COMIENZO, TURNO, HORAS, ID ESTABLECIMIENTO e ID POF (en ese orden).</li>
                 <li><strong>COD AREA:</strong> se calcula desde el texto de <em>AREA ESTABLECIMIENTO</em> (tabla de códigos). Adultos: CENS/ANEXO CENS en el nombre de escuela → 10; si no → 4.</li>
-                <li><strong>Transformación:</strong> cada fila se convierte al formato POF para APEL según la tabla de equivalencias (ej. DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO).</li>
-                <li><strong>Archivo 2 (POF para APEL):</strong> listado de referencia. Debe tener columna <em>ID POF</em>.</li>
-                <li><strong>Cruce:</strong> filas transformadas de Harbour cuyo ID POF está en el POF para APEL → hoja <em>Coincidieron</em>. Las que no → <em>No coincidieron</em>.</li>
-                <li><strong>POF sin Harbour:</strong> registros del POF para APEL cuyo ID POF no aparece en Harbour transformado.</li>
-                <li><strong>Harbour transformado:</strong> todas las filas de Harbour ya en formato POF APEL.</li>
-                <li><strong>Id. POF duplicados:</strong> en Coincidieron y No coincidieron se quita la repetición (primera aparición).</li>
+                <li><strong>Transformación:</strong> DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO, etc.</li>
+                <li><strong>Id. POF duplicados:</strong> se quita la repetición (se conserva la primera aparición).</li>
             </ul>
         </div>
     </div>
@@ -220,8 +215,6 @@
         { match: 'SERVICIOS PROFESIONALES', code: '9' }
     ];
 
-    var POF_ID_ALIASES = ['ID POF', 'ID. POF', 'IDPOF', 'Id. POF', 'ID DE POF'];
-
     var infoOpen = document.getElementById('infoOpen');
     var infoClose = document.getElementById('infoClose');
     var infoOverlay = document.getElementById('infoOverlay');
@@ -261,22 +254,12 @@
         return hits;
     }
 
-    function pofHeaderScore(row) {
-        var n = (row || []).map(normalizeHeader);
-        var markers = ['ID POF', 'DNI', 'ID CARGO', 'COD AREA'];
-        var hits = 0;
-        markers.forEach(function (m) {
-            if (n.indexOf(normalizeHeader(m)) !== -1) hits += 1;
-        });
-        return hits;
-    }
-
-    function findHeaderRowIndex(aoa, scorer) {
+    function findHeaderRowIndex(aoa) {
         var bestIdx = 0;
         var bestScore = -1;
         var limit = Math.min(25, aoa.length);
         for (var i = 0; i < limit; i++) {
-            var sc = scorer(aoa[i]);
+            var sc = harbourHeaderScore(aoa[i]);
             if (sc > bestScore) {
                 bestScore = sc;
                 bestIdx = i;
@@ -306,7 +289,7 @@
         });
     }
 
-    function extractTable(workbook, scorer) {
+    function extractTable(workbook) {
         var headers = [];
         var rows = [];
         workbook.SheetNames.forEach(function (sheetName) {
@@ -314,7 +297,7 @@
             if (!worksheet) return;
             var aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true });
             if (!aoa.length) return;
-            var headerIdx = findHeaderRowIndex(aoa, scorer);
+            var headerIdx = findHeaderRowIndex(aoa);
             var sheetHeaders = (aoa[headerIdx] || []).map(function (h) { return h == null ? '' : h; });
             if (!headers.length) headers = sheetHeaders.slice();
             var width = Math.max(headers.length, sheetHeaders.length);
@@ -422,26 +405,6 @@
         return s;
     }
 
-    function buildPofIndex(pofTable) {
-        var idIdx = findColumnIndex(pofTable.headers, POF_ID_ALIASES);
-        if (idIdx < 0) {
-            throw new Error('En POF para APEL falta la columna ID POF.');
-        }
-        var ids = Object.create(null);
-        var rowsById = Object.create(null);
-        var count = 0;
-        pofTable.rows.forEach(function (row) {
-            var id = normalizeIdPof(cell(row, idIdx));
-            if (!id) return;
-            if (!ids[id]) {
-                ids[id] = true;
-                rowsById[id] = row.slice();
-                count += 1;
-            }
-        });
-        return { idIdx: idIdx, ids: ids, rowsById: rowsById, count: count };
-    }
-
     function eliminarDuplicadosIdPof(rows) {
         var seen = Object.create(null);
         var out = [];
@@ -504,11 +467,7 @@
         var grid = document.getElementById('statsGrid');
         var items = [
             { n: s.harbourTotal, l: 'Filas Harbour' },
-            { n: s.pofTotal, l: 'Filas POF APEL' },
-            { n: s.transformadas, l: 'Transformadas' },
-            { n: s.coinciden, l: 'Coincidieron' },
-            { n: s.noCoinciden, l: 'No coincidieron' },
-            { n: s.pofSinHarbour, l: 'POF sin Harbour' },
+            { n: s.salida, l: 'Filas de salida' },
             { n: s.idPofDup, l: 'Id. POF dup.' }
         ];
         grid.innerHTML = items.map(function (it) {
@@ -519,12 +478,11 @@
 
     document.getElementById('btnProcesar').addEventListener('click', function () {
         var fileHarbour = document.getElementById('fileHarbour').files[0];
-        var filePof = document.getElementById('filePof').files[0];
         var btn = document.getElementById('btnProcesar');
         document.getElementById('statsGrid').classList.remove('visible');
 
-        if (!fileHarbour || !filePof) {
-            setStatus('Seleccioná los dos archivos: BASE HARBOUR y POF para APEL.', true);
+        if (!fileHarbour) {
+            setStatus('Seleccioná el archivo BASE HARBOUR.', true);
             return;
         }
         if (typeof XLSX === 'undefined') {
@@ -535,62 +493,32 @@
         btn.disabled = true;
         setStatus('Procesando…');
 
-        Promise.all([readFileToWorkbook(fileHarbour), readFileToWorkbook(filePof)])
-            .then(function (wbs) {
-                var harbourTable = extractTable(wbs[0], harbourHeaderScore);
-                var pofTable = extractTable(wbs[1], pofHeaderScore);
+        readFileToWorkbook(fileHarbour)
+            .then(function (wb) {
+                var harbourTable = extractTable(wb);
 
                 if (!harbourTable.rows.length) throw new Error('BASE HARBOUR no tiene datos.');
-                if (!pofTable.rows.length) throw new Error('POF para APEL no tiene datos.');
 
                 var harbourCols = mapHarbourColumns(harbourTable.headers);
-                var pofIndex = buildPofIndex(pofTable);
 
                 var transformed = [];
                 harbourTable.rows.forEach(function (row) {
                     transformed.push(rowToArray(transformHarbourRow(row, harbourCols.idx)));
                 });
 
-                var coinciden = [];
-                var noCoinciden = [];
-                var harbourIds = Object.create(null);
-
-                transformed.forEach(function (arr) {
-                    var idCol = OUTPUT_HEADERS.indexOf('ID POF');
-                    var id = normalizeIdPof(arr[idCol]);
-                    if (id) harbourIds[id] = true;
-                    if (id && pofIndex.ids[id]) coinciden.push(arr);
-                    else noCoinciden.push(arr);
-                });
-
-                var dedupeOk = eliminarDuplicadosIdPof(coinciden);
-                var dedupeNo = eliminarDuplicadosIdPof(noCoinciden);
-                coinciden = dedupeOk.filas;
-                noCoinciden = dedupeNo.filas;
-                var idPofDup = dedupeOk.removed + dedupeNo.removed;
-
-                var pofSinHarbour = [];
-                Object.keys(pofIndex.rowsById).forEach(function (id) {
-                    if (!harbourIds[id]) pofSinHarbour.push(pofIndex.rowsById[id]);
-                });
+                var dedupe = eliminarDuplicadosIdPof(transformed);
+                var salida = dedupe.filas;
 
                 var wbOut = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(OUTPUT_HEADERS, coinciden), 'Coincidieron');
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(OUTPUT_HEADERS, noCoinciden), 'No coincidieron');
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(pofTable.headers, pofSinHarbour), 'POF sin Harbour');
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(OUTPUT_HEADERS, transformed), 'Harbour transformado');
+                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(OUTPUT_HEADERS, salida), 'POF APEL');
 
                 var nombre = nombreSalida();
                 XLSX.writeFile(wbOut, nombre);
 
                 var stats = {
                     harbourTotal: harbourTable.rows.length,
-                    pofTotal: pofTable.rows.length,
-                    transformadas: transformed.length,
-                    coinciden: coinciden.length,
-                    noCoinciden: noCoinciden.length,
-                    pofSinHarbour: pofSinHarbour.length,
-                    idPofDup: idPofDup
+                    salida: salida.length,
+                    idPofDup: dedupe.removed
                 };
                 renderStats(stats);
 
@@ -599,14 +527,12 @@
                         module: 'pof_apel',
                         moduleLabel: 'POF APEL',
                         procesador: 'pof_apel',
-                        procesadorLabel: 'Cruce Harbour → POF APEL',
-                        archivoOrigen: (fileHarbour.name || '') + ' + ' + (filePof.name || ''),
+                        procesadorLabel: 'Harbour → POF APEL',
+                        archivoOrigen: fileHarbour.name || '',
                         archivoSalida: nombre,
-                        filas: coinciden.length,
+                        filas: salida.length,
                         detalle: 'Harbour ' + stats.harbourTotal
-                            + ' · coincidieron ' + stats.coinciden
-                            + ' · no coincidieron ' + stats.noCoinciden
-                            + ' · POF sin Harbour ' + stats.pofSinHarbour
+                            + ' · salida ' + stats.salida
                             + ' · Id. POF dup. ' + stats.idPofDup,
                         extras: stats
                     });
@@ -617,9 +543,7 @@
                     : '';
                 setStatus(
                     'Proceso completado. Archivo: "' + nombre + '"\n'
-                    + 'Coincidieron: ' + coinciden.length
-                    + ' · No coincidieron: ' + noCoinciden.length
-                    + ' · POF sin Harbour: ' + pofSinHarbour.length + warn
+                    + salida.length + ' filas en formato POF APEL.' + warn
                 );
             })
             .catch(function (err) {
