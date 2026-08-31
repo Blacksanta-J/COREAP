@@ -146,6 +146,8 @@
         <span style="font-size:12px;color:var(--muted);">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</span>
         <br>
         <span style="font-size:12px;color:var(--muted);"><strong>HORAS:</strong> entero sin decimales; si queda en 0 (o vacío) se carga <strong>1</strong>.</span>
+        <br>
+        <span style="font-size:12px;color:var(--muted);"><strong>ID ASIGNATURA</strong> e <strong>ID ESPECIALIDAD</strong>: si vienen en <strong>0</strong>, quedan vacías.</span>
     </div>
 
     <button class="btn-primary" id="btnProcesar" type="button">Procesar y descargar</button>
@@ -172,6 +174,7 @@
                 <li><strong>COD AREA:</strong> se calcula desde el texto de <em>AREA ESTABLECIMIENTO</em> (tabla de códigos). Adultos: CENS/ANEXO CENS en el nombre de escuela → 10; si no → 4.</li>
                 <li><strong>Transformación:</strong> DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO, etc.</li>
                 <li><strong>HORAS:</strong> sale como número entero (sin decimales). Si viene vacío o en 0, se carga <strong>1</strong>.</li>
+                <li><strong>ID ASIGNATURA / ID ESPECIALIDAD:</strong> si el valor es solo <strong>0</strong>, queda vacío.</li>
                 <li><strong>Id. POF duplicados:</strong> se quita la repetición (se conserva la primera aparición).</li>
             </ul>
         </div>
@@ -391,6 +394,24 @@
         return Math.floor(n);
     }
 
+    function isZeroLike(v) {
+        if (v == null) return false;
+        if (typeof v === 'number') return v === 0;
+        var s = String(v).trim();
+        if (s === '') return false;
+        if (/^0+$/.test(s)) return true;
+        if (/^0+[.,]0+$/.test(s)) return true;
+        var compact = s.replace(',', '.');
+        if (/^-?0+(\.0+)?$/.test(compact)) return true;
+        return false;
+    }
+
+    /** Si el valor es solo 0, queda vacío. */
+    function vaciarSiCero(v) {
+        if (isZeroLike(v)) return '';
+        return v;
+    }
+
     function transformHarbourRow(row, idxMap) {
         var out = {};
         HARBOUR_MAP.forEach(function (def) {
@@ -401,6 +422,8 @@
         var nombreEscuela = idxMap._nombreEscuela >= 0 ? cell(row, idxMap._nombreEscuela) : '';
         out['COD AREA'] = codAreaDesdeHarbour(areaTexto, nombreEscuela);
         out['HORAS'] = normalizeHoras(idxMap['HORAS'] >= 0 ? cell(row, idxMap['HORAS']) : out['HORAS']);
+        out['ID ASIGNATURA'] = vaciarSiCero(out['ID ASIGNATURA']);
+        out['ID ESPECIALIDAD'] = vaciarSiCero(out['ID ESPECIALIDAD']);
         return out;
     }
 
