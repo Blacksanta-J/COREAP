@@ -114,7 +114,7 @@
             <thead><tr><th>BASE HARBOUR</th><th>POF para APEL</th></tr></thead>
             <tbody>
                 <tr><td>DOCUMENTO DESIGNADO</td><td>DNI</td></tr>
-                <tr><td>AREA ESTABLECIMIENTO</td><td>COD AREA</td></tr>
+                <tr><td>AREA ESTABLECIMIENTO</td><td>COD AREA <em>(ver tabla abajo)</em></td></tr>
                 <tr><td>ID CARGO</td><td>ID CARGO</td></tr>
                 <tr><td>ID ASIGNATURA</td><td>ID ASIGNATURA</td></tr>
                 <tr><td>ID PLAN</td><td>ID ESPECIALIDAD</td></tr>
@@ -125,6 +125,26 @@
                 <tr><td>ID POF</td><td>ID POF</td></tr>
             </tbody>
         </table>
+        <strong>COD AREA</strong> (texto de AREA ESTABLECIMIENTO → número):
+        <table style="margin-top:6px;">
+            <thead><tr><th>Área en Harbour</th><th>COD AREA</th></tr></thead>
+            <tbody>
+                <tr><td>ÁREA DE LA EDUCACIÓN INICIAL</td><td>1</td></tr>
+                <tr><td>ÁREA DE LA EDUCACIÓN PRIMARIA</td><td>2</td></tr>
+                <tr><td>ÁREA CURRICULAR DE MATERIAS ESPECIALES</td><td>3</td></tr>
+                <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE</td><td>4 u 10 <em>(ver nota)</em></td></tr>
+                <tr><td>ÁREA DE EDUCACIÓN MEDIA</td><td>5</td></tr>
+                <tr><td>ÁREA DE LA EDUCACIÓN ESPECIAL</td><td>6</td></tr>
+                <tr><td>ÁREA DE LA EDUCACIÓN SUPERIOR</td><td>7</td></tr>
+                <tr><td>ÁREA DE LA EDUCACIÓN ARTÍSTICA</td><td>8</td></tr>
+                <tr><td>SERVICIOS PROFESIONALES</td><td>9</td></tr>
+                <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE + escuela CENS / ANEXO CENS</td><td>10</td></tr>
+                <tr><td>ÁREA DE EDUCACIÓN TÉCNICA</td><td>16</td></tr>
+                <tr><td>ÁREA DE PROGRAMAS SOCIOEDUCATIVOS</td><td>15</td></tr>
+            </tbody>
+        </table>
+        <span style="font-size:12px;color:var(--muted);">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</span>
+        <br><br>
         El cruce se hace por <strong>ID POF</strong>. Se eliminan duplicados de ID POF en el resultado (se conserva la primera aparición).
     </div>
 
@@ -148,6 +168,7 @@
         <div class="info-content">
             <ul>
                 <li><strong>Archivo 1 (BASE HARBOUR):</strong> se detecta la fila de encabezados y se leen todas las hojas con datos.</li>
+                <li><strong>COD AREA:</strong> se calcula desde el texto de <em>AREA ESTABLECIMIENTO</em> (tabla de códigos). Adultos: CENS/ANEXO CENS en el nombre de escuela → 10; si no → 4.</li>
                 <li><strong>Transformación:</strong> cada fila se convierte al formato POF para APEL según la tabla de equivalencias (ej. DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO).</li>
                 <li><strong>Archivo 2 (POF para APEL):</strong> listado de referencia. Debe tener columna <em>ID POF</em>.</li>
                 <li><strong>Cruce:</strong> filas transformadas de Harbour cuyo ID POF está en el POF para APEL → hoja <em>Coincidieron</em>. Las que no → <em>No coincidieron</em>.</li>
@@ -168,7 +189,6 @@
 
     var HARBOUR_MAP = [
         { harbour: ['DOCUMENTO DESIGNADO', 'NDOC', 'N DOC', 'DNI'], out: 'DNI' },
-        { harbour: ['AREA ESTABLECIMIENTO', 'AREA EST', 'COD AREA'], out: 'COD AREA' },
         { harbour: ['ID CARGO', 'COD CARGO', 'CODIGO CARGO'], out: 'ID CARGO' },
         { harbour: ['ID ASIGNATURA', 'COD ASIGNATURA', 'CODIGO ASIGNATURA'], out: 'ID ASIGNATURA' },
         { harbour: ['ID PLAN', 'COD ESPECIALIDAD', 'ID ESPECIALIDAD'], out: 'ID ESPECIALIDAD' },
@@ -177,6 +197,27 @@
         { harbour: ['HORAS', 'CANT HORAS', 'CANT. HORAS'], out: 'HORAS' },
         { harbour: ['ID ESTABLECIMIENTO', 'CODES', 'COD ESTABLECIMIENTO'], out: 'ID ESTABLECIMIENTO' },
         { harbour: ['ID POF', 'ID. POF', 'IDPOF', 'Id. POF'], out: 'ID POF' }
+    ];
+
+    var HARBOUR_AREA_ALIASES = ['AREA ESTABLECIMIENTO', 'AREA EST', 'AREA', 'NOMBRE AREA'];
+    var HARBOUR_NOMBRE_ESCUELA_ALIASES = [
+        'NOMBRE ESTABLECIMIENTO', 'NOMBRE ESCUELA', 'NOMBRE DE LA ESCUELA',
+        'NOMBRE DEL ESTABLECIMIENTO', 'ESTABLECIMIENTO', 'ESCUELA'
+    ];
+
+    /** Orden: más específico primero (evita solapamientos). */
+    var COD_AREA_RULES = [
+        { match: 'PROGRAMAS SOCIOEDUCATIVOS', code: '15' },
+        { match: 'EDUCACION SUPERIOR', code: '7' },
+        { match: 'EDUCACION TECNICA', code: '16' },
+        { match: 'EDUCACION ARTISTICA', code: '8' },
+        { match: 'EDUCACION MEDIA', code: '5' },
+        { match: 'EDUCACION ESPECIAL', code: '6' },
+        { match: 'EDUCACION PRIMARIA', code: '2' },
+        { match: 'CURRICULAR', code: '3' },
+        { match: 'MATERIAS ESPECIALES', code: '3' },
+        { match: 'EDUCACION INICIAL', code: '1' },
+        { match: 'SERVICIOS PROFESIONALES', code: '9' }
     ];
 
     var POF_ID_ALIASES = ['ID POF', 'ID. POF', 'IDPOF', 'Id. POF', 'ID DE POF'];
@@ -316,6 +357,8 @@
             idx[def.out] = colIdx;
             if (colIdx < 0) missing.push(def.harbour[0]);
         });
+        idx._areaTexto = findColumnIndex(headers, HARBOUR_AREA_ALIASES);
+        idx._nombreEscuela = findColumnIndex(headers, HARBOUR_NOMBRE_ESCUELA_ALIASES);
         if (idx['ID POF'] < 0) {
             throw new Error('En BASE HARBOUR falta la columna ID POF.');
         }
@@ -324,12 +367,45 @@
         }) };
     }
 
+    function esCensOAnexoCens(nombre) {
+        var n = normalizeHeader(nombre).replace(/\./g, '').replace(/\s+/g, ' ').trim();
+        if (!n) return false;
+        if (/\bANEXO CENS\b/.test(n)) return true;
+        if (/\bCENS\b/.test(n)) return true;
+        return false;
+    }
+
+    function esAreaAdultoAdolescente(areaNorm) {
+        return areaNorm.indexOf('ADULTO') !== -1 && areaNorm.indexOf('ADOLESCENTE') !== -1;
+    }
+
+    function codAreaDesdeHarbour(areaTexto, nombreEscuela) {
+        var raw = String(areaTexto == null ? '' : areaTexto).trim();
+        if (!raw) return '';
+        var area = normalizeHeader(raw);
+        if (/^\d+$/.test(area)) return area;
+
+        if (esAreaAdultoAdolescente(area)) {
+            return esCensOAnexoCens(nombreEscuela) ? '10' : '4';
+        }
+
+        for (var i = 0; i < COD_AREA_RULES.length; i++) {
+            if (area.indexOf(COD_AREA_RULES[i].match) !== -1) {
+                return COD_AREA_RULES[i].code;
+            }
+        }
+        return raw;
+    }
+
     function transformHarbourRow(row, idxMap) {
         var out = {};
         HARBOUR_MAP.forEach(function (def) {
             var i = idxMap[def.out];
             out[def.out] = i >= 0 ? formatCellValue(cell(row, i)) : '';
         });
+        var areaTexto = idxMap._areaTexto >= 0 ? cell(row, idxMap._areaTexto) : '';
+        var nombreEscuela = idxMap._nombreEscuela >= 0 ? cell(row, idxMap._nombreEscuela) : '';
+        out['COD AREA'] = codAreaDesdeHarbour(areaTexto, nombreEscuela);
         return out;
     }
 
