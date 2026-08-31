@@ -144,6 +144,8 @@
             </tbody>
         </table>
         <span style="font-size:12px;color:var(--muted);">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</span>
+        <br>
+        <span style="font-size:12px;color:var(--muted);"><strong>HORAS:</strong> entero sin decimales; si queda en 0 (o vacío) se carga <strong>1</strong>.</span>
     </div>
 
     <button class="btn-primary" id="btnProcesar" type="button">Procesar y descargar</button>
@@ -169,6 +171,7 @@
                 <li><strong>Salida:</strong> un Excel con las columnas DNI, COD AREA, ID CARGO, ID ASIGNATURA, ID ESPECIALIDAD, FECHA COMIENZO, TURNO, HORAS, ID ESTABLECIMIENTO e ID POF (en ese orden).</li>
                 <li><strong>COD AREA:</strong> se calcula desde el texto de <em>AREA ESTABLECIMIENTO</em> (tabla de códigos). Adultos: CENS/ANEXO CENS en el nombre de escuela → 10; si no → 4.</li>
                 <li><strong>Transformación:</strong> DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO, etc.</li>
+                <li><strong>HORAS:</strong> sale como número entero (sin decimales). Si viene vacío o en 0, se carga <strong>1</strong>.</li>
                 <li><strong>Id. POF duplicados:</strong> se quita la repetición (se conserva la primera aparición).</li>
             </ul>
         </div>
@@ -380,6 +383,14 @@
         return raw;
     }
 
+    /** HORAS: entero sin decimales; vacío o 0 → 1. */
+    function normalizeHoras(v) {
+        if (v == null || String(v).trim() === '') return 1;
+        var n = parseFloat(String(v).trim().replace(',', '.'));
+        if (isNaN(n) || Math.floor(n) === 0) return 1;
+        return Math.floor(n);
+    }
+
     function transformHarbourRow(row, idxMap) {
         var out = {};
         HARBOUR_MAP.forEach(function (def) {
@@ -389,6 +400,7 @@
         var areaTexto = idxMap._areaTexto >= 0 ? cell(row, idxMap._areaTexto) : '';
         var nombreEscuela = idxMap._nombreEscuela >= 0 ? cell(row, idxMap._nombreEscuela) : '';
         out['COD AREA'] = codAreaDesdeHarbour(areaTexto, nombreEscuela);
+        out['HORAS'] = normalizeHoras(idxMap['HORAS'] >= 0 ? cell(row, idxMap['HORAS']) : out['HORAS']);
         return out;
     }
 
