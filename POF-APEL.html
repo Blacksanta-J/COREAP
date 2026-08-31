@@ -49,15 +49,6 @@
         button.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
         #status { margin-top: 15px; font-weight: bold; color: var(--success); white-space: pre-wrap; }
         .error { color: var(--error) !important; }
-        .equiv-box {
-            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
-            background: var(--input-bg); border: 1px solid var(--border);
-            font-size: 13px; color: var(--text); line-height: 1.55;
-        }
-        .equiv-box strong { color: var(--heading); }
-        .equiv-box table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-        .equiv-box th, .equiv-box td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; }
-        .equiv-box th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .3px; }
         .stats-grid {
             display: none; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 10px; margin-top: 16px;
@@ -71,12 +62,17 @@
         .stat-card .l { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
         .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto;}
         .modal-overlay.visible { display: flex; }
-        .modal { background: var(--card); border-radius: 10px; padding: 24px; width: 100%; max-width: 560px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
+        .modal { background: var(--card); border-radius: 10px; padding: 24px; width: 100%; max-width: 640px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
         .modal h3 { margin: 0 0 10px 0; color: var(--heading); font-size: 18px;}
         .info-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
-        .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
+        .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 70vh; overflow-y: auto; padding-right: 10px;}
         .info-content li { margin-bottom: 8px; }
         .info-content strong { color: var(--heading); }
+        .info-content h4 { margin: 14px 0 6px; font-size: 13px; color: var(--heading); }
+        .info-content table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 12px; }
+        .info-content th, .info-content td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+        .info-content th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .3px; }
+        .info-content .note { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
         .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
     </style>
 <link rel="stylesheet" href="portal-obelisco.css"></head>
@@ -105,50 +101,7 @@
     <label class="label-text" for="fileHarbour">BASE HARBOUR</label>
     <input type="file" id="fileHarbour" accept=".csv, .xls, .xlsx" />
 
-    <div class="equiv-box">
-        <strong>Columnas de salida</strong> (en este orden):
-        <code>DNI · COD AREA · ID CARGO · ID ASIGNATURA · ID ESPECIALIDAD · FECHA COMIENZO · TURNO · HORAS · ID ESTABLECIMIENTO · ID POF</code>
-        <br><br>
-        <strong>Equivalencia desde Harbour:</strong>
-        <table>
-            <thead><tr><th>BASE HARBOUR</th><th>POF para APEL</th></tr></thead>
-            <tbody>
-                <tr><td>DOCUMENTO DESIGNADO</td><td>DNI</td></tr>
-                <tr><td>AREA ESTABLECIMIENTO</td><td>COD AREA <em>(ver tabla abajo)</em></td></tr>
-                <tr><td>ID CARGO</td><td>ID CARGO</td></tr>
-                <tr><td>ID ASIGNATURA</td><td>ID ASIGNATURA</td></tr>
-                <tr><td>ID PLAN</td><td>ID ESPECIALIDAD</td></tr>
-                <tr><td>FECHA COMIENZO</td><td>FECHA COMIENZO</td></tr>
-                <tr><td>TURNO 1</td><td>TURNO</td></tr>
-                <tr><td>HORAS</td><td>HORAS</td></tr>
-                <tr><td>ID ESTABLECIMIENTO</td><td>ID ESTABLECIMIENTO</td></tr>
-                <tr><td>ID POF</td><td>ID POF</td></tr>
-            </tbody>
-        </table>
-        <strong>COD AREA</strong> (texto de AREA ESTABLECIMIENTO → número):
-        <table style="margin-top:6px;">
-            <thead><tr><th>Área en Harbour</th><th>COD AREA</th></tr></thead>
-            <tbody>
-                <tr><td>ÁREA DE LA EDUCACIÓN INICIAL</td><td>1</td></tr>
-                <tr><td>ÁREA DE LA EDUCACIÓN PRIMARIA</td><td>2</td></tr>
-                <tr><td>ÁREA CURRICULAR DE MATERIAS ESPECIALES</td><td>3</td></tr>
-                <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE</td><td>4 u 10 <em>(ver nota)</em></td></tr>
-                <tr><td>ÁREA DE EDUCACIÓN MEDIA</td><td>5</td></tr>
-                <tr><td>ÁREA DE LA EDUCACIÓN ESPECIAL</td><td>6</td></tr>
-                <tr><td>ÁREA DE LA EDUCACIÓN SUPERIOR</td><td>7</td></tr>
-                <tr><td>ÁREA DE LA EDUCACIÓN ARTÍSTICA</td><td>8</td></tr>
-                <tr><td>SERVICIOS PROFESIONALES</td><td>9</td></tr>
-                <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE + escuela CENS / ANEXO CENS</td><td>10</td></tr>
-                <tr><td>ÁREA DE EDUCACIÓN TÉCNICA</td><td>16</td></tr>
-                <tr><td>ÁREA DE PROGRAMAS SOCIOEDUCATIVOS</td><td>15</td></tr>
-            </tbody>
-        </table>
-        <span style="font-size:12px;color:var(--muted);">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</span>
-        <br>
-        <span style="font-size:12px;color:var(--muted);"><strong>HORAS:</strong> entero sin decimales; si queda en 0 (o vacío) se carga <strong>1</strong>.</span>
-        <br>
-        <span style="font-size:12px;color:var(--muted);"><strong>ID ASIGNATURA</strong> e <strong>ID ESPECIALIDAD</strong>: si vienen en <strong>0</strong>, quedan vacías.</span>
-    </div>
+    <p style="margin:8px 0 0;font-size:13px;color:var(--muted);">Subí el archivo y procesá. Las equivalencias de columnas y COD AREA están en el botón <strong>ℹ</strong>.</p>
 
     <button class="btn-primary" id="btnProcesar" type="button">Procesar y descargar</button>
     <div id="status"></div>
@@ -169,14 +122,49 @@
         </div>
         <div class="info-content">
             <ul>
-                <li><strong>Archivo (BASE HARBOUR):</strong> se detecta la fila de encabezados y se leen todas las hojas con datos.</li>
-                <li><strong>Salida:</strong> un Excel con las columnas DNI, COD AREA, ID CARGO, ID ASIGNATURA, ID ESPECIALIDAD, FECHA COMIENZO, TURNO, HORAS, ID ESTABLECIMIENTO e ID POF (en ese orden).</li>
-                <li><strong>COD AREA:</strong> se calcula desde el texto de <em>AREA ESTABLECIMIENTO</em> (tabla de códigos). Adultos: CENS/ANEXO CENS en el nombre de escuela → 10; si no → 4.</li>
-                <li><strong>Transformación:</strong> DOCUMENTO DESIGNADO → DNI, ID PLAN → ID ESPECIALIDAD, TURNO 1 → TURNO, etc.</li>
-                <li><strong>HORAS:</strong> sale como número entero (sin decimales). Si viene vacío o en 0, se carga <strong>1</strong>.</li>
-                <li><strong>ID ASIGNATURA / ID ESPECIALIDAD:</strong> si el valor es solo <strong>0</strong>, queda vacío.</li>
+                <li><strong>Archivo:</strong> subí solo la <em>BASE HARBOUR</em>. Se detecta la fila de encabezados y se leen todas las hojas con datos.</li>
+                <li><strong>Salida:</strong> Excel con columnas en este orden: DNI, COD AREA, ID CARGO, ID ASIGNATURA, ID ESPECIALIDAD, FECHA COMIENZO, TURNO, HORAS, ID ESTABLECIMIENTO, ID POF.</li>
+                <li><strong>HORAS:</strong> entero sin decimales; vacío o 0 → <strong>1</strong>.</li>
+                <li><strong>ID ASIGNATURA / ID ESPECIALIDAD:</strong> si vienen en <strong>0</strong>, quedan vacías.</li>
                 <li><strong>Id. POF duplicados:</strong> se quita la repetición (se conserva la primera aparición).</li>
             </ul>
+
+            <h4>Equivalencia desde Harbour</h4>
+            <table>
+                <thead><tr><th>BASE HARBOUR</th><th>POF para APEL</th></tr></thead>
+                <tbody>
+                    <tr><td>DOCUMENTO DESIGNADO</td><td>DNI</td></tr>
+                    <tr><td>AREA ESTABLECIMIENTO</td><td>COD AREA <em>(ver tabla abajo)</em></td></tr>
+                    <tr><td>ID CARGO</td><td>ID CARGO</td></tr>
+                    <tr><td>ID ASIGNATURA</td><td>ID ASIGNATURA</td></tr>
+                    <tr><td>ID PLAN</td><td>ID ESPECIALIDAD</td></tr>
+                    <tr><td>FECHA COMIENZO</td><td>FECHA COMIENZO</td></tr>
+                    <tr><td>TURNO 1</td><td>TURNO</td></tr>
+                    <tr><td>HORAS</td><td>HORAS</td></tr>
+                    <tr><td>ID ESTABLECIMIENTO</td><td>ID ESTABLECIMIENTO</td></tr>
+                    <tr><td>ID POF</td><td>ID POF</td></tr>
+                </tbody>
+            </table>
+
+            <h4>COD AREA (texto → número)</h4>
+            <table>
+                <thead><tr><th>Área en Harbour</th><th>COD AREA</th></tr></thead>
+                <tbody>
+                    <tr><td>ÁREA DE LA EDUCACIÓN INICIAL</td><td>1</td></tr>
+                    <tr><td>ÁREA DE LA EDUCACIÓN PRIMARIA</td><td>2</td></tr>
+                    <tr><td>ÁREA CURRICULAR DE MATERIAS ESPECIALES</td><td>3</td></tr>
+                    <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE</td><td>4 u 10 <em>(ver nota)</em></td></tr>
+                    <tr><td>ÁREA DE EDUCACIÓN MEDIA</td><td>5</td></tr>
+                    <tr><td>ÁREA DE LA EDUCACIÓN ESPECIAL</td><td>6</td></tr>
+                    <tr><td>ÁREA DE LA EDUCACIÓN SUPERIOR</td><td>7</td></tr>
+                    <tr><td>ÁREA DE LA EDUCACIÓN ARTÍSTICA</td><td>8</td></tr>
+                    <tr><td>SERVICIOS PROFESIONALES</td><td>9</td></tr>
+                    <tr><td>ÁREA DEL ADULTO Y ADOLESCENTE + escuela CENS / ANEXO CENS</td><td>10</td></tr>
+                    <tr><td>ÁREA DE EDUCACIÓN TÉCNICA</td><td>16</td></tr>
+                    <tr><td>ÁREA DE PROGRAMAS SOCIOEDUCATIVOS</td><td>15</td></tr>
+                </tbody>
+            </table>
+            <p class="note">Adultos: si el nombre de la escuela incluye <strong>CENS</strong> o <strong>ANEXO CENS</strong> → 10; si no → 4.</p>
         </div>
     </div>
 </div>
