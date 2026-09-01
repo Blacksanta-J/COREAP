@@ -197,7 +197,7 @@
                 '<strong>Cruce:</strong> se relacionan ambos archivos por <em>Id. POF</em> (y equivalentes: ID POF, IDPOF, Número de propuesta).',
                 '<strong>Completado:</strong> en el resultado de control, si están vacíos, se rellenan código de cargo, código de asignatura, código de especialidad y docente con los datos del eleve de control.',
                 '<strong>Solo vacíos:</strong> los valores ya presentes en el resultado no se modifican.',
-                '<strong>Salida:</strong> Excel con dos hojas — <em>Confirmadas</em> y <em>Excluidas</em> — según la columna Excluida/Confirmada.',
+                '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad y diferencias entre archivos).',
                 '<strong>Nombrado:</strong> el archivo incluye la palabra <strong>xNOTA</strong> y la fecha de exportación.'
             ]
         },
@@ -724,6 +724,301 @@
         'Excluida / Confirmada', 'EXCLUIDA', 'CONFIRMADA'
     ];
 
+    var COL_AREA_XNOTA = ['AREA', 'Area'];
+    var COL_DESC_CARGO_XNOTA = ['DESCRIPCION CARGO', 'Descripción Cargo', 'Descripcion Cargo', 'DESC CARGO'];
+    var COL_DESC_ASIG_XNOTA = ['DESCRIPCION ASIGNATURA', 'Descripción Asignatura', 'Descripcion Asignatura', 'DESC ASIGNATURA'];
+    var COL_DESC_ESP_XNOTA = ['DESCRIPCION ESPECIALIDAD', 'Descripción Especialidad', 'Descripcion Especialidad', 'Espec.', 'DESC ESPECIALIDAD'];
+
+    function esColumnaIgnoradaComparacion(normName) {
+        if (!normName) return true;
+        if (normName.indexOf('horario') !== -1) return true;
+        if (normName.indexOf('excluida') !== -1 && normName.indexOf('confirm') !== -1) return true;
+        return false;
+    }
+
+    function valorComparacionXnota(val) {
+        if (esCeldaVacia(val)) return '';
+        var s = String(val).trim();
+        var compact = s.replace(',', '.');
+        if (/^-?\d+(\.\d+)?$/.test(compact)) {
+            var n = parseFloat(compact);
+            if (!isNaN(n) && Number.isInteger(n)) return String(n);
+            if (!isNaN(n)) return String(n);
+        }
+        return normalizar(s);
+    }
+
+    function extraerCamposVacanteXnota(fila) {
+        return {
+            area: String(obtenerValorColumna(fila, COL_AREA_XNOTA) || '').trim() || '(Sin área)',
+            codCargo: String(obtenerValorColumna(fila, COL_CARGO_XNOTA) || '').trim(),
+            descCargo: String(obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA) || '').trim() || '(Sin cargo)',
+            codAsig: String(obtenerValorColumna(fila, COL_ASIG_XNOTA) || '').trim(),
+            descAsig: String(obtenerValorColumna(fila, COL_DESC_ASIG_XNOTA) || '').trim() || '(Sin asignatura)',
+            codEsp: String(obtenerValorColumna(fila, COL_ESP_XNOTA) || '').trim(),
+            descEsp: String(obtenerValorColumna(fila, COL_DESC_ESP_XNOTA) || '').trim() || '(Sin especialidad)',
+            estado: clasificarExcluidaConfirmada(obtenerValorColumna(fila, COL_ESTADO_XNOTA))
+        };
+    }
+
+    function listarColumnasComparablesXnota(filaEleve, filaResultado) {
+        var out = [];
+        var seen = Object.create(null);
+        var grupos = [
+            { label: 'Área', aliases: COL_AREA_XNOTA },
+            { label: 'Código cargo', aliases: COL_CARGO_XNOTA },
+            { label: 'Descripción cargo', aliases: COL_DESC_CARGO_XNOTA },
+            { label: 'Código asignatura', aliases: COL_ASIG_XNOTA },
+            { label: 'Descripción asignatura', aliases: COL_DESC_ASIG_XNOTA },
+            { label: 'Código especialidad', aliases: COL_ESP_XNOTA },
+            { label: 'Descripción especialidad', aliases: COL_DESC_ESP_XNOTA },
+            { label: 'Docente', aliases: COL_DOCENTE_XNOTA }
+        ];
+        grupos.forEach(function (g) {
+            var kE = encontrarClaveColumna(filaEleve, g.aliases);
+            var kR = encontrarClaveColumna(filaResultado, g.aliases);
+            if (kE && kR && !seen[g.label]) {
+                seen[g.label] = true;
+                out.push({ label: g.label, keyEleve: kE, keyResultado: kR });
+            }
+        });
+        Object.keys(filaEleve || {}).forEach(function (kE) {
+            var normE = normalizar(kE);
+            if (esColumnaIgnoradaComparacion(normE) || seen[normE]) return;
+            var kR = Object.keys(filaResultado || {}).find(function (k) { return normalizar(k) === normE; });
+            if (!kR) return;
+            seen[normE] = true;
+            out.push({ label: kE, keyEleve: kE, keyResultado: kR });
+        });
+        return out;
+    }
+
+    function detectarCambiosEntreArchivosXnota(filasEleve, filasResultado) {
+        var mapaEleve = Object.create(null);
+        var mapaRes = Object.create(null);
+        (filasEleve || []).forEach(function (f) {
+            var id = normalizarIdPof(obtenerValorColumna(f, COL_IDPOF_XNOTA));
+            if (id && !mapaEleve[id]) mapaEleve[id] = f;
+        });
+        (filasResultado || []).forEach(function (f) {
+            var id = normalizarIdPof(obtenerValorColumna(f, COL_IDPOF_XNOTA));
+            if (id && !mapaRes[id]) mapaRes[id] = f;
+        });
+
+        var soloEleve = 0;
+        var soloResultado = 0;
+        var conDiferencias = 0;
+        var porCampo = Object.create(null);
+        var detalle = [];
+
+        Object.keys(mapaEleve).forEach(function (id) {
+            if (!mapaRes[id]) {
+                soloEleve += 1;
+                return;
+            }
+            var fE = mapaEleve[id];
+            var fR = mapaRes[id];
+            var cols = listarColumnasComparablesXnota(fE, fR);
+            var hubo = false;
+            cols.forEach(function (col) {
+                var vE = valorComparacionXnota(fE[col.keyEleve]);
+                var vR = valorComparacionXnota(fR[col.keyResultado]);
+                if (vE === vR) return;
+                hubo = true;
+                porCampo[col.label] = (porCampo[col.label] || 0) + 1;
+                detalle.push([
+                    obtenerValorColumna(fE, COL_IDPOF_XNOTA) || id,
+                    col.label,
+                    fE[col.keyEleve] != null && fE[col.keyEleve] !== '' ? fE[col.keyEleve] : '',
+                    fR[col.keyResultado] != null && fR[col.keyResultado] !== '' ? fR[col.keyResultado] : ''
+                ]);
+            });
+            if (hubo) conDiferencias += 1;
+        });
+
+        Object.keys(mapaRes).forEach(function (id) {
+            if (!mapaEleve[id]) soloResultado += 1;
+        });
+
+        detalle.sort(function (a, b) {
+            var cmp = String(a[0]).localeCompare(String(b[0]), 'es');
+            if (cmp) return cmp;
+            return String(a[1]).localeCompare(String(b[1]), 'es');
+        });
+
+        return {
+            soloEleve: soloEleve,
+            soloResultado: soloResultado,
+            conDiferencias: conDiferencias,
+            porCampo: porCampo,
+            detalle: detalle
+        };
+    }
+
+    function construirHojaInformeXnota(filasCompletadas, filasEleve, filasResultadoOrig, options) {
+        options = options || {};
+        var proc = options.procesador || {};
+        var statsCompletado = options.statsCompletado || {};
+        var confirmadasTotal = options.confirmadasTotal || 0;
+        var excluidasTotal = options.excluidasTotal || 0;
+        var filas = [];
+        var cambios = detectarCambiosEntreArchivosXnota(filasEleve, filasResultadoOrig);
+
+        filas.push(['INFORME xNOTA']);
+        filas.push(['Procesador', proc.label || 'xNOTA']);
+        filas.push(['Fecha de exportación', new Date().toLocaleString('es-AR')]);
+        filas.push(['Vacantes confirmadas', confirmadasTotal]);
+        filas.push(['Vacantes excluidas', excluidasTotal]);
+        filas.push(['Total vacantes', confirmadasTotal + excluidasTotal]);
+        filas.push(['Campos completados desde eleve (vacíos en resultado)', statsCompletado.completados || 0]);
+        filas.push([]);
+        filas.push(['TABLA — Vacantes confirmadas y excluidas por Área / Cargo / Asignatura / Especialidad']);
+        filas.push([]);
+
+        var pivotHeaderRowIndex = filas.length;
+        filas.push([
+            'AREA',
+            'CODIGO CARGO',
+            'DESCRIPCION CARGO',
+            'CODIGO ASIGNATURA',
+            'DESCRIPCION ASIGNATURA',
+            'CODIGO ESPECIALIDAD',
+            'DESCRIPCION ESPECIALIDAD',
+            'CONFIRMADAS',
+            'EXCLUIDAS',
+            'TOTAL'
+        ]);
+
+        var agrupado = Object.create(null);
+        var porArea = Object.create(null);
+
+        (filasCompletadas || []).forEach(function (fila) {
+            var campos = extraerCamposVacanteXnota(fila);
+            var clave = [
+                campos.area, campos.codCargo, campos.descCargo,
+                campos.codAsig, campos.descAsig, campos.codEsp, campos.descEsp
+            ].join('||');
+
+            if (!agrupado[clave]) {
+                agrupado[clave] = {
+                    area: campos.area,
+                    codCargo: campos.codCargo,
+                    descCargo: campos.descCargo,
+                    codAsig: campos.codAsig,
+                    descAsig: campos.descAsig,
+                    codEsp: campos.codEsp,
+                    descEsp: campos.descEsp,
+                    confirmadas: 0,
+                    excluidas: 0
+                };
+            }
+            if (campos.estado === 'excluida') agrupado[clave].excluidas += 1;
+            else agrupado[clave].confirmadas += 1;
+            porArea[campos.area] = porArea[campos.area] || { confirmadas: 0, excluidas: 0 };
+            if (campos.estado === 'excluida') porArea[campos.area].excluidas += 1;
+            else porArea[campos.area].confirmadas += 1;
+        });
+
+        var items = Object.keys(agrupado).map(function (k) { return agrupado[k]; });
+        items.sort(function (a, b) {
+            var cmp = a.area.localeCompare(b.area, 'es');
+            if (cmp) return cmp;
+            cmp = a.descCargo.localeCompare(b.descCargo, 'es');
+            if (cmp) return cmp;
+            cmp = a.descAsig.localeCompare(b.descAsig, 'es');
+            if (cmp) return cmp;
+            return a.descEsp.localeCompare(b.descEsp, 'es');
+        });
+
+        var areasOrdenadas = Object.keys(porArea).sort(function (a, b) {
+            return a.localeCompare(b, 'es');
+        });
+
+        areasOrdenadas.forEach(function (area) {
+            items.filter(function (it) { return it.area === area; }).forEach(function (it) {
+                filas.push([
+                    it.area,
+                    it.codCargo,
+                    it.descCargo,
+                    it.codAsig,
+                    it.descAsig,
+                    it.codEsp,
+                    it.descEsp,
+                    it.confirmadas,
+                    it.excluidas,
+                    it.confirmadas + it.excluidas
+                ]);
+            });
+            var sub = porArea[area];
+            filas.push([
+                'Subtotal ' + area,
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                sub.confirmadas,
+                sub.excluidas,
+                sub.confirmadas + sub.excluidas
+            ]);
+        });
+
+        var pivotLastRowIndex = filas.length - 1;
+        filas.push([
+            'TOTAL GENERAL',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            confirmadasTotal,
+            excluidasTotal,
+            confirmadasTotal + excluidasTotal
+        ]);
+        pivotLastRowIndex = filas.length - 1;
+
+        filas.push([]);
+        filas.push(['CAMBIOS ENTRE ELEVE CONTROL Y RESULTADO CONTROL']);
+        filas.push(['Se ignoran diferencias en columnas de horario y descripción de horario.']);
+        filas.push([]);
+        filas.push(['Resumen']);
+        filas.push(['Id. POF con diferencias (presentes en ambos archivos)', cambios.conDiferencias]);
+        filas.push(['Id. POF solo en eleve control', cambios.soloEleve]);
+        filas.push(['Id. POF solo en resultado control', cambios.soloResultado]);
+        filas.push(['Total diferencias por campo', cambios.detalle.length]);
+        filas.push([]);
+        filas.push(['Diferencias por campo']);
+        filas.push(['Campo', 'Cantidad de diferencias']);
+
+        var camposOrdenados = Object.keys(cambios.porCampo).sort(function (a, b) {
+            return a.localeCompare(b, 'es');
+        });
+        camposOrdenados.forEach(function (campo) {
+            filas.push([campo, cambios.porCampo[campo]]);
+        });
+        if (!camposOrdenados.length) {
+            filas.push(['(Sin diferencias entre archivos, salvo horario)', 0]);
+        }
+
+        filas.push([]);
+        var cambiosHeaderRowIndex = filas.length;
+        filas.push(['DETALLE DE CAMBIOS POR Id. POF']);
+        filas.push(['Id. POF', 'Columna', 'Eleve control', 'Resultado control']);
+        cambios.detalle.forEach(function (row) { filas.push(row); });
+        var cambiosLastRowIndex = filas.length - 1;
+
+        return {
+            aoa: filas,
+            pivotHeaderRowIndex: pivotHeaderRowIndex,
+            pivotLastRowIndex: pivotLastRowIndex,
+            cambiosHeaderRowIndex: cambiosHeaderRowIndex,
+            cambiosLastRowIndex: cambiosLastRowIndex,
+            cambios: cambios
+        };
+    }
+
     function encontrarClaveColumna(fila, posiblesNombres) {
         if (!fila) return null;
         var keys = Object.keys(fila);
@@ -924,6 +1219,7 @@
             if (!filasEleve.length) throw new Error('El archivo Eleve control no contiene datos legibles.');
             if (!filasResultado.length) throw new Error('El archivo Resultado control no contiene datos legibles.');
 
+            var filasResultadoOrig = filasResultado.map(function (f) { return Object.assign({}, f); });
             var mapaInfo = construirMapaEleveControl(filasEleve);
             var completado = completarResultadoConEleve(filasResultado, mapaInfo.mapa);
             var partes = separarConfirmadasExcluidas(completado.filas);
@@ -931,11 +1227,38 @@
             var confirmadas = ordenarColumnasJson(partes.confirmadas);
             var excluidas = ordenarColumnasJson(partes.excluidas);
 
+            var informe = construirHojaInformeXnota(completado.filas, filasEleve, filasResultadoOrig, {
+                procesador: proc,
+                statsCompletado: completado.stats,
+                confirmadasTotal: confirmadas.length,
+                excluidasTotal: excluidas.length
+            });
+
             var wb = XLSX.utils.book_new();
             var wsConfirmadas = XLSX.utils.json_to_sheet(confirmadas);
             var wsExcluidas = XLSX.utils.json_to_sheet(excluidas);
             XLSX.utils.book_append_sheet(wb, wsConfirmadas, 'Confirmadas');
             XLSX.utils.book_append_sheet(wb, wsExcluidas, 'Excluidas');
+
+            var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+            wsInforme['!cols'] = [
+                { wch: 28 },
+                { wch: 14 },
+                { wch: 36 },
+                { wch: 16 },
+                { wch: 36 },
+                { wch: 16 },
+                { wch: 36 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 12 }
+            ];
+            if (informe.pivotLastRowIndex > informe.pivotHeaderRowIndex) {
+                var pivotStart = XLSX.utils.encode_cell({ r: informe.pivotHeaderRowIndex, c: 0 });
+                var pivotEnd = XLSX.utils.encode_cell({ r: informe.pivotLastRowIndex, c: 9 });
+                wsInforme['!autofilter'] = { ref: pivotStart + ':' + pivotEnd };
+            }
+            XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
 
             var nombreArchivo = 'xNOTA_' + formatearFechaHoraNombre() + '.xlsx';
             XLSX.writeFile(wb, nombreArchivo);
@@ -950,13 +1273,15 @@
                     archivoSalida: nombreArchivo,
                     filas: completado.filas.length,
                     detalle: 'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length +
-                        ' · Campos completados: ' + completado.stats.completados,
+                        ' · Campos completados: ' + completado.stats.completados +
+                        ' · Diferencias entre archivos: ' + informe.cambios.detalle.length,
                     extras: {
                         confirmadas: confirmadas.length,
                         excluidas: excluidas.length,
                         camposCompletados: completado.stats.completados,
                         sinMatchIdPof: completado.stats.sinMatch,
-                        hojas: ['Confirmadas', 'Excluidas']
+                        diferenciasArchivos: informe.cambios.detalle.length,
+                        hojas: ['Confirmadas', 'Excluidas', 'Informe']
                     }
                 });
             }
@@ -964,10 +1289,11 @@
             statusDiv.className = '';
             statusDiv.innerText =
                 '¡Proceso xNOTA completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
-                '(Hojas: Confirmadas + Excluidas)\n' +
+                '(Hojas: Confirmadas + Excluidas + Informe)\n' +
                 'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length + '\n' +
                 'Campos completados desde eleve: ' + completado.stats.completados + '\n' +
-                'Sin coincidencia Id. POF: ' + completado.stats.sinMatch;
+                'Sin coincidencia Id. POF: ' + completado.stats.sinMatch + '\n' +
+                'Diferencias eleve vs resultado (sin horario): ' + informe.cambios.detalle.length;
         } catch (error) {
             console.error(error);
             statusDiv.className = 'error';
