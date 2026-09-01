@@ -86,7 +86,7 @@
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Eleves de Concursos</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Procesadores de archivos para control, traslado, acumulación, Secundaria Aprende e ingreso.</p>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Procesadores de archivos para control, xNOTA, traslado, acumulación, Secundaria Aprende e ingreso.</p>
 </div>
 
 <div class="portal-tool-panel container">
@@ -98,8 +98,16 @@
 
     <div id="processorPanels"></div>
 
-    <label class="label-text">Archivo Base</label>
-    <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
+    <div id="fileInputBaseWrap">
+        <label class="label-text" for="fileInput">Archivo Base</label>
+        <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
+    </div>
+    <div id="fileInputXnotaWrap" style="display:none">
+        <label class="label-text" for="fileEleveControl">Eleve control</label>
+        <input type="file" id="fileEleveControl" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileResultadoControl">Resultado control</label>
+        <input type="file" id="fileResultadoControl" accept=".csv, .xls, .xlsx" />
+    </div>
 
     <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Procesar y Descargar</button>
     <div id="status"></div>
@@ -174,6 +182,23 @@
                 '<strong>Formato Nativo:</strong> Fechas de apertura, publicación, desde y hasta (31/12 del año actual) en formato serial Excel.',
                 '<strong>Nombrado:</strong> El archivo incluye el Área, la palabra "CONTROL" y la fecha de exportación.',
                 '<strong>Informe:</strong> Segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
+            ]
+        },
+        {
+            id: 'xnota',
+            label: 'xNOTA',
+            suffix: 'XNOTA',
+            enabled: true,
+            descripcion: 'Completá el resultado de control con datos del eleve de control (por Id. POF) y generá el archivo para la nota de exclusión con cargos confirmados y excluidos.',
+            pending: false,
+            reglas: [
+                '<strong>Archivo 1 — Eleve control:</strong> eleve generado por el procesador Control (o equivalente con Id. POF y códigos de cargo, asignatura, especialidad y docente).',
+                '<strong>Archivo 2 — Resultado control:</strong> archivo devuelto por el sistema de control de vacantes, con columna <em>Excluida/Confirmada</em>.',
+                '<strong>Cruce:</strong> se relacionan ambos archivos por <em>Id. POF</em> (y equivalentes: ID POF, IDPOF, Número de propuesta).',
+                '<strong>Completado:</strong> en el resultado de control, si están vacíos, se rellenan código de cargo, código de asignatura, código de especialidad y docente con los datos del eleve de control.',
+                '<strong>Solo vacíos:</strong> los valores ya presentes en el resultado no se modifican.',
+                '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad y diferencias entre archivos).',
+                '<strong>Nombrado:</strong> el archivo incluye la palabra <strong>xNOTA</strong> y la fecha de exportación.'
             ]
         },
         {
@@ -253,10 +278,10 @@
             var note = p.pending
                 ? '<div class="processor-note pending">Este procesador está en preparación. Por ahora solo <strong>Control</strong> está habilitado.</div>'
                 : '';
-            var titleRow = p.id === 'control'
+            var titleRow = (p.reglas && p.reglas.length && !p.pending)
                 ? '<div class="processor-title-row">' +
                     '<h3>' + p.label + '</h3>' +
-                    '<button type="button" class="theme-toggle processor-info-btn" id="infoBtn" title="Información del proceso Control" aria-label="Información del proceso Control">ℹ️</button>' +
+                    '<button type="button" class="theme-toggle processor-info-btn" data-processor="' + p.id + '" title="Información del proceso ' + p.label + '" aria-label="Información del proceso ' + p.label + '">ℹ️</button>' +
                   '</div>'
                 : '<h3>' + p.label + '</h3>';
             return '<section id="panel-' + p.id + '" class="processor-panel ' + (p.id === procesadorActivo ? 'active' : '') + '">' +
@@ -272,25 +297,28 @@
             });
         });
 
-        bindInfoButton();
+        bindInfoButtons();
     }
 
-    function mostrarInfoControl() {
-        var control = PROCESADORES.find(function (p) { return p.id === 'control'; }) || PROCESADORES[0];
+    function mostrarInfoProcesador(id) {
+        var proc = PROCESADORES.find(function (p) { return p.id === id; }) || getProcesadorActivo();
         var title = document.querySelector('#infoOverlay h3');
         var intro = document.getElementById('infoIntro');
         var list = document.getElementById('infoRulesList');
-        if (title) title.textContent = 'Procesos · Control';
-        if (intro) intro.textContent = 'Al procesar el archivo de Control, se aplican automáticamente las siguientes reglas:';
-        if (list) list.innerHTML = (control.reglas || []).map(function (r) { return '<li>' + r + '</li>'; }).join('');
+        if (title) title.textContent = 'Procesos · ' + proc.label;
+        if (intro) intro.textContent = 'Al procesar con ' + proc.label + ', se aplican automáticamente las siguientes reglas:';
+        if (list) list.innerHTML = (proc.reglas || []).map(function (r) { return '<li>' + r + '</li>'; }).join('');
         document.getElementById('infoOverlay').classList.add('visible');
     }
 
-    function bindInfoButton() {
-        var infoBtn = document.getElementById('infoBtn');
-        if (!infoBtn || infoBtn.dataset.bound === '1') return;
-        infoBtn.dataset.bound = '1';
-        infoBtn.addEventListener('click', mostrarInfoControl);
+    function bindInfoButtons() {
+        document.querySelectorAll('.processor-info-btn[data-processor]').forEach(function (infoBtn) {
+            if (infoBtn.dataset.bound === '1') return;
+            infoBtn.dataset.bound = '1';
+            infoBtn.addEventListener('click', function () {
+                mostrarInfoProcesador(infoBtn.getAttribute('data-processor'));
+            });
+        });
     }
 
     function seleccionarProcesador(id) {
@@ -318,6 +346,10 @@
         var proc = getProcesadorActivo();
         var btn = document.getElementById('btnProcesar');
         var statusDiv = document.getElementById('status');
+        var baseWrap = document.getElementById('fileInputBaseWrap');
+        var xnotaWrap = document.getElementById('fileInputXnotaWrap');
+        if (baseWrap) baseWrap.style.display = proc.id === 'xnota' ? 'none' : 'block';
+        if (xnotaWrap) xnotaWrap.style.display = proc.id === 'xnota' ? 'block' : 'none';
         if (btn) {
             btn.disabled = !proc.enabled;
             btn.style.opacity = proc.enabled ? '1' : '0.55';
@@ -669,6 +701,606 @@
         return { filas: out, removed: removed };
     }
 
+    var COL_IDPOF_XNOTA = [
+        'Id. POF', 'ID POF', 'ID. POF', 'IDPOF', 'ID Pof', 'Id POF',
+        'Numero de propuesta', 'Número de propuesta', 'NUMERO DE PROPUESTA'
+    ];
+    var COL_CARGO_XNOTA = [
+        'CODIGO CARGO', 'Código de Cargo', 'Codigo de Cargo', 'Código Cargo', 'Codigo Cargo',
+        'COD CARGO', 'Código Cargo Unificado', 'Codigo Cargo Unificado', 'Cod. Cargo', 'Código Cargo'
+    ];
+    var COL_ASIG_XNOTA = [
+        'CODIGO ASIGNATURA', 'Código de Asignatura', 'Codigo de Asignatura', 'Código Asignatura',
+        'Codigo Asignatura', 'COD ASIGNATURA', 'Cod. Asignatura',
+        'Código de Asignatura Cabecera', 'Codigo de Asignatura Cabecera', 'Cod Asignatura Cabecera'
+    ];
+    var COL_ESP_XNOTA = [
+        'CODIGO ESPECIALIDAD', 'Código de Especialidad', 'Codigo Especialidad', 'Código Especialidad',
+        'COD ESPECIALIDAD', 'Cod.Espec.', 'Cod Espec', 'Codigo Especialidad'
+    ];
+    var COL_DOCENTE_XNOTA = ['DOCENTE', 'Docente', 'AyN Reemp.', 'AYN REEMP'];
+    var COL_ESTADO_XNOTA = [
+        'Excluida/Confirmada', 'EXCLUIDA/CONFIRMADA', 'Excluida Confirmada',
+        'Excluida / Confirmada', 'EXCLUIDA', 'CONFIRMADA'
+    ];
+
+    var COL_AREA_XNOTA = ['AREA', 'Area'];
+    var COL_DESC_CARGO_XNOTA = ['DESCRIPCION CARGO', 'Descripción Cargo', 'Descripcion Cargo', 'DESC CARGO'];
+    var COL_DESC_ASIG_XNOTA = ['DESCRIPCION ASIGNATURA', 'Descripción Asignatura', 'Descripcion Asignatura', 'DESC ASIGNATURA'];
+    var COL_DESC_ESP_XNOTA = ['DESCRIPCION ESPECIALIDAD', 'Descripción Especialidad', 'Descripcion Especialidad', 'Espec.', 'DESC ESPECIALIDAD'];
+
+    function esColumnaIgnoradaComparacion(normName) {
+        if (!normName) return true;
+        if (normName.indexOf('horario') !== -1) return true;
+        if (normName.indexOf('excluida') !== -1 && normName.indexOf('confirm') !== -1) return true;
+        return false;
+    }
+
+    function valorComparacionXnota(val) {
+        if (esCeldaVacia(val)) return '';
+        var s = String(val).trim();
+        var compact = s.replace(',', '.');
+        if (/^-?\d+(\.\d+)?$/.test(compact)) {
+            var n = parseFloat(compact);
+            if (!isNaN(n) && Number.isInteger(n)) return String(n);
+            if (!isNaN(n)) return String(n);
+        }
+        return normalizar(s);
+    }
+
+    function extraerCamposVacanteXnota(fila) {
+        return {
+            area: String(obtenerValorColumna(fila, COL_AREA_XNOTA) || '').trim() || '(Sin área)',
+            codCargo: String(obtenerValorColumna(fila, COL_CARGO_XNOTA) || '').trim(),
+            descCargo: String(obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA) || '').trim() || '(Sin cargo)',
+            codAsig: String(obtenerValorColumna(fila, COL_ASIG_XNOTA) || '').trim(),
+            descAsig: String(obtenerValorColumna(fila, COL_DESC_ASIG_XNOTA) || '').trim() || '(Sin asignatura)',
+            codEsp: String(obtenerValorColumna(fila, COL_ESP_XNOTA) || '').trim(),
+            descEsp: String(obtenerValorColumna(fila, COL_DESC_ESP_XNOTA) || '').trim() || '(Sin especialidad)',
+            estado: clasificarExcluidaConfirmada(obtenerValorColumna(fila, COL_ESTADO_XNOTA))
+        };
+    }
+
+    function listarColumnasComparablesXnota(filaEleve, filaResultado) {
+        var out = [];
+        var seen = Object.create(null);
+        var grupos = [
+            { label: 'Área', aliases: COL_AREA_XNOTA },
+            { label: 'Código cargo', aliases: COL_CARGO_XNOTA },
+            { label: 'Descripción cargo', aliases: COL_DESC_CARGO_XNOTA },
+            { label: 'Código asignatura', aliases: COL_ASIG_XNOTA },
+            { label: 'Descripción asignatura', aliases: COL_DESC_ASIG_XNOTA },
+            { label: 'Código especialidad', aliases: COL_ESP_XNOTA },
+            { label: 'Descripción especialidad', aliases: COL_DESC_ESP_XNOTA },
+            { label: 'Docente', aliases: COL_DOCENTE_XNOTA }
+        ];
+        grupos.forEach(function (g) {
+            var kE = encontrarClaveColumna(filaEleve, g.aliases);
+            var kR = encontrarClaveColumna(filaResultado, g.aliases);
+            if (kE && kR && !seen[g.label]) {
+                seen[g.label] = true;
+                out.push({ label: g.label, keyEleve: kE, keyResultado: kR });
+            }
+        });
+        Object.keys(filaEleve || {}).forEach(function (kE) {
+            var normE = normalizar(kE);
+            if (esColumnaIgnoradaComparacion(normE) || seen[normE]) return;
+            var kR = Object.keys(filaResultado || {}).find(function (k) { return normalizar(k) === normE; });
+            if (!kR) return;
+            seen[normE] = true;
+            out.push({ label: kE, keyEleve: kE, keyResultado: kR });
+        });
+        return out;
+    }
+
+    function detectarCambiosEntreArchivosXnota(filasEleve, filasResultado) {
+        var mapaEleve = Object.create(null);
+        var mapaRes = Object.create(null);
+        (filasEleve || []).forEach(function (f) {
+            var id = normalizarIdPof(obtenerValorColumna(f, COL_IDPOF_XNOTA));
+            if (id && !mapaEleve[id]) mapaEleve[id] = f;
+        });
+        (filasResultado || []).forEach(function (f) {
+            var id = normalizarIdPof(obtenerValorColumna(f, COL_IDPOF_XNOTA));
+            if (id && !mapaRes[id]) mapaRes[id] = f;
+        });
+
+        var soloEleve = 0;
+        var soloResultado = 0;
+        var conDiferencias = 0;
+        var porCampo = Object.create(null);
+        var detalle = [];
+
+        Object.keys(mapaEleve).forEach(function (id) {
+            if (!mapaRes[id]) {
+                soloEleve += 1;
+                return;
+            }
+            var fE = mapaEleve[id];
+            var fR = mapaRes[id];
+            var cols = listarColumnasComparablesXnota(fE, fR);
+            var hubo = false;
+            cols.forEach(function (col) {
+                var vE = valorComparacionXnota(fE[col.keyEleve]);
+                var vR = valorComparacionXnota(fR[col.keyResultado]);
+                if (vE === vR) return;
+                hubo = true;
+                porCampo[col.label] = (porCampo[col.label] || 0) + 1;
+                detalle.push([
+                    obtenerValorColumna(fE, COL_IDPOF_XNOTA) || id,
+                    col.label,
+                    fE[col.keyEleve] != null && fE[col.keyEleve] !== '' ? fE[col.keyEleve] : '',
+                    fR[col.keyResultado] != null && fR[col.keyResultado] !== '' ? fR[col.keyResultado] : ''
+                ]);
+            });
+            if (hubo) conDiferencias += 1;
+        });
+
+        Object.keys(mapaRes).forEach(function (id) {
+            if (!mapaEleve[id]) soloResultado += 1;
+        });
+
+        detalle.sort(function (a, b) {
+            var cmp = String(a[0]).localeCompare(String(b[0]), 'es');
+            if (cmp) return cmp;
+            return String(a[1]).localeCompare(String(b[1]), 'es');
+        });
+
+        return {
+            soloEleve: soloEleve,
+            soloResultado: soloResultado,
+            conDiferencias: conDiferencias,
+            porCampo: porCampo,
+            detalle: detalle
+        };
+    }
+
+    function construirHojaInformeXnota(filasCompletadas, filasEleve, filasResultadoOrig, options) {
+        options = options || {};
+        var proc = options.procesador || {};
+        var statsCompletado = options.statsCompletado || {};
+        var confirmadasTotal = options.confirmadasTotal || 0;
+        var excluidasTotal = options.excluidasTotal || 0;
+        var filas = [];
+        var cambios = detectarCambiosEntreArchivosXnota(filasEleve, filasResultadoOrig);
+
+        filas.push(['INFORME xNOTA']);
+        filas.push(['Procesador', proc.label || 'xNOTA']);
+        filas.push(['Fecha de exportación', new Date().toLocaleString('es-AR')]);
+        filas.push(['Vacantes confirmadas', confirmadasTotal]);
+        filas.push(['Vacantes excluidas', excluidasTotal]);
+        filas.push(['Total vacantes', confirmadasTotal + excluidasTotal]);
+        filas.push(['Campos completados desde eleve (vacíos en resultado)', statsCompletado.completados || 0]);
+        filas.push([]);
+        filas.push(['TABLA — Vacantes confirmadas y excluidas por Área / Cargo / Asignatura / Especialidad']);
+        filas.push([]);
+
+        var pivotHeaderRowIndex = filas.length;
+        filas.push([
+            'AREA',
+            'CODIGO CARGO',
+            'DESCRIPCION CARGO',
+            'CODIGO ASIGNATURA',
+            'DESCRIPCION ASIGNATURA',
+            'CODIGO ESPECIALIDAD',
+            'DESCRIPCION ESPECIALIDAD',
+            'CONFIRMADAS',
+            'EXCLUIDAS',
+            'TOTAL'
+        ]);
+
+        var agrupado = Object.create(null);
+        var porArea = Object.create(null);
+
+        (filasCompletadas || []).forEach(function (fila) {
+            var campos = extraerCamposVacanteXnota(fila);
+            var clave = [
+                campos.area, campos.codCargo, campos.descCargo,
+                campos.codAsig, campos.descAsig, campos.codEsp, campos.descEsp
+            ].join('||');
+
+            if (!agrupado[clave]) {
+                agrupado[clave] = {
+                    area: campos.area,
+                    codCargo: campos.codCargo,
+                    descCargo: campos.descCargo,
+                    codAsig: campos.codAsig,
+                    descAsig: campos.descAsig,
+                    codEsp: campos.codEsp,
+                    descEsp: campos.descEsp,
+                    confirmadas: 0,
+                    excluidas: 0
+                };
+            }
+            if (campos.estado === 'excluida') agrupado[clave].excluidas += 1;
+            else agrupado[clave].confirmadas += 1;
+            porArea[campos.area] = porArea[campos.area] || { confirmadas: 0, excluidas: 0 };
+            if (campos.estado === 'excluida') porArea[campos.area].excluidas += 1;
+            else porArea[campos.area].confirmadas += 1;
+        });
+
+        var items = Object.keys(agrupado).map(function (k) { return agrupado[k]; });
+        items.sort(function (a, b) {
+            var cmp = a.area.localeCompare(b.area, 'es');
+            if (cmp) return cmp;
+            cmp = a.descCargo.localeCompare(b.descCargo, 'es');
+            if (cmp) return cmp;
+            cmp = a.descAsig.localeCompare(b.descAsig, 'es');
+            if (cmp) return cmp;
+            return a.descEsp.localeCompare(b.descEsp, 'es');
+        });
+
+        var areasOrdenadas = Object.keys(porArea).sort(function (a, b) {
+            return a.localeCompare(b, 'es');
+        });
+
+        areasOrdenadas.forEach(function (area) {
+            items.filter(function (it) { return it.area === area; }).forEach(function (it) {
+                filas.push([
+                    it.area,
+                    it.codCargo,
+                    it.descCargo,
+                    it.codAsig,
+                    it.descAsig,
+                    it.codEsp,
+                    it.descEsp,
+                    it.confirmadas,
+                    it.excluidas,
+                    it.confirmadas + it.excluidas
+                ]);
+            });
+            var sub = porArea[area];
+            filas.push([
+                'Subtotal ' + area,
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                sub.confirmadas,
+                sub.excluidas,
+                sub.confirmadas + sub.excluidas
+            ]);
+        });
+
+        var pivotLastRowIndex = filas.length - 1;
+        filas.push([
+            'TOTAL GENERAL',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            confirmadasTotal,
+            excluidasTotal,
+            confirmadasTotal + excluidasTotal
+        ]);
+        pivotLastRowIndex = filas.length - 1;
+
+        filas.push([]);
+        filas.push(['CAMBIOS ENTRE ELEVE CONTROL Y RESULTADO CONTROL']);
+        filas.push(['Se ignoran diferencias en columnas de horario y descripción de horario.']);
+        filas.push([]);
+        filas.push(['Resumen']);
+        filas.push(['Id. POF con diferencias (presentes en ambos archivos)', cambios.conDiferencias]);
+        filas.push(['Id. POF solo en eleve control', cambios.soloEleve]);
+        filas.push(['Id. POF solo en resultado control', cambios.soloResultado]);
+        filas.push(['Total diferencias por campo', cambios.detalle.length]);
+        filas.push([]);
+        filas.push(['Diferencias por campo']);
+        filas.push(['Campo', 'Cantidad de diferencias']);
+
+        var camposOrdenados = Object.keys(cambios.porCampo).sort(function (a, b) {
+            return a.localeCompare(b, 'es');
+        });
+        camposOrdenados.forEach(function (campo) {
+            filas.push([campo, cambios.porCampo[campo]]);
+        });
+        if (!camposOrdenados.length) {
+            filas.push(['(Sin diferencias entre archivos, salvo horario)', 0]);
+        }
+
+        filas.push([]);
+        var cambiosHeaderRowIndex = filas.length;
+        filas.push(['DETALLE DE CAMBIOS POR Id. POF']);
+        filas.push(['Id. POF', 'Columna', 'Eleve control', 'Resultado control']);
+        cambios.detalle.forEach(function (row) { filas.push(row); });
+        var cambiosLastRowIndex = filas.length - 1;
+
+        return {
+            aoa: filas,
+            pivotHeaderRowIndex: pivotHeaderRowIndex,
+            pivotLastRowIndex: pivotLastRowIndex,
+            cambiosHeaderRowIndex: cambiosHeaderRowIndex,
+            cambiosLastRowIndex: cambiosLastRowIndex,
+            cambios: cambios
+        };
+    }
+
+    function encontrarClaveColumna(fila, posiblesNombres) {
+        if (!fila) return null;
+        var keys = Object.keys(fila);
+        for (var i = 0; i < posiblesNombres.length; i++) {
+            var normNombre = normalizar(posiblesNombres[i]);
+            var foundKey = keys.find(function (k) { return normalizar(k) === normNombre; });
+            if (foundKey) return foundKey;
+        }
+        return null;
+    }
+
+    function esCeldaVacia(val) {
+        if (val == null) return true;
+        var s = String(val).trim();
+        return s === '' || s === '.' || s === '0';
+    }
+
+    function normalizarIdPof(val) {
+        var s = String(val == null ? '' : val).trim();
+        if (!s) return '';
+        return s.toLowerCase();
+    }
+
+    function clasificarExcluidaConfirmada(val) {
+        var s = normalizar(String(val == null ? '' : val));
+        if (!s) return 'confirmada';
+        if (s.indexOf('exclu') !== -1) return 'excluida';
+        if (s.indexOf('confirm') !== -1) return 'confirmada';
+        if (s === 'si' || s === '1' || s === 'true' || s === 'x') return 'excluida';
+        return 'confirmada';
+    }
+
+    function leerArchivoComoArrayBuffer(file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function (e) { resolve(new Uint8Array(e.target.result)); };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function unificarHojasWorkbook(workbook) {
+        var datosUnificados = [];
+        workbook.SheetNames.forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            var rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (rawJson.length === 0) return;
+
+            var headerRowIndex = 0;
+            for (var i = 0; i < Math.min(10, rawJson.length); i++) {
+                var rowStr = rawJson[i].map(function (x) { return normalizar(String(x)); }).join('');
+                if (rowStr.includes('codes') || rowStr.includes('area') || rowStr.includes('nombre') ||
+                    rowStr.includes('idpof') || rowStr.includes('id pof') || rowStr.includes('exclu') ||
+                    rowStr.includes('confirm') || rowStr.includes('cargo')) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            var headers = rawJson[headerRowIndex];
+            for (var r = headerRowIndex + 1; r < rawJson.length; r++) {
+                var row = rawJson[r];
+                var obj = {};
+                var tieneDatos = false;
+                for (var j = 0; j < headers.length; j++) {
+                    if (headers[j]) {
+                        obj[headers[j]] = row[j];
+                        if (String(row[j]).trim() !== '') tieneDatos = true;
+                    }
+                }
+                if (tieneDatos) datosUnificados.push(obj);
+            }
+        });
+        return datosUnificados;
+    }
+
+    function construirMapaEleveControl(filas) {
+        var mapa = Object.create(null);
+        var sinId = 0;
+        (filas || []).forEach(function (fila) {
+            var idRaw = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+            var idKey = normalizarIdPof(idRaw);
+            if (!idKey) {
+                sinId += 1;
+                return;
+            }
+            if (!mapa[idKey]) {
+                mapa[idKey] = {
+                    cargo: obtenerValorColumna(fila, COL_CARGO_XNOTA),
+                    asig: obtenerValorColumna(fila, COL_ASIG_XNOTA),
+                    esp: obtenerValorColumna(fila, COL_ESP_XNOTA),
+                    docente: obtenerValorColumna(fila, COL_DOCENTE_XNOTA)
+                };
+            }
+        });
+        return { mapa: mapa, sinId: sinId };
+    }
+
+    function completarResultadoConEleve(filas, mapaEleve) {
+        var stats = { completados: 0, sinMatch: 0, sinId: 0 };
+        var out = (filas || []).map(function (fila) {
+            var nueva = Object.assign({}, fila);
+            var idRaw = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+            var idKey = normalizarIdPof(idRaw);
+            if (!idKey) {
+                stats.sinId += 1;
+                return nueva;
+            }
+            var eleve = mapaEleve[idKey];
+            if (!eleve) {
+                stats.sinMatch += 1;
+                return nueva;
+            }
+
+            var keyCargo = encontrarClaveColumna(nueva, COL_CARGO_XNOTA);
+            var keyAsig = encontrarClaveColumna(nueva, COL_ASIG_XNOTA);
+            var keyEsp = encontrarClaveColumna(nueva, COL_ESP_XNOTA);
+            var keyDoc = encontrarClaveColumna(nueva, COL_DOCENTE_XNOTA);
+
+            if (keyCargo && esCeldaVacia(nueva[keyCargo]) && !esCeldaVacia(eleve.cargo)) {
+                nueva[keyCargo] = eleve.cargo;
+                stats.completados += 1;
+            }
+            if (keyAsig && esCeldaVacia(nueva[keyAsig]) && !esCeldaVacia(eleve.asig)) {
+                nueva[keyAsig] = eleve.asig;
+                stats.completados += 1;
+            }
+            if (keyEsp && esCeldaVacia(nueva[keyEsp]) && !esCeldaVacia(eleve.esp)) {
+                nueva[keyEsp] = eleve.esp;
+                stats.completados += 1;
+            }
+            if (keyDoc && esCeldaVacia(nueva[keyDoc]) && !esCeldaVacia(eleve.docente)) {
+                nueva[keyDoc] = eleve.docente;
+                stats.completados += 1;
+            }
+            return nueva;
+        });
+        return { filas: out, stats: stats };
+    }
+
+    function separarConfirmadasExcluidas(filas) {
+        var confirmadas = [];
+        var excluidas = [];
+        var sinEstado = 0;
+        (filas || []).forEach(function (fila) {
+            var estadoRaw = obtenerValorColumna(fila, COL_ESTADO_XNOTA);
+            var estado = clasificarExcluidaConfirmada(estadoRaw);
+            if (!String(estadoRaw || '').trim()) sinEstado += 1;
+            if (estado === 'excluida') excluidas.push(fila);
+            else confirmadas.push(fila);
+        });
+        return { confirmadas: confirmadas, excluidas: excluidas, sinEstado: sinEstado };
+    }
+
+    function ordenarColumnasJson(filas) {
+        if (!filas || !filas.length) return filas;
+        var cols = [];
+        filas.forEach(function (fila) {
+            Object.keys(fila).forEach(function (k) {
+                if (cols.indexOf(k) === -1) cols.push(k);
+            });
+        });
+        return filas.map(function (fila) {
+            var o = {};
+            cols.forEach(function (c) { o[c] = fila[c] !== undefined ? fila[c] : ''; });
+            return o;
+        });
+    }
+
+    async function procesarXnota(proc) {
+        var statusDiv = document.getElementById('status');
+        var fileEleve = document.getElementById('fileEleveControl');
+        var fileResultado = document.getElementById('fileResultadoControl');
+
+        if (!fileEleve || !fileEleve.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el archivo Eleve control.';
+            return;
+        }
+        if (!fileResultado || !fileResultado.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el archivo Resultado control.';
+            return;
+        }
+
+        statusDiv.className = '';
+        statusDiv.innerText = 'Procesando archivos xNOTA, por favor espera...';
+
+        try {
+            var bufEleve = await leerArchivoComoArrayBuffer(fileEleve.files[0]);
+            var bufResultado = await leerArchivoComoArrayBuffer(fileResultado.files[0]);
+            var wbEleve = XLSX.read(bufEleve, { type: 'array' });
+            var wbResultado = XLSX.read(bufResultado, { type: 'array' });
+
+            var filasEleve = unificarHojasWorkbook(wbEleve);
+            var filasResultado = unificarHojasWorkbook(wbResultado);
+
+            if (!filasEleve.length) throw new Error('El archivo Eleve control no contiene datos legibles.');
+            if (!filasResultado.length) throw new Error('El archivo Resultado control no contiene datos legibles.');
+
+            var filasResultadoOrig = filasResultado.map(function (f) { return Object.assign({}, f); });
+            var mapaInfo = construirMapaEleveControl(filasEleve);
+            var completado = completarResultadoConEleve(filasResultado, mapaInfo.mapa);
+            var partes = separarConfirmadasExcluidas(completado.filas);
+
+            var confirmadas = ordenarColumnasJson(partes.confirmadas);
+            var excluidas = ordenarColumnasJson(partes.excluidas);
+
+            var informe = construirHojaInformeXnota(completado.filas, filasEleve, filasResultadoOrig, {
+                procesador: proc,
+                statsCompletado: completado.stats,
+                confirmadasTotal: confirmadas.length,
+                excluidasTotal: excluidas.length
+            });
+
+            var wb = XLSX.utils.book_new();
+            var wsConfirmadas = XLSX.utils.json_to_sheet(confirmadas);
+            var wsExcluidas = XLSX.utils.json_to_sheet(excluidas);
+            XLSX.utils.book_append_sheet(wb, wsConfirmadas, 'Confirmadas');
+            XLSX.utils.book_append_sheet(wb, wsExcluidas, 'Excluidas');
+
+            var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+            wsInforme['!cols'] = [
+                { wch: 28 },
+                { wch: 14 },
+                { wch: 36 },
+                { wch: 16 },
+                { wch: 36 },
+                { wch: 16 },
+                { wch: 36 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 12 }
+            ];
+            if (informe.pivotLastRowIndex > informe.pivotHeaderRowIndex) {
+                var pivotStart = XLSX.utils.encode_cell({ r: informe.pivotHeaderRowIndex, c: 0 });
+                var pivotEnd = XLSX.utils.encode_cell({ r: informe.pivotLastRowIndex, c: 9 });
+                wsInforme['!autofilter'] = { ref: pivotStart + ':' + pivotEnd };
+            }
+            XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
+
+            var nombreArchivo = 'xNOTA_' + formatearFechaHoraNombre() + '.xlsx';
+            XLSX.writeFile(wb, nombreArchivo);
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_concursos',
+                    moduleLabel: 'Eleves Concursos',
+                    procesador: proc.id,
+                    procesadorLabel: proc.label,
+                    archivoOrigen: (fileEleve.files[0].name || '') + ' + ' + (fileResultado.files[0].name || ''),
+                    archivoSalida: nombreArchivo,
+                    filas: completado.filas.length,
+                    detalle: 'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length +
+                        ' · Campos completados: ' + completado.stats.completados +
+                        ' · Diferencias entre archivos: ' + informe.cambios.detalle.length,
+                    extras: {
+                        confirmadas: confirmadas.length,
+                        excluidas: excluidas.length,
+                        camposCompletados: completado.stats.completados,
+                        sinMatchIdPof: completado.stats.sinMatch,
+                        diferenciasArchivos: informe.cambios.detalle.length,
+                        hojas: ['Confirmadas', 'Excluidas', 'Informe']
+                    }
+                });
+            }
+
+            statusDiv.className = '';
+            statusDiv.innerText =
+                '¡Proceso xNOTA completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
+                '(Hojas: Confirmadas + Excluidas + Informe)\n' +
+                'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length + '\n' +
+                'Campos completados desde eleve: ' + completado.stats.completados + '\n' +
+                'Sin coincidencia Id. POF: ' + completado.stats.sinMatch + '\n' +
+                'Diferencias eleve vs resultado (sin horario): ' + informe.cambios.detalle.length;
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = 'error';
+            statusDiv.innerText = error.message || 'Hubo un error al procesar los archivos xNOTA.';
+        }
+    }
+
     async function iniciarProceso() {
         const proc = getProcesadorActivo();
         const fileInput = document.getElementById('fileInput');
@@ -678,6 +1310,10 @@
             statusDiv.className = 'error';
             statusDiv.innerText = 'El procesador "' + proc.label + '" todavía no está habilitado.';
             return;
+        }
+
+        if (proc.id === 'xnota') {
+            return procesarXnota(proc);
         }
         
         if (!fileInput.files.length) {
