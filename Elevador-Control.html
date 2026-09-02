@@ -210,6 +210,7 @@
                 '<strong>Base / Ascenso:</strong> al procesar se pregunta el tipo. En <em>Base</em> solo se completan vacíos. En <em>Ascenso</em> todos los códigos de cargo del resultado se reemplazan por los del eleve de control (por Id. POF).',
                 '<strong>Completado (Base):</strong> si están vacíos en el resultado, se rellenan desde el eleve: código de cargo, asignatura, especialidad, docente, ESTABLECIMIENTO ID, Número de escuela, Nombre de la escuela y Dirección.',
                 '<strong>Ascenso — códigos de cargo:</strong> se fuerza el código de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). El resto de campos (incluyendo establecimiento) se rellenan solo si están vacíos.',
+                '<strong>Continuidad pedagógica:</strong> la columna de continuidad queda vacía en la salida (Confirmadas y Excluidas).',
                 '<strong>Solo vacíos (Base):</strong> los valores ya presentes en el resultado no se modifican.',
                 '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad y diferencias entre archivos).',
                 '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad, más detalle de diferencias entre eleve y resultado (sin columnas de horario).',
@@ -747,6 +748,10 @@
     var COL_DIRECCION_XNOTA = [
         'Direccion', 'Dirección', 'DIRECCION', 'DIRECCIÓN', 'Domicilio'
     ];
+    var COL_CONTINUIDAD_XNOTA = [
+        'CONTINUIDAD', 'Continuidad', 'Continuidad pedagogica', 'Continuidad pedagógica',
+        'CONTINUIDAD PEDAGOGICA', 'CONTINUIDAD PEDAGÓGICA', 'Continuidad Pedagogica'
+    ];
     var COL_ESTADO_XNOTA = [
         'Excluida/Confirmada', 'EXCLUIDA/CONFIRMADA', 'Excluida Confirmada',
         'Excluida / Confirmada', 'EXCLUIDA', 'CONFIRMADA'
@@ -760,6 +765,7 @@
     function esColumnaIgnoradaComparacion(normName) {
         if (!normName) return true;
         if (normName.indexOf('horario') !== -1) return true;
+        if (normName.indexOf('continuidad') !== -1) return true;
         if (normName.indexOf('excluida') !== -1 && normName.indexOf('confirm') !== -1) return true;
         return false;
     }
@@ -1231,6 +1237,21 @@
             return nueva;
         });
         return { filas: out, stats: stats };
+    }
+
+    function vaciarContinudadPedagogica(filas) {
+        var vaciados = 0;
+        (filas || []).forEach(function (fila) {
+            if (!fila) return;
+            var key = encontrarClaveColumna(fila, COL_CONTINUIDAD_XNOTA);
+            if (!key) {
+                fila['CONTINUIDAD'] = '';
+                return;
+            }
+            if (!esCeldaVacia(fila[key])) vaciados += 1;
+            fila[key] = '';
+        });
+        return vaciados;
     }
 
     function pedirTipoBaseAscenso() {
