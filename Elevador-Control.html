@@ -99,7 +99,7 @@
     <div id="processorPanels"></div>
 
     <div id="fileInputBaseWrap">
-        <label class="label-text" for="fileInput">Archivo Base</label>
+        <label class="label-text" id="fileInputBaseLabel" for="fileInput">Archivo Base</label>
         <input type="file" id="fileInput" accept=".csv, .xls, .xlsx" />
     </div>
     <div id="fileInputXnotaWrap" style="display:none">
@@ -148,7 +148,7 @@
         </div>
 
         <div>
-            <label class="label-text" style="margin-top: 0;">Fecha y Hora de Apertura</label>
+            <label class="label-text" id="modalSecondDateLabel" style="margin-top: 0;">Fecha y Hora de Apertura</label>
             <div class="grid-2-col">
                 <input type="date" id="inputFechaApe" />
                 <input type="time" id="inputHoraApe" value="10:00" />
@@ -162,11 +162,11 @@
     </div>
 </div>
 
-<!-- Modal Base / Ascenso (xNOTA) -->
+<!-- Modal Base / Ascenso -->
 <div id="modalBaseAscensoOverlay" class="modal-overlay">
     <div class="modal">
         <h3 style="margin: 0 0 10px 0;">¿Es Base o Ascenso?</h3>
-        <p style="margin-bottom: 15px;">Elegí el tipo de elevación. En Ascenso se reemplazan código y descripción de cargo del resultado por los del eleve de control.</p>
+        <p id="modalBaseAscensoIntro" style="margin-bottom: 15px;">Elegí el tipo de elevación.</p>
         <div id="modalBaseAscensoError" class="error" style="display:none; margin-top: 8px; font-size: 13px; font-weight: bold;">Seleccioná Base o Ascenso para continuar.</div>
         <button type="button" class="btn-primary" id="modalBaseAscensoBase" style="margin-top: 16px;">Base</button>
         <button type="button" class="btn-primary" id="modalBaseAscensoAscenso" style="margin-top: 8px;">Ascenso</button>
@@ -223,15 +223,17 @@
             label: 'Traslado',
             suffix: 'TRASLADO',
             enabled: true,
-            descripcion: 'Procesador para eleves de traslado. Unificá hojas del archivo base y aplicá el formato de vacantes por traslado.',
+            descripcion: 'Tomá la hoja Confirmadas (p. ej. salida de xNOTA), definí Base/Ascenso y fechas de publicación/cierre, y generá el eleve de traslado.',
             pending: false,
             reglas: [
-                '<strong>Unificación:</strong> Se combinan todas las hojas del Excel base en una sola.',
-                '<strong>Estructura:</strong> Se genera una columna inicial vacía y se ordena según el formato del archivo resultado.',
-                '<strong>Mapeo de Áreas y Turnos:</strong> Igual que Control (códigos de área, Mañana/Tarde/NOCHE/Completo).',
-                '<strong>Campos fijos:</strong> Sit. Rev. = INTERINO; Base/Ascenso y Tipo de Listado = 3; Novedad mayor a 60 días = 2.',
-                '<strong>Nombrado:</strong> El archivo descargado incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
-                '<strong>Informe:</strong> Segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
+                '<strong>Archivo de entrada:</strong> se usa únicamente la hoja <em>Confirmadas</em> del Excel cargado (por ejemplo el generado por xNOTA).',
+                '<strong>Base / Ascenso:</strong> se pregunta al procesar. <em>Ascenso = 1</em> y <em>Base = 2</em> en la columna BASE/ASCENSO.',
+                '<strong>Tipo de listado:</strong> se completa con <strong>13</strong>.',
+                '<strong>Fechas:</strong> popup con Fecha/Hora de Publicación y Fecha/Hora de Cierre (se graban en publicación y apertura del archivo resultado).',
+                '<strong>Novedad Mayor 60 días:</strong> se copia el valor original de <em>Cant. Horas</em>.',
+                '<strong>Cant. Horas:</strong> se completa con la cantidad de registros del mismo código de cargo en la publicación.',
+                '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
+                '<strong>Informe:</strong> segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
             ]
         },
         {
@@ -365,8 +367,14 @@
         var statusDiv = document.getElementById('status');
         var baseWrap = document.getElementById('fileInputBaseWrap');
         var xnotaWrap = document.getElementById('fileInputXnotaWrap');
+        var baseLabel = document.getElementById('fileInputBaseLabel');
         if (baseWrap) baseWrap.style.display = proc.id === 'xnota' ? 'none' : 'block';
         if (xnotaWrap) xnotaWrap.style.display = proc.id === 'xnota' ? 'block' : 'none';
+        if (baseLabel) {
+            baseLabel.textContent = proc.id === 'traslado'
+                ? 'Archivo con hoja Confirmadas'
+                : 'Archivo Base';
+        }
         if (btn) {
             btn.disabled = !proc.enabled;
             btn.style.opacity = proc.enabled ? '1' : '0.55';
@@ -506,11 +514,19 @@
         return "";
     }
 
-    function pedirDatosPopUp() {
+    function pedirDatosPopUp(options) {
+        options = options || {};
         return new Promise((resolve) => {
             const overlay = document.getElementById('modalOverlay');
             const errorMsg = document.getElementById('modalError');
+            const title = document.getElementById('modalTitle');
+            const secondLabel = document.getElementById('modalSecondDateLabel');
+            const intro = overlay ? overlay.querySelector('.modal > p') : null;
             errorMsg.style.display = 'none';
+
+            if (title) title.textContent = options.title || 'Definí los tiempos de Publicación y Apertura';
+            if (intro) intro.textContent = options.intro || 'Completá las fechas y horas para el control de vacantes.';
+            if (secondLabel) secondLabel.textContent = options.secondLabel || 'Fecha y Hora de Apertura';
             
             document.getElementById('inputFechaPub').valueAsDate = new Date();
             document.getElementById('inputFechaApe').valueAsDate = new Date();
@@ -538,7 +554,9 @@
                     fechaPub: parseDateToExcel(fechaPub), 
                     horaPub: parseTimeToExcel(horaPub),
                     fechaApe: parseDateToExcel(fechaApe), 
-                    horaApe: parseTimeToExcel(horaApe) 
+                    horaApe: parseTimeToExcel(horaApe),
+                    fechaCierre: parseDateToExcel(fechaApe),
+                    horaCierre: parseTimeToExcel(horaApe)
                 });
             };
         });
@@ -1292,11 +1310,17 @@
         return vaciados;
     }
 
-    function pedirTipoBaseAscenso() {
+    function pedirTipoBaseAscenso(options) {
+        options = options || {};
         return new Promise(function (resolve) {
             var overlay = document.getElementById('modalBaseAscensoOverlay');
             var errorMsg = document.getElementById('modalBaseAscensoError');
+            var intro = document.getElementById('modalBaseAscensoIntro');
             if (errorMsg) errorMsg.style.display = 'none';
+            if (intro && options.intro) intro.textContent = options.intro;
+            else if (intro && !options.intro) {
+                intro.textContent = 'Elegí el tipo de elevación.';
+            }
             if (!overlay) {
                 resolve(null);
                 return;
@@ -1315,6 +1339,215 @@
             document.getElementById('modalBaseAscensoAscenso').onclick = function () { cerrar('ascenso'); };
             document.getElementById('modalBaseAscensoCancel').onclick = function () { cerrar(null); };
         });
+    }
+
+    function leerHojaConfirmadas(workbook) {
+        if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+            throw new Error('El archivo no tiene hojas legibles.');
+        }
+        var sheetName = workbook.SheetNames.find(function (n) {
+            return normalizar(n).indexOf('confirmada') !== -1;
+        });
+        if (!sheetName) {
+            throw new Error('No se encontró la hoja "Confirmadas" en el archivo.');
+        }
+        var worksheet = workbook.Sheets[sheetName];
+        var rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        if (!rawJson.length) throw new Error('La hoja Confirmadas está vacía.');
+
+        var headerRowIndex = 0;
+        for (var i = 0; i < Math.min(15, rawJson.length); i++) {
+            var rowStr = rawJson[i].map(function (x) { return normalizar(String(x)); }).join(' ');
+            if (rowStr.indexOf('area') !== -1 || rowStr.indexOf('cargo') !== -1 ||
+                rowStr.indexOf('idpof') !== -1 || rowStr.indexOf('id pof') !== -1 ||
+                rowStr.indexOf('establecimiento') !== -1) {
+                headerRowIndex = i;
+                break;
+            }
+        }
+
+        var headers = rawJson[headerRowIndex];
+        var filas = [];
+        for (var r = headerRowIndex + 1; r < rawJson.length; r++) {
+            var row = rawJson[r];
+            var obj = {};
+            var tieneDatos = false;
+            for (var j = 0; j < headers.length; j++) {
+                if (headers[j]) {
+                    obj[headers[j]] = row[j];
+                    if (String(row[j] == null ? '' : row[j]).trim() !== '') tieneDatos = true;
+                }
+            }
+            if (tieneDatos) filas.push(obj);
+        }
+        if (!filas.length) throw new Error('La hoja Confirmadas no tiene filas con datos.');
+        return { filas: filas, sheetName: sheetName };
+    }
+
+    function normalizarCodigoCargoTraslado(val) {
+        var s = String(val == null ? '' : val).trim();
+        if (!s) return '';
+        var compact = s.replace(',', '.');
+        if (/^-?\d+(\.0+)?$/.test(compact)) return String(parseInt(compact, 10));
+        return normalizar(s);
+    }
+
+    async function procesarTraslado(proc) {
+        var statusDiv = document.getElementById('status');
+        var fileInput = document.getElementById('fileInput');
+
+        if (!fileInput || !fileInput.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga un archivo con la hoja Confirmadas.';
+            return;
+        }
+
+        var tipoBaseAscenso = await pedirTipoBaseAscenso({
+            intro: 'Elegí el tipo. Ascenso completa BASE/ASCENSO con 1 y Base con 2.'
+        });
+        if (!tipoBaseAscenso) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
+        var inputsModal = await pedirDatosPopUp({
+            title: 'Definí Publicación y Cierre',
+            intro: 'Completá las fechas y horas de publicación y de cierre para el traslado.',
+            secondLabel: 'Fecha y Hora de Cierre'
+        });
+        if (!inputsModal) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
+        var baseAscensoValor = tipoBaseAscenso === 'ascenso' ? 1 : 2;
+        statusDiv.className = '';
+        statusDiv.innerText = 'Procesando Traslado (' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + '), por favor espera...';
+
+        try {
+            var buf = await leerArchivoComoArrayBuffer(fileInput.files[0]);
+            var workbook = XLSX.read(buf, { type: 'array' });
+            var leido = leerHojaConfirmadas(workbook);
+            var filasOrigen = leido.filas;
+
+            var conteoPorCargo = Object.create(null);
+            filasOrigen.forEach(function (fila) {
+                var cod = normalizarCodigoCargoTraslado(
+                    obtenerValorColumna(fila, ['CODIGO CARGO', 'Código Cargo', 'Codigo Cargo', 'COD CARGO'])
+                );
+                var key = cod || '__SIN_CARGO__';
+                conteoPorCargo[key] = (conteoPorCargo[key] || 0) + 1;
+            });
+
+            var areaDetectada = 'Generico';
+            var dataFinal = filasOrigen.map(function (fila) {
+                var nuevaFila = {};
+                COLUMNAS_RESULTADO.forEach(function (col) {
+                    if (!col) {
+                        nuevaFila[col] = '';
+                        return;
+                    }
+                    var val = obtenerValorColumna(fila, [col]);
+                    if (val === '' || val == null) {
+                        /* intentar alias frecuentes del resultado control / xNOTA */
+                        if (col === 'CODIGO CARGO') val = obtenerValorColumna(fila, COL_CARGO_XNOTA);
+                        else if (col === 'DESCRIPCION CARGO') val = obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA);
+                        else if (col === 'CODIGO ASIGNATURA') val = obtenerValorColumna(fila, COL_ASIG_XNOTA);
+                        else if (col === 'CODIGO ESPECIALIDAD') val = obtenerValorColumna(fila, COL_ESP_XNOTA);
+                        else if (col === 'DOCENTE') val = obtenerValorColumna(fila, COL_DOCENTE_XNOTA);
+                        else if (col === 'ESTABLECIMIENTO ID') val = obtenerValorColumna(fila, COL_ESTAB_ID_XNOTA);
+                        else if (col === 'Numero de Escuela') val = obtenerValorColumna(fila, COL_NUM_ESC_XNOTA);
+                        else if (col === 'Nombre de la escuela') val = obtenerValorColumna(fila, COL_NOMBRE_ESC_XNOTA);
+                        else if (col === 'Direccion') val = obtenerValorColumna(fila, COL_DIRECCION_XNOTA);
+                        else if (col === 'Id. POF') val = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+                        else if (col === 'AREA') val = obtenerValorColumna(fila, COL_AREA_XNOTA);
+                    }
+                    nuevaFila[col] = val !== undefined && val !== null ? val : '';
+                });
+
+                var cantHorasOrig = obtenerValorColumna(fila, ['Cant. Horas', 'Cant Horas', 'Horas']);
+                nuevaFila['Novedad Mayor 60 dias habiles'] = cantHorasOrig;
+
+                var codCargo = normalizarCodigoCargoTraslado(nuevaFila['CODIGO CARGO']);
+                var keyCargo = codCargo || '__SIN_CARGO__';
+                nuevaFila['Cant. Horas'] = conteoPorCargo[keyCargo] || 0;
+
+                nuevaFila['BASE/ASCENSO'] = baseAscensoValor;
+                nuevaFila['TIPO DE LISTADO'] = 13;
+                nuevaFila['FECHA PUBLICACION'] = inputsModal.fechaPub;
+                nuevaFila['HORA PUBLICACION'] = inputsModal.horaPub;
+                nuevaFila['FECHA APERTURA'] = inputsModal.fechaCierre;
+                nuevaFila['HORA APERTURA'] = inputsModal.horaCierre;
+
+                if (nuevaFila['AREA'] && areaDetectada === 'Generico') {
+                    areaDetectada = String(nuevaFila['AREA']).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
+                }
+
+                var ordenada = {};
+                COLUMNAS_RESULTADO.forEach(function (col) {
+                    ordenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
+                });
+                return ordenada;
+            });
+
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
+            aplicarFormatoFechasHoras(ws);
+            XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+
+            var informe = construirHojaInforme(dataFinal, { procesador: proc, duplicadosEliminados: 0 });
+            var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+            wsInforme['!cols'] = [
+                { wch: 28 }, { wch: 14 }, { wch: 36 }, { wch: 16 },
+                { wch: 36 }, { wch: 16 }, { wch: 36 }, { wch: 18 }
+            ];
+            if (informe.lastDataRowIndex > informe.headerRowIndex) {
+                var start = XLSX.utils.encode_cell({ r: informe.headerRowIndex, c: 0 });
+                var end = XLSX.utils.encode_cell({ r: informe.lastDataRowIndex, c: 7 });
+                wsInforme['!autofilter'] = { ref: start + ':' + end };
+            }
+            XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
+
+            var nombreArchivo = areaDetectada + '_' + proc.suffix + '_' + formatearFechaHoraNombre() + '.xlsx';
+            XLSX.writeFile(wb, nombreArchivo, { cellStyles: true });
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_concursos',
+                    moduleLabel: 'Eleves Concursos',
+                    procesador: proc.id,
+                    procesadorLabel: proc.label,
+                    archivoOrigen: fileInput.files[0].name || '',
+                    archivoSalida: nombreArchivo,
+                    filas: dataFinal.length,
+                    area: areaDetectada,
+                    detalle: 'Tipo: ' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso (1)' : 'Base (2)') +
+                        ' · Hoja: ' + leido.sheetName + ' · Códigos de cargo distintos: ' + Object.keys(conteoPorCargo).length,
+                    extras: {
+                        tipo: tipoBaseAscenso,
+                        baseAscenso: baseAscensoValor,
+                        tipoListado: 13,
+                        hojaOrigen: leido.sheetName,
+                        cargosDistintos: Object.keys(conteoPorCargo).length,
+                        hojas: ['Resultado', 'Informe']
+                    }
+                });
+            }
+
+            statusDiv.className = '';
+            statusDiv.innerText =
+                '¡Proceso Traslado completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
+                '(Hojas: Resultado + Informe)\n' +
+                'Origen: hoja "' + leido.sheetName + '" · Filas: ' + dataFinal.length + '\n' +
+                'BASE/ASCENSO: ' + baseAscensoValor + ' (' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + ')\n' +
+                'TIPO DE LISTADO: 13 · Códigos de cargo distintos: ' + Object.keys(conteoPorCargo).length;
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = 'error';
+            statusDiv.innerText = error.message || 'Hubo un error al procesar el archivo de Traslado.';
+        }
     }
 
     function separarConfirmadasExcluidas(filas) {
@@ -1362,7 +1595,9 @@
             return;
         }
 
-        var tipoBaseAscenso = await pedirTipoBaseAscenso();
+        var tipoBaseAscenso = await pedirTipoBaseAscenso({
+            intro: 'Elegí el tipo de elevación. En Ascenso se reemplazan código y descripción de cargo del resultado por los del eleve de control.'
+        });
         if (!tipoBaseAscenso) {
             statusDiv.className = '';
             statusDiv.innerText = 'Proceso cancelado.';
@@ -1485,6 +1720,9 @@
 
         if (proc.id === 'xnota') {
             return procesarXnota(proc);
+        }
+        if (proc.id === 'traslado') {
+            return procesarTraslado(proc);
         }
         
         if (!fileInput.files.length) {
