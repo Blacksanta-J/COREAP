@@ -162,6 +162,18 @@
     </div>
 </div>
 
+<!-- Modal Base / Ascenso (xNOTA) -->
+<div id="modalBaseAscensoOverlay" class="modal-overlay">
+    <div class="modal">
+        <h3 style="margin: 0 0 10px 0;">¿Es Base o Ascenso?</h3>
+        <p style="margin-bottom: 15px;">Elegí el tipo de elevación. En Ascenso se reemplazan todos los códigos de cargo del resultado por los del eleve de control.</p>
+        <div id="modalBaseAscensoError" class="error" style="display:none; margin-top: 8px; font-size: 13px; font-weight: bold;">Seleccioná Base o Ascenso para continuar.</div>
+        <button type="button" class="btn-primary" id="modalBaseAscensoBase" style="margin-top: 16px;">Base</button>
+        <button type="button" class="btn-primary" id="modalBaseAscensoAscenso" style="margin-top: 8px;">Ascenso</button>
+        <button type="button" class="secondary" id="modalBaseAscensoCancel">Cancelar</button>
+    </div>
+</div>
+
 <script>
     var PROCESADORES = [
         {
@@ -195,9 +207,12 @@
                 '<strong>Archivo 1 — Eleve control:</strong> eleve generado por el procesador Control (o equivalente con Id. POF y códigos de cargo, asignatura, especialidad y docente).',
                 '<strong>Archivo 2 — Resultado control:</strong> archivo devuelto por el sistema de control de vacantes, con columna <em>Excluida/Confirmada</em>.',
                 '<strong>Cruce:</strong> se relacionan ambos archivos por <em>Id. POF</em> (y equivalentes: ID POF, IDPOF, Número de propuesta).',
-                '<strong>Completado:</strong> en el resultado de control, si están vacíos, se rellenan código de cargo, código de asignatura, código de especialidad y docente con los datos del eleve de control.',
-                '<strong>Solo vacíos:</strong> los valores ya presentes en el resultado no se modifican.',
+                '<strong>Base / Ascenso:</strong> al procesar se pregunta el tipo. En <em>Base</em> solo se completan vacíos. En <em>Ascenso</em> todos los códigos de cargo del resultado se reemplazan por los del eleve de control (por Id. POF).',
+                '<strong>Completado (Base):</strong> en el resultado de control, si están vacíos, se rellenan código de cargo, código de asignatura, código de especialidad y docente con los datos del eleve de control.',
+                '<strong>Ascenso — códigos de cargo:</strong> se fuerza el código de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). Asignatura, especialidad y docente siguen rellenándose solo si están vacíos.',
+                '<strong>Solo vacíos (Base):</strong> los valores ya presentes en el resultado no se modifican.',
                 '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad y diferencias entre archivos).',
+                '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad, más detalle de diferencias entre eleve y resultado (sin columnas de horario).',
                 '<strong>Nombrado:</strong> el archivo incluye la palabra <strong>xNOTA</strong> y la fecha de exportación.'
             ]
         },
@@ -867,10 +882,14 @@
         filas.push(['INFORME xNOTA']);
         filas.push(['Procesador', proc.label || 'xNOTA']);
         filas.push(['Fecha de exportación', new Date().toLocaleString('es-AR')]);
+        filas.push(['Tipo', (options.modo === 'ascenso' ? 'Ascenso' : 'Base')]);
         filas.push(['Vacantes confirmadas', confirmadasTotal]);
         filas.push(['Vacantes excluidas', excluidasTotal]);
         filas.push(['Total vacantes', confirmadasTotal + excluidasTotal]);
-        filas.push(['Campos completados desde eleve (vacíos en resultado)', statsCompletado.completados || 0]);
+        filas.push(['Campos completados desde eleve', statsCompletado.completados || 0]);
+        if (options.modo === 'ascenso') {
+            filas.push(['Códigos de cargo forzados desde eleve (Ascenso)', statsCompletado.cargosForzados || 0]);
+        }
         filas.push([]);
         filas.push(['TABLA — Vacantes confirmadas y excluidas por Área / Cargo / Asignatura / Especialidad']);
         filas.push([]);
@@ -1117,8 +1136,15 @@
         return { mapa: mapa, sinId: sinId };
     }
 
-    function completarResultadoConEleve(filas, mapaEleve) {
-        var stats = { completados: 0, sinMatch: 0, sinId: 0 };
+    function completarResultadoConEleve(filas, mapaEleve, modo) {
+        var esAscenso = modo === 'ascenso';
+        var stats = {
+            completados: 0,
+            cargosForzados: 0,
+            sinMatch: 0,
+            sinId: 0,
+            modo: esAscenso ? 'ascenso' : 'base'
+        };
         var out = (filas || []).map(function (fila) {
             var nueva = Object.assign({}, fila);
             var idRaw = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
@@ -1138,9 +1164,25 @@
             var keyEsp = encontrarClaveColumna(nueva, COL_ESP_XNOTA);
             var keyDoc = encontrarClaveColumna(nueva, COL_DOCENTE_XNOTA);
 
-            if (keyCargo && esCeldaVacia(nueva[keyCargo]) && !esCeldaVacia(eleve.cargo)) {
-                nueva[keyCargo] = eleve.cargo;
-                stats.completados += 1;
+            if (!esCeldaVacia(eleve.cargo)) {
+                if (!keyCargo) {
+                    keyCargo = 'CODIGO CARGO';
+                    nueva[keyCargo] = '';
+                }
+                if (esAscenso) {
+                    var cargoAntes = nueva[keyCargo];
+                    if (valorComparacionXnota(cargoAntes) !== valorComparacionXnota(eleve.cargo)) {
+                        nueva[keyCargo] = eleve.cargo;
+                        stats.cargosForzados += 1;
+                        stats.completados += 1;
+                    } else if (esCeldaVacia(cargoAntes)) {
+                        nueva[keyCargo] = eleve.cargo;
+                        stats.completados += 1;
+                    }
+                } else if (esCeldaVacia(nueva[keyCargo])) {
+                    nueva[keyCargo] = eleve.cargo;
+                    stats.completados += 1;
+                }
             }
             if (keyAsig && esCeldaVacia(nueva[keyAsig]) && !esCeldaVacia(eleve.asig)) {
                 nueva[keyAsig] = eleve.asig;
@@ -1157,6 +1199,31 @@
             return nueva;
         });
         return { filas: out, stats: stats };
+    }
+
+    function pedirTipoBaseAscenso() {
+        return new Promise(function (resolve) {
+            var overlay = document.getElementById('modalBaseAscensoOverlay');
+            var errorMsg = document.getElementById('modalBaseAscensoError');
+            if (errorMsg) errorMsg.style.display = 'none';
+            if (!overlay) {
+                resolve(null);
+                return;
+            }
+            overlay.classList.add('visible');
+
+            function cerrar(valor) {
+                overlay.classList.remove('visible');
+                document.getElementById('modalBaseAscensoBase').onclick = null;
+                document.getElementById('modalBaseAscensoAscenso').onclick = null;
+                document.getElementById('modalBaseAscensoCancel').onclick = null;
+                resolve(valor);
+            }
+
+            document.getElementById('modalBaseAscensoBase').onclick = function () { cerrar('base'); };
+            document.getElementById('modalBaseAscensoAscenso').onclick = function () { cerrar('ascenso'); };
+            document.getElementById('modalBaseAscensoCancel').onclick = function () { cerrar(null); };
+        });
     }
 
     function separarConfirmadasExcluidas(filas) {
@@ -1204,8 +1271,15 @@
             return;
         }
 
+        var tipoBaseAscenso = await pedirTipoBaseAscenso();
+        if (!tipoBaseAscenso) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
         statusDiv.className = '';
-        statusDiv.innerText = 'Procesando archivos xNOTA, por favor espera...';
+        statusDiv.innerText = 'Procesando archivos xNOTA (' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + '), por favor espera...';
 
         try {
             var bufEleve = await leerArchivoComoArrayBuffer(fileEleve.files[0]);
@@ -1221,7 +1295,7 @@
 
             var filasResultadoOrig = filasResultado.map(function (f) { return Object.assign({}, f); });
             var mapaInfo = construirMapaEleveControl(filasEleve);
-            var completado = completarResultadoConEleve(filasResultado, mapaInfo.mapa);
+            var completado = completarResultadoConEleve(filasResultado, mapaInfo.mapa, tipoBaseAscenso);
             var partes = separarConfirmadasExcluidas(completado.filas);
 
             var confirmadas = ordenarColumnasJson(partes.confirmadas);
@@ -1231,7 +1305,8 @@
                 procesador: proc,
                 statsCompletado: completado.stats,
                 confirmadasTotal: confirmadas.length,
-                excluidasTotal: excluidas.length
+                excluidasTotal: excluidas.length,
+                modo: tipoBaseAscenso
             });
 
             var wb = XLSX.utils.book_new();
@@ -1272,13 +1347,17 @@
                     archivoOrigen: (fileEleve.files[0].name || '') + ' + ' + (fileResultado.files[0].name || ''),
                     archivoSalida: nombreArchivo,
                     filas: completado.filas.length,
-                    detalle: 'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length +
+                    detalle: 'Tipo: ' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') +
+                        ' · Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length +
                         ' · Campos completados: ' + completado.stats.completados +
+                        (tipoBaseAscenso === 'ascenso' ? (' · Cargos forzados: ' + (completado.stats.cargosForzados || 0)) : '') +
                         ' · Diferencias entre archivos: ' + informe.cambios.detalle.length,
                     extras: {
+                        tipo: tipoBaseAscenso,
                         confirmadas: confirmadas.length,
                         excluidas: excluidas.length,
                         camposCompletados: completado.stats.completados,
+                        cargosForzados: completado.stats.cargosForzados || 0,
                         sinMatchIdPof: completado.stats.sinMatch,
                         diferenciasArchivos: informe.cambios.detalle.length,
                         hojas: ['Confirmadas', 'Excluidas', 'Informe']
@@ -1290,8 +1369,12 @@
             statusDiv.innerText =
                 '¡Proceso xNOTA completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
                 '(Hojas: Confirmadas + Excluidas + Informe)\n' +
+                'Tipo: ' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + '\n' +
                 'Confirmadas: ' + confirmadas.length + ' · Excluidas: ' + excluidas.length + '\n' +
-                'Campos completados desde eleve: ' + completado.stats.completados + '\n' +
+                'Campos completados desde eleve: ' + completado.stats.completados +
+                (tipoBaseAscenso === 'ascenso'
+                    ? ('\nCódigos de cargo forzados: ' + (completado.stats.cargosForzados || 0))
+                    : '') + '\n' +
                 'Sin coincidencia Id. POF: ' + completado.stats.sinMatch + '\n' +
                 'Diferencias eleve vs resultado (sin horario): ' + informe.cambios.detalle.length;
         } catch (error) {
