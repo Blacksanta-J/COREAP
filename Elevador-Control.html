@@ -204,12 +204,12 @@
             descripcion: 'Completá el resultado de control con datos del eleve de control (por Id. POF) y generá el archivo para la nota de exclusión con cargos confirmados y excluidos.',
             pending: false,
             reglas: [
-                '<strong>Archivo 1 — Eleve control:</strong> eleve generado por el procesador Control (o equivalente con Id. POF y códigos de cargo, asignatura, especialidad y docente).',
+                '<strong>Archivo 1 — Eleve control:</strong> eleve generado por el procesador Control (o equivalente con Id. POF, códigos, docente y datos de establecimiento).',
                 '<strong>Archivo 2 — Resultado control:</strong> archivo devuelto por el sistema de control de vacantes, con columna <em>Excluida/Confirmada</em>.',
                 '<strong>Cruce:</strong> se relacionan ambos archivos por <em>Id. POF</em> (y equivalentes: ID POF, IDPOF, Número de propuesta).',
                 '<strong>Base / Ascenso:</strong> al procesar se pregunta el tipo. En <em>Base</em> solo se completan vacíos. En <em>Ascenso</em> todos los códigos de cargo del resultado se reemplazan por los del eleve de control (por Id. POF).',
-                '<strong>Completado (Base):</strong> en el resultado de control, si están vacíos, se rellenan código de cargo, código de asignatura, código de especialidad y docente con los datos del eleve de control.',
-                '<strong>Ascenso — códigos de cargo:</strong> se fuerza el código de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). Asignatura, especialidad y docente siguen rellenándose solo si están vacíos.',
+                '<strong>Completado (Base):</strong> si están vacíos en el resultado, se rellenan desde el eleve: código de cargo, asignatura, especialidad, docente, ESTABLECIMIENTO ID, Número de escuela, Nombre de la escuela y Dirección.',
+                '<strong>Ascenso — códigos de cargo:</strong> se fuerza el código de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). El resto de campos (incluyendo establecimiento) se rellenan solo si están vacíos.',
                 '<strong>Solo vacíos (Base):</strong> los valores ya presentes en el resultado no se modifican.',
                 '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad y diferencias entre archivos).',
                 '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad, más detalle de diferencias entre eleve y resultado (sin columnas de horario).',
@@ -734,6 +734,19 @@
         'COD ESPECIALIDAD', 'Cod.Espec.', 'Cod Espec', 'Codigo Especialidad'
     ];
     var COL_DOCENTE_XNOTA = ['DOCENTE', 'Docente', 'AyN Reemp.', 'AYN REEMP'];
+    var COL_ESTAB_ID_XNOTA = [
+        'ESTABLECIMIENTO ID', 'Establecimiento ID', 'ESTABLECIMIENTO_ID', 'codes', 'CODES'
+    ];
+    var COL_NUM_ESC_XNOTA = [
+        'Numero de Escuela', 'Número de Escuela', 'Numero de escuela', 'Número de escuela',
+        'Nr. Esc.', 'Nro. Escuela', 'Nº Escuela', 'NUMERO DE ESCUELA'
+    ];
+    var COL_NOMBRE_ESC_XNOTA = [
+        'Nombre de la escuela', 'Nombre de la Escuela', 'Nombre', 'NOMBRE DE LA ESCUELA', 'NOMBRE ESCUELA'
+    ];
+    var COL_DIRECCION_XNOTA = [
+        'Direccion', 'Dirección', 'DIRECCION', 'DIRECCIÓN', 'Domicilio'
+    ];
     var COL_ESTADO_XNOTA = [
         'Excluida/Confirmada', 'EXCLUIDA/CONFIRMADA', 'Excluida Confirmada',
         'Excluida / Confirmada', 'EXCLUIDA', 'CONFIRMADA'
@@ -787,7 +800,11 @@
             { label: 'Descripción asignatura', aliases: COL_DESC_ASIG_XNOTA },
             { label: 'Código especialidad', aliases: COL_ESP_XNOTA },
             { label: 'Descripción especialidad', aliases: COL_DESC_ESP_XNOTA },
-            { label: 'Docente', aliases: COL_DOCENTE_XNOTA }
+            { label: 'Docente', aliases: COL_DOCENTE_XNOTA },
+            { label: 'Establecimiento ID', aliases: COL_ESTAB_ID_XNOTA },
+            { label: 'Número de escuela', aliases: COL_NUM_ESC_XNOTA },
+            { label: 'Nombre de la escuela', aliases: COL_NOMBRE_ESC_XNOTA },
+            { label: 'Dirección', aliases: COL_DIRECCION_XNOTA }
         ];
         grupos.forEach(function (g) {
             var kE = encontrarClaveColumna(filaEleve, g.aliases);
@@ -1129,7 +1146,11 @@
                     cargo: obtenerValorColumna(fila, COL_CARGO_XNOTA),
                     asig: obtenerValorColumna(fila, COL_ASIG_XNOTA),
                     esp: obtenerValorColumna(fila, COL_ESP_XNOTA),
-                    docente: obtenerValorColumna(fila, COL_DOCENTE_XNOTA)
+                    docente: obtenerValorColumna(fila, COL_DOCENTE_XNOTA),
+                    estabId: obtenerValorColumna(fila, COL_ESTAB_ID_XNOTA),
+                    numEscuela: obtenerValorColumna(fila, COL_NUM_ESC_XNOTA),
+                    nombreEscuela: obtenerValorColumna(fila, COL_NOMBRE_ESC_XNOTA),
+                    direccion: obtenerValorColumna(fila, COL_DIRECCION_XNOTA)
                 };
             }
         });
@@ -1163,6 +1184,22 @@
             var keyAsig = encontrarClaveColumna(nueva, COL_ASIG_XNOTA);
             var keyEsp = encontrarClaveColumna(nueva, COL_ESP_XNOTA);
             var keyDoc = encontrarClaveColumna(nueva, COL_DOCENTE_XNOTA);
+            var keyEstab = encontrarClaveColumna(nueva, COL_ESTAB_ID_XNOTA);
+            var keyNumEsc = encontrarClaveColumna(nueva, COL_NUM_ESC_XNOTA);
+            var keyNombreEsc = encontrarClaveColumna(nueva, COL_NOMBRE_ESC_XNOTA);
+            var keyDir = encontrarClaveColumna(nueva, COL_DIRECCION_XNOTA);
+
+            function completarVacio(key, valorEleve, defaultKey) {
+                if (esCeldaVacia(valorEleve)) return;
+                if (!key) {
+                    key = defaultKey;
+                    nueva[key] = '';
+                }
+                if (esCeldaVacia(nueva[key])) {
+                    nueva[key] = valorEleve;
+                    stats.completados += 1;
+                }
+            }
 
             if (!esCeldaVacia(eleve.cargo)) {
                 if (!keyCargo) {
@@ -1184,18 +1221,13 @@
                     stats.completados += 1;
                 }
             }
-            if (keyAsig && esCeldaVacia(nueva[keyAsig]) && !esCeldaVacia(eleve.asig)) {
-                nueva[keyAsig] = eleve.asig;
-                stats.completados += 1;
-            }
-            if (keyEsp && esCeldaVacia(nueva[keyEsp]) && !esCeldaVacia(eleve.esp)) {
-                nueva[keyEsp] = eleve.esp;
-                stats.completados += 1;
-            }
-            if (keyDoc && esCeldaVacia(nueva[keyDoc]) && !esCeldaVacia(eleve.docente)) {
-                nueva[keyDoc] = eleve.docente;
-                stats.completados += 1;
-            }
+            completarVacio(keyAsig, eleve.asig, 'CODIGO ASIGNATURA');
+            completarVacio(keyEsp, eleve.esp, 'CODIGO ESPECIALIDAD');
+            completarVacio(keyDoc, eleve.docente, 'DOCENTE');
+            completarVacio(keyEstab, eleve.estabId, 'ESTABLECIMIENTO ID');
+            completarVacio(keyNumEsc, eleve.numEscuela, 'Numero de Escuela');
+            completarVacio(keyNombreEsc, eleve.nombreEscuela, 'Nombre de la escuela');
+            completarVacio(keyDir, eleve.direccion, 'Direccion');
             return nueva;
         });
         return { filas: out, stats: stats };
