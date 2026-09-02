@@ -232,6 +232,8 @@
                 '<strong>Fechas:</strong> popup con Fecha/Hora de Publicación y Fecha/Hora de Cierre (se graban en publicación y apertura del archivo resultado).',
                 '<strong>Novedad Mayor 60 días:</strong> se copia el valor original de <em>Cant. Horas</em>.',
                 '<strong>Cant. Horas:</strong> se completa con la cantidad de registros del mismo código de cargo en la publicación.',
+                '<strong>Docente:</strong> si está vacío, se completa con <strong>.</strong>.',
+                '<strong>Sit. Rev.:</strong> todas las filas quedan en <strong>Interino</strong>.',
                 '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
                 '<strong>Informe:</strong> segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
             ]
@@ -1480,6 +1482,10 @@
                 nuevaFila['HORA PUBLICACION'] = inputsModal.horaPub;
                 nuevaFila['FECHA APERTURA'] = inputsModal.fechaCierre;
                 nuevaFila['HORA APERTURA'] = inputsModal.horaCierre;
+                nuevaFila['Sit. Rev.'] = 'Interino';
+                if (!nuevaFila['DOCENTE'] || String(nuevaFila['DOCENTE']).trim() === '') {
+                    nuevaFila['DOCENTE'] = '.';
+                }
 
                 if (nuevaFila['AREA'] && areaDetectada === 'Generico') {
                     areaDetectada = String(nuevaFila['AREA']).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
