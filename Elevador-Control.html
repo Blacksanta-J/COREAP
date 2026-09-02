@@ -213,8 +213,8 @@
                 '<strong>Continuidad pedagógica:</strong> la columna de continuidad queda vacía en la salida (Confirmadas y Excluidas).',
                 '<strong>Solo vacíos (Base):</strong> los valores ya presentes en el resultado no se modifican.',
                 '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad).',
-                '<strong>Diferencias en verde:</strong> en Confirmadas y Excluidas se pintan en verde las celdas que difieren entre eleve y resultado (se ignoran columnas de horario y continuidad).',
-                '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad, más un resumen de diferencias (sin el detalle celda a celda).',
+                '<strong>Diferencias en verde:</strong> en Confirmadas y Excluidas se pintan en verde las celdas que difieren entre eleve y resultado. No se pintan establecimiento, escuela, dirección, docente, Sit. Rev., fechas/horas, Nº de propuesta, descripción de cargo, horario ni continuidad.',
+                '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad.',
                 '<strong>Nombrado:</strong> el archivo incluye la palabra <strong>xNOTA</strong> y la fecha de exportación.'
             ]
         },
@@ -768,6 +768,45 @@
         if (normName.indexOf('horario') !== -1) return true;
         if (normName.indexOf('continuidad') !== -1) return true;
         if (normName.indexOf('excluida') !== -1 && normName.indexOf('confirm') !== -1) return true;
+
+        /* No pintar / no comparar estas columnas en diferencias verdes */
+        var exactas = {
+            'establecimiento id': true,
+            'codes': true,
+            'numero de escuela': true,
+            'nr esc': true,
+            'nr. esc.': true,
+            'nombre de la escuela': true,
+            'nombre': true,
+            'direccion': true,
+            'domicilio': true,
+            'sit rev': true,
+            'sit. rev.': true,
+            'docente': true,
+            'ayn reemp': true,
+            'ayn reemp.': true,
+            'novedad mayor 60 dias habiles': true,
+            'fecha desde': true,
+            'fecha hasta': true,
+            'fecha publicacion': true,
+            'hora publicacion': true,
+            'fecha apertura': true,
+            'hora apertura': true,
+            'numero de propuesta': true,
+            'descripcion cargo': true,
+            'desc cargo': true
+        };
+        if (exactas[normName]) return true;
+        if (normName.indexOf('novedad mayor') !== -1) return true;
+        if (normName.indexOf('establecimiento') !== -1 && normName.indexOf('id') !== -1) return true;
+        if (normName.indexOf('numero de escuela') !== -1 || normName.indexOf('nr esc') !== -1) return true;
+        if (normName.indexOf('nombre de la escuela') !== -1) return true;
+        if (normName.indexOf('descripcion cargo') !== -1) return true;
+        if (normName.indexOf('sit') !== -1 && normName.indexOf('rev') !== -1) return true;
+        if (normName.indexOf('fecha desde') !== -1 || normName.indexOf('fecha hasta') !== -1) return true;
+        if (normName.indexOf('fecha publicacion') !== -1 || normName.indexOf('hora publicacion') !== -1) return true;
+        if (normName.indexOf('fecha apertura') !== -1 || normName.indexOf('hora apertura') !== -1) return true;
+        if (normName.indexOf('numero de propuesta') !== -1) return true;
         return false;
     }
 
@@ -802,22 +841,17 @@
         var grupos = [
             { label: 'Área', aliases: COL_AREA_XNOTA },
             { label: 'Código cargo', aliases: COL_CARGO_XNOTA },
-            { label: 'Descripción cargo', aliases: COL_DESC_CARGO_XNOTA },
             { label: 'Código asignatura', aliases: COL_ASIG_XNOTA },
             { label: 'Descripción asignatura', aliases: COL_DESC_ASIG_XNOTA },
             { label: 'Código especialidad', aliases: COL_ESP_XNOTA },
-            { label: 'Descripción especialidad', aliases: COL_DESC_ESP_XNOTA },
-            { label: 'Docente', aliases: COL_DOCENTE_XNOTA },
-            { label: 'Establecimiento ID', aliases: COL_ESTAB_ID_XNOTA },
-            { label: 'Número de escuela', aliases: COL_NUM_ESC_XNOTA },
-            { label: 'Nombre de la escuela', aliases: COL_NOMBRE_ESC_XNOTA },
-            { label: 'Dirección', aliases: COL_DIRECCION_XNOTA }
+            { label: 'Descripción especialidad', aliases: COL_DESC_ESP_XNOTA }
         ];
         grupos.forEach(function (g) {
             var kE = encontrarClaveColumna(filaEleve, g.aliases);
             var kR = encontrarClaveColumna(filaResultado, g.aliases);
-            if (kE && kR && !seen[g.label]) {
+            if (kE && kR && !seen[g.label] && !esColumnaIgnoradaComparacion(normalizar(kR))) {
                 seen[g.label] = true;
+                seen[normalizar(kR)] = true;
                 out.push({ label: g.label, keyEleve: kE, keyResultado: kR });
             }
         });
@@ -826,6 +860,7 @@
             if (esColumnaIgnoradaComparacion(normE) || seen[normE]) return;
             var kR = Object.keys(filaResultado || {}).find(function (k) { return normalizar(k) === normE; });
             if (!kR) return;
+            if (esColumnaIgnoradaComparacion(normalizar(kR))) return;
             seen[normE] = true;
             out.push({ label: kE, keyEleve: kE, keyResultado: kR });
         });
@@ -1030,28 +1065,8 @@
         pivotLastRowIndex = filas.length - 1;
 
         filas.push([]);
-        filas.push(['DIFERENCIAS ENTRE ELEVE Y RESULTADO']);
-        filas.push(['Las celdas con diferencias se pintan en verde en las hojas Confirmadas y Excluidas.']);
-        filas.push(['Se ignoran columnas de horario y continuidad pedagógica.']);
-        filas.push([]);
-        filas.push(['Resumen']);
-        filas.push(['Id. POF con diferencias (presentes en ambos archivos)', cambios.conDiferencias]);
-        filas.push(['Id. POF solo en eleve control', cambios.soloEleve]);
-        filas.push(['Id. POF solo en resultado control', cambios.soloResultado]);
-        filas.push(['Total diferencias por campo', cambios.detalle.length]);
-        filas.push([]);
-        filas.push(['Diferencias por campo']);
-        filas.push(['Campo', 'Cantidad de diferencias']);
-
-        var camposOrdenados = Object.keys(cambios.porCampo).sort(function (a, b) {
-            return a.localeCompare(b, 'es');
-        });
-        camposOrdenados.forEach(function (campo) {
-            filas.push([campo, cambios.porCampo[campo]]);
-        });
-        if (!camposOrdenados.length) {
-            filas.push(['(Sin diferencias entre archivos, salvo horario/continuidad)', 0]);
-        }
+        filas.push(['Diferencias entre eleve y resultado: celdas en verde en Confirmadas y Excluidas.']);
+        filas.push(['No se marcan establecimiento, escuela, dirección, docente, Sit. Rev., fechas/horas, Nº de propuesta, descripción de cargo, horario ni continuidad.']);
 
         return {
             aoa: filas,
