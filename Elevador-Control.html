@@ -234,6 +234,7 @@
                 '<strong>Cant. Horas:</strong> se completa con la cantidad de registros del mismo código de cargo en la publicación.',
                 '<strong>Docente:</strong> si está vacío, se completa con <strong>.</strong>.',
                 '<strong>Sit. Rev.:</strong> todas las filas quedan en <strong>Interino</strong>.',
+                '<strong>Número de propuesta:</strong> se completa con el valor de <em>Id. POF</em>.',
                 '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>TRASLADO</strong> y la fecha de exportación.',
                 '<strong>Informe:</strong> segunda hoja con el detalle del proceso y una tabla dinámica por Área, Cargo, Asignatura y Especialidad.'
             ]
@@ -1486,6 +1487,12 @@
                 if (!nuevaFila['DOCENTE'] || String(nuevaFila['DOCENTE']).trim() === '') {
                     nuevaFila['DOCENTE'] = '.';
                 }
+                var idPofTraslado = nuevaFila['Id. POF'];
+                if (idPofTraslado === '' || idPofTraslado == null) {
+                    idPofTraslado = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+                    nuevaFila['Id. POF'] = idPofTraslado;
+                }
+                nuevaFila['Numero de propuesta'] = idPofTraslado;
 
                 if (nuevaFila['AREA'] && areaDetectada === 'Generico') {
                     areaDetectada = String(nuevaFila['AREA']).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
