@@ -166,7 +166,7 @@
 <div id="modalBaseAscensoOverlay" class="modal-overlay">
     <div class="modal">
         <h3 style="margin: 0 0 10px 0;">¿Es Base o Ascenso?</h3>
-        <p style="margin-bottom: 15px;">Elegí el tipo de elevación. En Ascenso se reemplazan todos los códigos de cargo del resultado por los del eleve de control.</p>
+        <p style="margin-bottom: 15px;">Elegí el tipo de elevación. En Ascenso se reemplazan código y descripción de cargo del resultado por los del eleve de control.</p>
         <div id="modalBaseAscensoError" class="error" style="display:none; margin-top: 8px; font-size: 13px; font-weight: bold;">Seleccioná Base o Ascenso para continuar.</div>
         <button type="button" class="btn-primary" id="modalBaseAscensoBase" style="margin-top: 16px;">Base</button>
         <button type="button" class="btn-primary" id="modalBaseAscensoAscenso" style="margin-top: 8px;">Ascenso</button>
@@ -207,14 +207,14 @@
                 '<strong>Archivo 1 — Eleve control:</strong> eleve generado por el procesador Control (o equivalente con Id. POF, códigos, docente y datos de establecimiento).',
                 '<strong>Archivo 2 — Resultado control:</strong> archivo devuelto por el sistema de control de vacantes, con columna <em>Excluida/Confirmada</em>.',
                 '<strong>Cruce:</strong> se relacionan ambos archivos por <em>Id. POF</em> (y equivalentes: ID POF, IDPOF, Número de propuesta).',
-                '<strong>Base / Ascenso:</strong> al procesar se pregunta el tipo. En <em>Base</em> solo se completan vacíos. En <em>Ascenso</em> todos los códigos de cargo del resultado se reemplazan por los del eleve de control (por Id. POF).',
+                '<strong>Base / Ascenso:</strong> al procesar se pregunta el tipo. En <em>Base</em> solo se completan vacíos. En <em>Ascenso</em> se reemplazan código y descripción de cargo del resultado por los del eleve de control (por Id. POF).',
                 '<strong>Completado (Base):</strong> si están vacíos en el resultado, se rellenan desde el eleve: código de cargo, asignatura, especialidad, docente, ESTABLECIMIENTO ID, Número de escuela, Nombre de la escuela y Dirección.',
-                '<strong>Ascenso — códigos de cargo:</strong> se fuerza el código de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). El resto de campos (incluyendo establecimiento) se rellenan solo si están vacíos.',
+                '<strong>Ascenso — cargo:</strong> se fuerza el código y la descripción de cargo del eleve en todas las filas coincidentes por Id. POF (aunque el resultado ya tuviera un valor). El resto de campos se rellenan solo si están vacíos.',
                 '<strong>Continuidad pedagógica:</strong> la columna de continuidad queda vacía en la salida (Confirmadas y Excluidas).',
                 '<strong>Solo vacíos (Base):</strong> los valores ya presentes en el resultado no se modifican.',
-                '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em> (tabla por área/cargo/asignatura/especialidad).',
+                '<strong>Salida:</strong> Excel con hojas <em>Confirmadas</em>, <em>Excluidas</em> e <em>Informe</em>.',
                 '<strong>Diferencias en verde:</strong> en Confirmadas y Excluidas se pintan en verde las celdas que difieren entre eleve y resultado. No se pintan establecimiento, escuela, dirección, docente, Sit. Rev., fechas/horas, Nº de propuesta, descripción de cargo, horario ni continuidad.',
-                '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Cargo, Asignatura y Especialidad.',
+                '<strong>Informe:</strong> hoja con tabla de confirmadas y excluidas por Área, Código de cargo y Descripción de cargo.',
                 '<strong>Nombrado:</strong> el archivo incluye la palabra <strong>xNOTA</strong> y la fecha de exportación.'
             ]
         },
@@ -955,9 +955,10 @@
         filas.push(['Campos completados desde eleve', statsCompletado.completados || 0]);
         if (options.modo === 'ascenso') {
             filas.push(['Códigos de cargo forzados desde eleve (Ascenso)', statsCompletado.cargosForzados || 0]);
+            filas.push(['Descripciones de cargo forzadas desde eleve (Ascenso)', statsCompletado.descCargosForzados || 0]);
         }
         filas.push([]);
-        filas.push(['TABLA — Vacantes confirmadas y excluidas por Área / Cargo / Asignatura / Especialidad']);
+        filas.push(['TABLA — Vacantes confirmadas y excluidas por Área / Cargo']);
         filas.push([]);
 
         var pivotHeaderRowIndex = filas.length;
@@ -965,10 +966,6 @@
             'AREA',
             'CODIGO CARGO',
             'DESCRIPCION CARGO',
-            'CODIGO ASIGNATURA',
-            'DESCRIPCION ASIGNATURA',
-            'CODIGO ESPECIALIDAD',
-            'DESCRIPCION ESPECIALIDAD',
             'CONFIRMADAS',
             'EXCLUIDAS',
             'TOTAL'
@@ -979,20 +976,13 @@
 
         (filasCompletadas || []).forEach(function (fila) {
             var campos = extraerCamposVacanteXnota(fila);
-            var clave = [
-                campos.area, campos.codCargo, campos.descCargo,
-                campos.codAsig, campos.descAsig, campos.codEsp, campos.descEsp
-            ].join('||');
+            var clave = [campos.area, campos.codCargo, campos.descCargo].join('||');
 
             if (!agrupado[clave]) {
                 agrupado[clave] = {
                     area: campos.area,
                     codCargo: campos.codCargo,
                     descCargo: campos.descCargo,
-                    codAsig: campos.codAsig,
-                    descAsig: campos.descAsig,
-                    codEsp: campos.codEsp,
-                    descEsp: campos.descEsp,
                     confirmadas: 0,
                     excluidas: 0
                 };
@@ -1008,11 +998,9 @@
         items.sort(function (a, b) {
             var cmp = a.area.localeCompare(b.area, 'es');
             if (cmp) return cmp;
-            cmp = a.descCargo.localeCompare(b.descCargo, 'es');
+            cmp = a.codCargo.localeCompare(b.codCargo, 'es', { numeric: true });
             if (cmp) return cmp;
-            cmp = a.descAsig.localeCompare(b.descAsig, 'es');
-            if (cmp) return cmp;
-            return a.descEsp.localeCompare(b.descEsp, 'es');
+            return a.descCargo.localeCompare(b.descCargo, 'es');
         });
 
         var areasOrdenadas = Object.keys(porArea).sort(function (a, b) {
@@ -1025,10 +1013,6 @@
                     it.area,
                     it.codCargo,
                     it.descCargo,
-                    it.codAsig,
-                    it.descAsig,
-                    it.codEsp,
-                    it.descEsp,
                     it.confirmadas,
                     it.excluidas,
                     it.confirmadas + it.excluidas
@@ -1037,10 +1021,6 @@
             var sub = porArea[area];
             filas.push([
                 'Subtotal ' + area,
-                '',
-                '',
-                '',
-                '',
                 '',
                 '',
                 sub.confirmadas,
@@ -1052,10 +1032,6 @@
         var pivotLastRowIndex = filas.length - 1;
         filas.push([
             'TOTAL GENERAL',
-            '',
-            '',
-            '',
-            '',
             '',
             '',
             confirmadasTotal,
@@ -1205,6 +1181,7 @@
             if (!mapa[idKey]) {
                 mapa[idKey] = {
                     cargo: obtenerValorColumna(fila, COL_CARGO_XNOTA),
+                    descCargo: obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA),
                     asig: obtenerValorColumna(fila, COL_ASIG_XNOTA),
                     esp: obtenerValorColumna(fila, COL_ESP_XNOTA),
                     docente: obtenerValorColumna(fila, COL_DOCENTE_XNOTA),
@@ -1223,6 +1200,7 @@
         var stats = {
             completados: 0,
             cargosForzados: 0,
+            descCargosForzados: 0,
             sinMatch: 0,
             sinId: 0,
             modo: esAscenso ? 'ascenso' : 'base'
@@ -1242,6 +1220,7 @@
             }
 
             var keyCargo = encontrarClaveColumna(nueva, COL_CARGO_XNOTA);
+            var keyDescCargo = encontrarClaveColumna(nueva, COL_DESC_CARGO_XNOTA);
             var keyAsig = encontrarClaveColumna(nueva, COL_ASIG_XNOTA);
             var keyEsp = encontrarClaveColumna(nueva, COL_ESP_XNOTA);
             var keyDoc = encontrarClaveColumna(nueva, COL_DOCENTE_XNOTA);
@@ -1262,25 +1241,29 @@
                 }
             }
 
-            if (!esCeldaVacia(eleve.cargo)) {
-                if (!keyCargo) {
-                    keyCargo = 'CODIGO CARGO';
-                    nueva[keyCargo] = '';
+            function forzarDesdeEleve(key, valorEleve, defaultKey, contadorStat) {
+                if (esCeldaVacia(valorEleve)) return key;
+                if (!key) {
+                    key = defaultKey;
+                    nueva[key] = '';
                 }
-                if (esAscenso) {
-                    var cargoAntes = nueva[keyCargo];
-                    if (valorComparacionXnota(cargoAntes) !== valorComparacionXnota(eleve.cargo)) {
-                        nueva[keyCargo] = eleve.cargo;
-                        stats.cargosForzados += 1;
-                        stats.completados += 1;
-                    } else if (esCeldaVacia(cargoAntes)) {
-                        nueva[keyCargo] = eleve.cargo;
-                        stats.completados += 1;
-                    }
-                } else if (esCeldaVacia(nueva[keyCargo])) {
-                    nueva[keyCargo] = eleve.cargo;
+                var antes = nueva[key];
+                if (valorComparacionXnota(antes) !== valorComparacionXnota(valorEleve)) {
+                    nueva[key] = valorEleve;
+                    stats[contadorStat] = (stats[contadorStat] || 0) + 1;
+                    stats.completados += 1;
+                } else if (esCeldaVacia(antes)) {
+                    nueva[key] = valorEleve;
                     stats.completados += 1;
                 }
+                return key;
+            }
+
+            if (esAscenso) {
+                keyCargo = forzarDesdeEleve(keyCargo, eleve.cargo, 'CODIGO CARGO', 'cargosForzados');
+                keyDescCargo = forzarDesdeEleve(keyDescCargo, eleve.descCargo, 'DESCRIPCION CARGO', 'descCargosForzados');
+            } else {
+                completarVacio(keyCargo, eleve.cargo, 'CODIGO CARGO');
             }
             completarVacio(keyAsig, eleve.asig, 'CODIGO ASIGNATURA');
             completarVacio(keyEsp, eleve.esp, 'CODIGO ESPECIALIDAD');
@@ -1428,18 +1411,14 @@
             wsInforme['!cols'] = [
                 { wch: 28 },
                 { wch: 14 },
-                { wch: 36 },
-                { wch: 16 },
-                { wch: 36 },
-                { wch: 16 },
-                { wch: 36 },
+                { wch: 40 },
                 { wch: 14 },
                 { wch: 14 },
                 { wch: 12 }
             ];
             if (informe.pivotLastRowIndex > informe.pivotHeaderRowIndex) {
                 var pivotStart = XLSX.utils.encode_cell({ r: informe.pivotHeaderRowIndex, c: 0 });
-                var pivotEnd = XLSX.utils.encode_cell({ r: informe.pivotLastRowIndex, c: 9 });
+                var pivotEnd = XLSX.utils.encode_cell({ r: informe.pivotLastRowIndex, c: 5 });
                 wsInforme['!autofilter'] = { ref: pivotStart + ':' + pivotEnd };
             }
             XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
