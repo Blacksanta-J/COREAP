@@ -255,9 +255,10 @@
                 '<strong>Campos fijos:</strong> BASE/ASCENSO y TIPO DE LISTADO = 3; Sit. Rev. = Interino; Novedad Mayor 60 días = 2; AÑO = año vigente.',
                 '<strong>Fechas fijas:</strong> FECHA DESDE = 31/03 del año corriente; FECHA HASTA = 31/12 del año corriente.',
                 '<strong>Publicación y apertura:</strong> se definen en el popup (fecha y hora).',
-                '<strong>Vacías:</strong> Dirección, Observación y CONTINUIDAD.',
+                '<strong>Vacías:</strong> Dirección y CONTINUIDAD.',
                 '<strong>HORARIO A CUMPLIR:</strong> todas las filas se completan con <strong>.</strong>.',
                 '<strong>Motivo de la Vacante:</strong> se completa con <em>Tipo de Listado Postulacion</em>.',
+                '<strong>Observación:</strong> se completa con <em>Observación Docente</em>.',
                 '<strong>Id. POF:</strong> <em>Form Número POF</em>; Número de propuesta es una copia de ese valor.',
                 '<strong>Filtro Docente:</strong> solo se generan registros con la columna <em>Docente</em> completa; el resto se descarta.',
                 '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
@@ -1617,6 +1618,10 @@
         'Tipo de listado postulacion', 'TIPO DE LISTADO POSTULACION',
         'Tipo Listado Postulacion', 'Tipo Listado Postulación'
     ];
+    var COL_DESIG_OBS = [
+        'Observación Docente', 'Observacion Docente', 'OBSERVACION DOCENTE',
+        'Observación docente', 'Observaciones Docente'
+    ];
     var COL_DESIG_POF = [
         'Form Número POF', 'Form Numero POF', 'Form Número Pof', 'Form Numero Pof',
         'Form Numero de POF', 'Número POF', 'Numero POF', 'Id. POF', 'IDPOF'
@@ -1792,7 +1797,7 @@
                 nuevaFila['Sit. Rev.'] = 'Interino';
                 nuevaFila['Cant. Horas'] = cantHoras;
                 nuevaFila['HORARIO A CUMPLIR'] = '.';
-                nuevaFila['Observación'] = '';
+                nuevaFila['Observación'] = obtenerValorColumna(fila, COL_DESIG_OBS);
                 nuevaFila['AÑO'] = anioActual;
                 nuevaFila['DOCENTE'] = docente;
                 nuevaFila['Novedad Mayor 60 dias habiles'] = 2;
