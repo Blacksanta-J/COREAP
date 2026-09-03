@@ -255,7 +255,8 @@
                 '<strong>Campos fijos:</strong> BASE/ASCENSO y TIPO DE LISTADO = 3; Sit. Rev. = Interino; Novedad Mayor 60 días = 2; AÑO = año vigente.',
                 '<strong>Fechas fijas:</strong> FECHA DESDE = 31/03 del año corriente; FECHA HASTA = 31/12 del año corriente.',
                 '<strong>Publicación y apertura:</strong> se definen en el popup (fecha y hora).',
-                '<strong>Vacías:</strong> Dirección, Motivo de la Vacante, HORARIO A CUMPLIR, Observación y CONTINUIDAD.',
+                '<strong>Vacías:</strong> Dirección, Motivo de la Vacante, Observación y CONTINUIDAD.',
+                '<strong>HORARIO A CUMPLIR:</strong> todas las filas se completan con <strong>.</strong>.',
                 '<strong>Id. POF:</strong> <em>Form Número POF</em>; Número de propuesta es una copia de ese valor.',
                 '<strong>Filtro Docente:</strong> solo se generan registros con la columna <em>Docente</em> completa; el resto se descarta.',
                 '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
@@ -1756,7 +1757,7 @@
                 nuevaFila['Motivo de la Vacante'] = '';
                 nuevaFila['Sit. Rev.'] = 'Interino';
                 nuevaFila['Cant. Horas'] = cantHoras;
-                nuevaFila['HORARIO A CUMPLIR'] = '';
+                nuevaFila['HORARIO A CUMPLIR'] = '.';
                 nuevaFila['Observación'] = '';
                 nuevaFila['AÑO'] = anioActual;
                 nuevaFila['DOCENTE'] = docente;
