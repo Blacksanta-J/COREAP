@@ -249,7 +249,7 @@
             reglas: [
                 '<strong>Archivo de entrada:</strong> designación de traslado. Se leen las hojas y se mapean las columnas Form/Descripción al formato de eleve de control.',
                 '<strong>Área:</strong> AREA = <em>Descripcion Area</em>; COD DE AREA = <em>Area</em>.',
-                '<strong>Establecimiento:</strong> ESTABLECIMIENTO ID, Número, Nombre y Distrito salen de las columnas <em>Form Escuela…</em>. Dirección queda vacía.',
+                '<strong>Establecimiento:</strong> ESTABLECIMIENTO ID, Número, Nombre y Distrito salen de las columnas <em>Form Escuela…</em>. En Distrito se deja solo el número (se quita el texto "Distrito:"). Dirección queda vacía.',
                 '<strong>Cargo / Asignatura / Especialidad:</strong> códigos y descripciones desde Cargo, Asignatura, Especialidad y sus descripciones.',
                 '<strong>Turno y horas:</strong> TURNO = <em>Form Escuela Turno</em>; Cant. Horas = <em>Form Cantidad de horas cubiertas</em>.',
                 '<strong>Campos fijos:</strong> BASE/ASCENSO y TIPO DE LISTADO = 3; Sit. Rev. = Interino; Novedad Mayor 60 días = 2; AÑO = año vigente.',
@@ -257,7 +257,7 @@
                 '<strong>Publicación y apertura:</strong> se definen en el popup (fecha y hora).',
                 '<strong>Vacías:</strong> Dirección, Motivo de la Vacante, HORARIO A CUMPLIR, Observación y CONTINUIDAD.',
                 '<strong>Id. POF:</strong> <em>Form Número POF</em>; Número de propuesta es una copia de ese valor.',
-                '<strong>DOCENTE:</strong> columna <em>Docente</em> de la designación.',
+                '<strong>Filtro Docente:</strong> solo se generan registros con la columna <em>Docente</em> completa; el resto se descarta.',
                 '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
                 '<strong>Informe:</strong> segunda hoja con el detalle del proceso y tabla por Área, Cargo, Asignatura y Especialidad.'
             ]
@@ -1668,6 +1668,21 @@
         return datos;
     }
 
+    function limpiarDistritoDesignacion(val) {
+        if (val == null) return '';
+        var s = String(val).trim();
+        if (!s) return '';
+        s = s.replace(/^\s*distrito\s*:\s*/i, '').trim();
+        var match = s.match(/\d+/);
+        return match ? match[0] : s;
+    }
+
+    function docenteDesignacionCompleto(val) {
+        if (val == null) return false;
+        var s = String(val).trim();
+        return s !== '' && s !== '.' && s !== '0' && !/^0+$/.test(s);
+    }
+
     async function procesarControlV2(proc) {
         var statusDiv = document.getElementById('status');
         var fileInput = document.getElementById('fileInput');
@@ -1696,6 +1711,14 @@
             var buf = await leerArchivoComoArrayBuffer(fileInput.files[0]);
             var workbook = XLSX.read(buf, { type: 'array' });
             var filasOrigen = leerFilasDesignacionTraslado(workbook);
+            var totalLeidas = filasOrigen.length;
+            filasOrigen = filasOrigen.filter(function (fila) {
+                return docenteDesignacionCompleto(obtenerValorColumna(fila, COL_DESIG_DOCENTE));
+            });
+            var omitidasSinDocente = totalLeidas - filasOrigen.length;
+            if (!filasOrigen.length) {
+                throw new Error('No hay registros con Docente completo en la designación de traslado.');
+            }
             var anioActual = new Date().getFullYear();
             var fechaDesde = getExcelDate(anioActual, 2, 31);
             var fechaHasta = getExcelDate(anioActual, 11, 31);
@@ -1722,7 +1745,7 @@
                 nuevaFila['Numero de Escuela'] = obtenerValorColumna(fila, COL_DESIG_NUM_ESC);
                 nuevaFila['Nombre de la escuela'] = obtenerValorColumna(fila, COL_DESIG_NOM_ESC);
                 nuevaFila['Direccion'] = '';
-                nuevaFila['Distrito'] = obtenerValorColumna(fila, COL_DESIG_DISTRITO);
+                nuevaFila['Distrito'] = limpiarDistritoDesignacion(obtenerValorColumna(fila, COL_DESIG_DISTRITO));
                 nuevaFila['CODIGO CARGO'] = obtenerValorColumna(fila, COL_DESIG_CARGO);
                 nuevaFila['DESCRIPCION CARGO'] = obtenerValorColumna(fila, COL_DESIG_DESC_CARGO);
                 nuevaFila['CODIGO ASIGNATURA'] = obtenerValorColumna(fila, COL_DESIG_ASIG);
@@ -1786,10 +1809,13 @@
                     archivoSalida: nombreArchivo,
                     filas: dataFinal.length,
                     area: areaDetectada,
-                    detalle: 'Designación de traslado → eleve control. Filas: ' + dataFinal.length,
+                    detalle: 'Designación de traslado → eleve control. Filas: ' + dataFinal.length +
+                        (omitidasSinDocente ? (' · Sin docente omitidas: ' + omitidasSinDocente) : ''),
                     extras: {
                         hojas: ['Resultado', 'Informe'],
-                        anio: anioActual
+                        anio: anioActual,
+                        omitidasSinDocente: omitidasSinDocente,
+                        totalLeidas: totalLeidas
                     }
                 });
             }
@@ -1798,7 +1824,9 @@
             statusDiv.innerText =
                 '¡Proceso CONTROLv2 completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
                 '(Hojas: Resultado + Informe)\n' +
-                'Filas: ' + dataFinal.length + ' · Año: ' + anioActual +
+                'Filas con Docente: ' + dataFinal.length +
+                (omitidasSinDocente ? (' · Omitidas sin docente: ' + omitidasSinDocente) : '') +
+                ' · Año: ' + anioActual +
                 '\nFECHA DESDE 31/03/' + anioActual + ' · FECHA HASTA 31/12/' + anioActual;
         } catch (error) {
             console.error(error);
