@@ -73,6 +73,9 @@
         .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
         .info-content li { margin-bottom: 8px; }
         .info-content strong { color: var(--heading); }
+        .mode-options { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+        .mode-options label { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; }
+        .mode-options input { margin-top: 3px; }
     </style>
 <link rel="stylesheet" href="portal-obelisco.css"></head>
 <body class="portal-tool-body">
@@ -107,6 +110,25 @@
         <input type="file" id="fileEleveControl" accept=".csv, .xls, .xlsx" />
         <label class="label-text" for="fileResultadoControl">Resultado control</label>
         <input type="file" id="fileResultadoControl" accept=".csv, .xls, .xlsx" />
+    </div>
+    <div id="controlv2ModeWrap" style="display:none">
+        <label class="label-text">Qué querés generar</label>
+        <div class="mode-options">
+            <label>
+                <input type="radio" name="controlv2Mode" value="eleve" checked />
+                <span>Eleve de control (desde designación de traslado)</span>
+            </label>
+            <label>
+                <input type="radio" name="controlv2Mode" value="final" />
+                <span>Archivo final (eleve CONTROLv2 + resultado CONTROLv2, con reglas de Traslado)</span>
+            </label>
+        </div>
+    </div>
+    <div id="fileInputControlv2FinalWrap" style="display:none">
+        <label class="label-text" for="fileControlv2Eleve">Eleve CONTROLv2</label>
+        <input type="file" id="fileControlv2Eleve" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileControlv2Resultado">Resultado CONTROLv2</label>
+        <input type="file" id="fileControlv2Resultado" accept=".csv, .xls, .xlsx" />
     </div>
 
     <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Procesar y Descargar</button>
@@ -244,9 +266,11 @@
             label: 'CONTROLv2',
             suffix: 'CONTROLV2',
             enabled: true,
-            descripcion: 'Cargá el archivo de designación de traslado y armá el eleve de control con el formato de vacantes.',
+            descripcion: 'Generá el eleve de control desde la designación de traslado, o el archivo final cruzando ese eleve contra el resultado de CONTROLv2 con las reglas de Traslado.',
             pending: false,
             reglas: [
+                '<strong>Opción Eleve de control:</strong> designación de traslado → eleve en formato de vacantes.',
+                '<strong>Opción Archivo final:</strong> cruza el eleve que ya genera CONTROLv2 con el resultado de CONTROLv2 (por Id. POF), usa las Confirmadas y aplica las reglas de Traslado.',
                 '<strong>Archivo de entrada:</strong> designación de traslado. Se leen las hojas y se mapean las columnas Form/Descripción al formato de eleve de control.',
                 '<strong>Área:</strong> AREA = <em>Descripcion Area</em>; COD DE AREA = <em>Area</em>.',
                 '<strong>Establecimiento:</strong> ESTABLECIMIENTO ID, Número, Nombre y Distrito salen de las columnas <em>Form Escuela…</em>. En Distrito se deja solo el número (se quita el texto "Distrito:") con formato numérico. Dirección queda vacía.',
@@ -261,7 +285,10 @@
                 '<strong>Observación:</strong> se completa con <em>Observación Docente</em>.',
                 '<strong>Id. POF:</strong> <em>Form Número POF</em>; Número de propuesta es una copia de ese valor.',
                 '<strong>Filtro Docente:</strong> solo se generan registros con la columna <em>Docente</em> completa; el resto se descarta.',
-                '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
+                '<strong>Nombrado (eleve):</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
+                '<strong>Archivo final — cruce:</strong> se completan vacíos del resultado con el eleve (por Id. POF). En Ascenso también se fuerzan código y descripción de cargo. Solo entran las Confirmadas.',
+                '<strong>Archivo final — Traslado:</strong> BASE/ASCENSO 1 (Ascenso) o 2 (Base); TIPO DE LISTADO 13; Novedad = Cant. Horas original; Cant. Horas = cantidad de filas del mismo código de cargo; Sit. Rev. Interino; docente vacío = "."; Número de propuesta = Id. POF; popup de publicación y cierre.',
+                '<strong>Nombrado (final):</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2_FINAL</strong> y la fecha de exportación.',
                 '<strong>Informe:</strong> segunda hoja con el detalle del proceso y tabla por Área, Cargo, Asignatura y Especialidad.'
             ]
         },
@@ -390,18 +417,32 @@
         }
     }
 
+    function getControlv2Mode() {
+        var checked = document.querySelector('input[name="controlv2Mode"]:checked');
+        return checked && checked.value === 'final' ? 'final' : 'eleve';
+    }
+
     function actualizarUiProcesador() {
         var proc = getProcesadorActivo();
         var btn = document.getElementById('btnProcesar');
         var statusDiv = document.getElementById('status');
         var baseWrap = document.getElementById('fileInputBaseWrap');
         var xnotaWrap = document.getElementById('fileInputXnotaWrap');
+        var modeWrap = document.getElementById('controlv2ModeWrap');
+        var finalWrap = document.getElementById('fileInputControlv2FinalWrap');
         var baseLabel = document.getElementById('fileInputBaseLabel');
-        if (baseWrap) baseWrap.style.display = proc.id === 'xnota' ? 'none' : 'block';
-        if (xnotaWrap) xnotaWrap.style.display = proc.id === 'xnota' ? 'block' : 'none';
+        var esXnota = proc.id === 'xnota';
+        var esControlv2 = proc.id === 'controlv2';
+        var modoFinal = esControlv2 && getControlv2Mode() === 'final';
+        if (modeWrap) modeWrap.style.display = esControlv2 ? 'block' : 'none';
+        if (xnotaWrap) xnotaWrap.style.display = esXnota ? 'block' : 'none';
+        if (finalWrap) finalWrap.style.display = modoFinal ? 'block' : 'none';
+        if (baseWrap) {
+            baseWrap.style.display = (esXnota || modoFinal) ? 'none' : 'block';
+        }
         if (baseLabel) {
             if (proc.id === 'traslado') baseLabel.textContent = 'Archivo con hoja Confirmadas';
-            else if (proc.id === 'controlv2') baseLabel.textContent = 'Archivo de designación de traslado';
+            else if (esControlv2) baseLabel.textContent = 'Archivo de designación de traslado';
             else baseLabel.textContent = 'Archivo Base';
         }
         if (btn) {
@@ -421,6 +462,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         renderProcessorTabs();
         actualizarUiProcesador();
+
+        document.querySelectorAll('input[name="controlv2Mode"]').forEach(function (radio) {
+            radio.addEventListener('change', actualizarUiProcesador);
+        });
 
         const infoOverlay = document.getElementById('infoOverlay');
         document.getElementById('infoClose').addEventListener('click', () => infoOverlay.classList.remove('visible'));
@@ -1421,6 +1466,127 @@
         return normalizar(s);
     }
 
+    function aplicarReglasTrasladoAFilas(filasOrigen, tipoBaseAscenso, inputsModal) {
+        var baseAscensoValor = tipoBaseAscenso === 'ascenso' ? 1 : 2;
+        var conteoPorCargo = Object.create(null);
+        (filasOrigen || []).forEach(function (fila) {
+            var cod = normalizarCodigoCargoTraslado(
+                obtenerValorColumna(fila, ['CODIGO CARGO', 'Código Cargo', 'Codigo Cargo', 'COD CARGO'])
+            );
+            var key = cod || '__SIN_CARGO__';
+            conteoPorCargo[key] = (conteoPorCargo[key] || 0) + 1;
+        });
+
+        var areaDetectada = 'Generico';
+        var dataFinal = (filasOrigen || []).map(function (fila) {
+            var nuevaFila = {};
+            COLUMNAS_RESULTADO.forEach(function (col) {
+                if (!col) {
+                    nuevaFila[col] = '';
+                    return;
+                }
+                var val = obtenerValorColumna(fila, [col]);
+                if (val === '' || val == null) {
+                    if (col === 'CODIGO CARGO') val = obtenerValorColumna(fila, COL_CARGO_XNOTA);
+                    else if (col === 'DESCRIPCION CARGO') val = obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA);
+                    else if (col === 'CODIGO ASIGNATURA') val = obtenerValorColumna(fila, COL_ASIG_XNOTA);
+                    else if (col === 'CODIGO ESPECIALIDAD') val = obtenerValorColumna(fila, COL_ESP_XNOTA);
+                    else if (col === 'DOCENTE') val = obtenerValorColumna(fila, COL_DOCENTE_XNOTA);
+                    else if (col === 'ESTABLECIMIENTO ID') val = obtenerValorColumna(fila, COL_ESTAB_ID_XNOTA);
+                    else if (col === 'Numero de Escuela') val = obtenerValorColumna(fila, COL_NUM_ESC_XNOTA);
+                    else if (col === 'Nombre de la escuela') val = obtenerValorColumna(fila, COL_NOMBRE_ESC_XNOTA);
+                    else if (col === 'Direccion') val = obtenerValorColumna(fila, COL_DIRECCION_XNOTA);
+                    else if (col === 'Id. POF') val = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+                    else if (col === 'AREA') val = obtenerValorColumna(fila, COL_AREA_XNOTA);
+                }
+                nuevaFila[col] = val !== undefined && val !== null ? val : '';
+            });
+
+            var cantHorasOrig = obtenerValorColumna(fila, ['Cant. Horas', 'Cant Horas', 'Horas']);
+            nuevaFila['Novedad Mayor 60 dias habiles'] = cantHorasOrig;
+
+            var codCargo = normalizarCodigoCargoTraslado(nuevaFila['CODIGO CARGO']);
+            var keyCargo = codCargo || '__SIN_CARGO__';
+            nuevaFila['Cant. Horas'] = conteoPorCargo[keyCargo] || 0;
+
+            nuevaFila['BASE/ASCENSO'] = baseAscensoValor;
+            nuevaFila['TIPO DE LISTADO'] = 13;
+            nuevaFila['FECHA PUBLICACION'] = inputsModal.fechaPub;
+            nuevaFila['HORA PUBLICACION'] = inputsModal.horaPub;
+            nuevaFila['FECHA APERTURA'] = inputsModal.fechaCierre;
+            nuevaFila['HORA APERTURA'] = inputsModal.horaCierre;
+            nuevaFila['Sit. Rev.'] = 'Interino';
+            if (!nuevaFila['DOCENTE'] || String(nuevaFila['DOCENTE']).trim() === '') {
+                nuevaFila['DOCENTE'] = '.';
+            }
+            var idPofTraslado = nuevaFila['Id. POF'];
+            if (idPofTraslado === '' || idPofTraslado == null) {
+                idPofTraslado = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
+                nuevaFila['Id. POF'] = idPofTraslado;
+            }
+            nuevaFila['Numero de propuesta'] = idPofTraslado;
+
+            if (nuevaFila['AREA'] && areaDetectada === 'Generico') {
+                areaDetectada = String(nuevaFila['AREA']).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
+            }
+
+            var ordenada = {};
+            COLUMNAS_RESULTADO.forEach(function (col) {
+                ordenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
+            });
+            return ordenada;
+        });
+
+        return {
+            dataFinal: dataFinal,
+            areaDetectada: areaDetectada,
+            conteoPorCargo: conteoPorCargo,
+            baseAscensoValor: baseAscensoValor
+        };
+    }
+
+    function leerFilasEleveOResultado(workbook) {
+        if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+            throw new Error('El archivo no tiene hojas legibles.');
+        }
+        var preferidas = ['resultado', 'confirmadas'];
+        var sheetName = workbook.SheetNames.find(function (n) {
+            var nn = normalizar(n);
+            return preferidas.indexOf(nn) !== -1;
+        });
+        if (sheetName) {
+            var ws = workbook.Sheets[sheetName];
+            var rawJson = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!rawJson.length) throw new Error('La hoja "' + sheetName + '" está vacía.');
+            var headerRowIndex = 0;
+            for (var i = 0; i < Math.min(15, rawJson.length); i++) {
+                var rowStr = rawJson[i].map(function (x) { return normalizar(String(x)); }).join(' ');
+                if (rowStr.indexOf('area') !== -1 || rowStr.indexOf('cargo') !== -1 ||
+                    rowStr.indexOf('idpof') !== -1 || rowStr.indexOf('id pof') !== -1) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+            var headers = rawJson[headerRowIndex];
+            var filas = [];
+            for (var r = headerRowIndex + 1; r < rawJson.length; r++) {
+                var row = rawJson[r];
+                var obj = {};
+                var tieneDatos = false;
+                for (var j = 0; j < headers.length; j++) {
+                    if (headers[j]) {
+                        obj[headers[j]] = row[j];
+                        if (String(row[j] == null ? '' : row[j]).trim() !== '') tieneDatos = true;
+                    }
+                }
+                if (tieneDatos) filas.push(obj);
+            }
+            if (!filas.length) throw new Error('La hoja "' + sheetName + '" no tiene filas con datos.');
+            return { filas: filas, sheetName: sheetName };
+        }
+        return { filas: unificarHojasWorkbook(workbook), sheetName: workbook.SheetNames.join(', ') };
+    }
+
     async function procesarTraslado(proc) {
         var statusDiv = document.getElementById('status');
         var fileInput = document.getElementById('fileInput');
@@ -1459,77 +1625,11 @@
             var buf = await leerArchivoComoArrayBuffer(fileInput.files[0]);
             var workbook = XLSX.read(buf, { type: 'array' });
             var leido = leerHojaConfirmadas(workbook);
-            var filasOrigen = leido.filas;
-
-            var conteoPorCargo = Object.create(null);
-            filasOrigen.forEach(function (fila) {
-                var cod = normalizarCodigoCargoTraslado(
-                    obtenerValorColumna(fila, ['CODIGO CARGO', 'Código Cargo', 'Codigo Cargo', 'COD CARGO'])
-                );
-                var key = cod || '__SIN_CARGO__';
-                conteoPorCargo[key] = (conteoPorCargo[key] || 0) + 1;
-            });
-
-            var areaDetectada = 'Generico';
-            var dataFinal = filasOrigen.map(function (fila) {
-                var nuevaFila = {};
-                COLUMNAS_RESULTADO.forEach(function (col) {
-                    if (!col) {
-                        nuevaFila[col] = '';
-                        return;
-                    }
-                    var val = obtenerValorColumna(fila, [col]);
-                    if (val === '' || val == null) {
-                        /* intentar alias frecuentes del resultado control / xNOTA */
-                        if (col === 'CODIGO CARGO') val = obtenerValorColumna(fila, COL_CARGO_XNOTA);
-                        else if (col === 'DESCRIPCION CARGO') val = obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA);
-                        else if (col === 'CODIGO ASIGNATURA') val = obtenerValorColumna(fila, COL_ASIG_XNOTA);
-                        else if (col === 'CODIGO ESPECIALIDAD') val = obtenerValorColumna(fila, COL_ESP_XNOTA);
-                        else if (col === 'DOCENTE') val = obtenerValorColumna(fila, COL_DOCENTE_XNOTA);
-                        else if (col === 'ESTABLECIMIENTO ID') val = obtenerValorColumna(fila, COL_ESTAB_ID_XNOTA);
-                        else if (col === 'Numero de Escuela') val = obtenerValorColumna(fila, COL_NUM_ESC_XNOTA);
-                        else if (col === 'Nombre de la escuela') val = obtenerValorColumna(fila, COL_NOMBRE_ESC_XNOTA);
-                        else if (col === 'Direccion') val = obtenerValorColumna(fila, COL_DIRECCION_XNOTA);
-                        else if (col === 'Id. POF') val = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
-                        else if (col === 'AREA') val = obtenerValorColumna(fila, COL_AREA_XNOTA);
-                    }
-                    nuevaFila[col] = val !== undefined && val !== null ? val : '';
-                });
-
-                var cantHorasOrig = obtenerValorColumna(fila, ['Cant. Horas', 'Cant Horas', 'Horas']);
-                nuevaFila['Novedad Mayor 60 dias habiles'] = cantHorasOrig;
-
-                var codCargo = normalizarCodigoCargoTraslado(nuevaFila['CODIGO CARGO']);
-                var keyCargo = codCargo || '__SIN_CARGO__';
-                nuevaFila['Cant. Horas'] = conteoPorCargo[keyCargo] || 0;
-
-                nuevaFila['BASE/ASCENSO'] = baseAscensoValor;
-                nuevaFila['TIPO DE LISTADO'] = 13;
-                nuevaFila['FECHA PUBLICACION'] = inputsModal.fechaPub;
-                nuevaFila['HORA PUBLICACION'] = inputsModal.horaPub;
-                nuevaFila['FECHA APERTURA'] = inputsModal.fechaCierre;
-                nuevaFila['HORA APERTURA'] = inputsModal.horaCierre;
-                nuevaFila['Sit. Rev.'] = 'Interino';
-                if (!nuevaFila['DOCENTE'] || String(nuevaFila['DOCENTE']).trim() === '') {
-                    nuevaFila['DOCENTE'] = '.';
-                }
-                var idPofTraslado = nuevaFila['Id. POF'];
-                if (idPofTraslado === '' || idPofTraslado == null) {
-                    idPofTraslado = obtenerValorColumna(fila, COL_IDPOF_XNOTA);
-                    nuevaFila['Id. POF'] = idPofTraslado;
-                }
-                nuevaFila['Numero de propuesta'] = idPofTraslado;
-
-                if (nuevaFila['AREA'] && areaDetectada === 'Generico') {
-                    areaDetectada = String(nuevaFila['AREA']).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
-                }
-
-                var ordenada = {};
-                COLUMNAS_RESULTADO.forEach(function (col) {
-                    ordenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
-                });
-                return ordenada;
-            });
+            var aplicado = aplicarReglasTrasladoAFilas(leido.filas, tipoBaseAscenso, inputsModal);
+            var dataFinal = aplicado.dataFinal;
+            var areaDetectada = aplicado.areaDetectada;
+            var conteoPorCargo = aplicado.conteoPorCargo;
+            baseAscensoValor = aplicado.baseAscensoValor;
 
             var wb = XLSX.utils.book_new();
             var ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
@@ -1723,7 +1823,143 @@
         return s !== '' && s !== '.' && s !== '0' && !/^0+$/.test(s);
     }
 
+    async function procesarControlV2Final(proc) {
+        var statusDiv = document.getElementById('status');
+        var fileEleve = document.getElementById('fileControlv2Eleve');
+        var fileResultado = document.getElementById('fileControlv2Resultado');
+
+        if (!fileEleve || !fileEleve.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el archivo Eleve CONTROLv2.';
+            return;
+        }
+        if (!fileResultado || !fileResultado.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el Resultado CONTROLv2.';
+            return;
+        }
+
+        var tipoBaseAscenso = await pedirTipoBaseAscenso({
+            intro: 'Elegí el tipo para el archivo final. Ascenso = 1 y fuerza cargo del eleve; Base = 2 y solo completa vacíos.'
+        });
+        if (!tipoBaseAscenso) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
+        var inputsModal = await pedirDatosPopUp({
+            title: 'Definí Publicación y Cierre',
+            intro: 'Completá las fechas y horas de publicación y de cierre para el archivo final de CONTROLv2.',
+            secondLabel: 'Fecha y Hora de Cierre'
+        });
+        if (!inputsModal) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
+        statusDiv.className = '';
+        statusDiv.innerText = 'Procesando archivo final CONTROLv2 (' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + ')...';
+
+        try {
+            var bufEleve = await leerArchivoComoArrayBuffer(fileEleve.files[0]);
+            var bufResultado = await leerArchivoComoArrayBuffer(fileResultado.files[0]);
+            var wbEleve = XLSX.read(bufEleve, { type: 'array' });
+            var wbResultado = XLSX.read(bufResultado, { type: 'array' });
+
+            var leidoEleve = leerFilasEleveOResultado(wbEleve);
+            var leidoRes = leerFilasEleveOResultado(wbResultado);
+            if (!leidoEleve.filas.length) throw new Error('El eleve CONTROLv2 no tiene datos legibles.');
+            if (!leidoRes.filas.length) throw new Error('El resultado CONTROLv2 no tiene datos legibles.');
+
+            var mapaInfo = construirMapaEleveControl(leidoEleve.filas);
+            var completado = completarResultadoConEleve(leidoRes.filas, mapaInfo.mapa, tipoBaseAscenso);
+            var partes = separarConfirmadasExcluidas(completado.filas);
+            if (!partes.confirmadas.length) {
+                throw new Error('No hay filas Confirmadas en el resultado CONTROLv2.');
+            }
+
+            var aplicado = aplicarReglasTrasladoAFilas(partes.confirmadas, tipoBaseAscenso, inputsModal);
+            var dataFinal = aplicado.dataFinal;
+
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
+            aplicarFormatoFechasHoras(ws);
+            aplicarFormatoNumeroDistrito(ws);
+            XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+
+            var informeProc = Object.assign({}, proc, {
+                suffix: 'CONTROLV2_FINAL',
+                descripcion: 'Archivo final CONTROLv2: cruce eleve + resultado y reglas de Traslado.'
+            });
+            var informe = construirHojaInforme(dataFinal, { procesador: informeProc, duplicadosEliminados: 0 });
+            var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+            wsInforme['!cols'] = [
+                { wch: 28 }, { wch: 14 }, { wch: 36 }, { wch: 16 },
+                { wch: 36 }, { wch: 16 }, { wch: 36 }, { wch: 18 }
+            ];
+            if (informe.lastDataRowIndex > informe.headerRowIndex) {
+                var start = XLSX.utils.encode_cell({ r: informe.headerRowIndex, c: 0 });
+                var end = XLSX.utils.encode_cell({ r: informe.lastDataRowIndex, c: 7 });
+                wsInforme['!autofilter'] = { ref: start + ':' + end };
+            }
+            XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
+
+            var nombreArchivo = aplicado.areaDetectada + '_CONTROLV2_FINAL_' + formatearFechaHoraNombre() + '.xlsx';
+            XLSX.writeFile(wb, nombreArchivo, { cellStyles: true });
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_concursos',
+                    moduleLabel: 'Eleves Concursos',
+                    procesador: 'controlv2_final',
+                    procesadorLabel: 'CONTROLv2 · Archivo final',
+                    archivoOrigen: (fileEleve.files[0].name || '') + ' + ' + (fileResultado.files[0].name || ''),
+                    archivoSalida: nombreArchivo,
+                    filas: dataFinal.length,
+                    area: aplicado.areaDetectada,
+                    detalle: 'Tipo: ' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso (1)' : 'Base (2)') +
+                        ' · Confirmadas: ' + partes.confirmadas.length +
+                        ' · Excluidas: ' + partes.excluidas.length +
+                        ' · Campos completados: ' + completado.stats.completados,
+                    extras: {
+                        tipo: tipoBaseAscenso,
+                        baseAscenso: aplicado.baseAscensoValor,
+                        tipoListado: 13,
+                        confirmadas: partes.confirmadas.length,
+                        excluidas: partes.excluidas.length,
+                        camposCompletados: completado.stats.completados,
+                        cargosForzados: completado.stats.cargosForzados || 0,
+                        hojas: ['Resultado', 'Informe']
+                    }
+                });
+            }
+
+            statusDiv.className = '';
+            statusDiv.innerText =
+                '¡Archivo final CONTROLv2 listo!\n"' + nombreArchivo + '"\n' +
+                '(Hojas: Resultado + Informe)\n' +
+                'Confirmadas usadas: ' + partes.confirmadas.length +
+                ' · Excluidas omitidas: ' + partes.excluidas.length + '\n' +
+                'BASE/ASCENSO: ' + aplicado.baseAscensoValor +
+                ' (' + (tipoBaseAscenso === 'ascenso' ? 'Ascenso' : 'Base') + ') · TIPO DE LISTADO: 13\n' +
+                'Campos completados desde eleve: ' + completado.stats.completados +
+                (tipoBaseAscenso === 'ascenso'
+                    ? (' · Cargos forzados: ' + (completado.stats.cargosForzados || 0))
+                    : '');
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = 'error';
+            statusDiv.innerText = error.message || 'Hubo un error al generar el archivo final de CONTROLv2.';
+        }
+    }
+
     async function procesarControlV2(proc) {
+        if (getControlv2Mode() === 'final') {
+            return procesarControlV2Final(proc);
+        }
+
         var statusDiv = document.getElementById('status');
         var fileInput = document.getElementById('fileInput');
 
