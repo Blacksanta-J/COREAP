@@ -86,7 +86,7 @@
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Eleves de Concursos</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Procesadores de archivos para control, xNOTA, traslado, acumulación, Secundaria Aprende e ingreso.</p>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Procesadores de archivos para control, xNOTA, traslado, CONTROLv2, acumulación, Secundaria Aprende e ingreso.</p>
 </div>
 
 <div class="portal-tool-panel container">
@@ -240,6 +240,29 @@
             ]
         },
         {
+            id: 'controlv2',
+            label: 'CONTROLv2',
+            suffix: 'CONTROLV2',
+            enabled: true,
+            descripcion: 'Cargá el archivo de designación de traslado y armá el eleve de control con el formato de vacantes.',
+            pending: false,
+            reglas: [
+                '<strong>Archivo de entrada:</strong> designación de traslado. Se leen las hojas y se mapean las columnas Form/Descripción al formato de eleve de control.',
+                '<strong>Área:</strong> AREA = <em>Descripcion Area</em>; COD DE AREA = <em>Area</em>.',
+                '<strong>Establecimiento:</strong> ESTABLECIMIENTO ID, Número, Nombre y Distrito salen de las columnas <em>Form Escuela…</em>. Dirección queda vacía.',
+                '<strong>Cargo / Asignatura / Especialidad:</strong> códigos y descripciones desde Cargo, Asignatura, Especialidad y sus descripciones.',
+                '<strong>Turno y horas:</strong> TURNO = <em>Form Escuela Turno</em>; Cant. Horas = <em>Form Cantidad de horas cubiertas</em>.',
+                '<strong>Campos fijos:</strong> BASE/ASCENSO y TIPO DE LISTADO = 3; Sit. Rev. = Interino; Novedad Mayor 60 días = 2; AÑO = año vigente.',
+                '<strong>Fechas fijas:</strong> FECHA DESDE = 31/03 del año corriente; FECHA HASTA = 31/12 del año corriente.',
+                '<strong>Publicación y apertura:</strong> se definen en el popup (fecha y hora).',
+                '<strong>Vacías:</strong> Dirección, Motivo de la Vacante, HORARIO A CUMPLIR, Observación y CONTINUIDAD.',
+                '<strong>Id. POF:</strong> <em>Form Número POF</em>; Número de propuesta es una copia de ese valor.',
+                '<strong>DOCENTE:</strong> columna <em>Docente</em> de la designación.',
+                '<strong>Nombrado:</strong> el archivo incluye el Área, la palabra <strong>CONTROLV2</strong> y la fecha de exportación.',
+                '<strong>Informe:</strong> segunda hoja con el detalle del proceso y tabla por Área, Cargo, Asignatura y Especialidad.'
+            ]
+        },
+        {
             id: 'acumulacion',
             label: 'Acumulación',
             suffix: 'ACUMULACION',
@@ -374,9 +397,9 @@
         if (baseWrap) baseWrap.style.display = proc.id === 'xnota' ? 'none' : 'block';
         if (xnotaWrap) xnotaWrap.style.display = proc.id === 'xnota' ? 'block' : 'none';
         if (baseLabel) {
-            baseLabel.textContent = proc.id === 'traslado'
-                ? 'Archivo con hoja Confirmadas'
-                : 'Archivo Base';
+            if (proc.id === 'traslado') baseLabel.textContent = 'Archivo con hoja Confirmadas';
+            else if (proc.id === 'controlv2') baseLabel.textContent = 'Archivo de designación de traslado';
+            else baseLabel.textContent = 'Archivo Base';
         }
         if (btn) {
             btn.disabled = !proc.enabled;
@@ -1563,6 +1586,227 @@
         }
     }
 
+    var COL_DESIG_AREA_DESC = ['Descripcion Area', 'Descripción Area', 'Descripción Área', 'DESCRIPCION AREA'];
+    var COL_DESIG_AREA_COD = ['Area', 'Área', 'AREA', 'COD AREA', 'COD DE AREA'];
+    var COL_DESIG_ESTAB_ID = [
+        'Form Escuela Establecimiento Id', 'Form Escuela Establecimiento ID',
+        'Form Escuela Establecimiento Id.', 'Escuela Establecimiento Id'
+    ];
+    var COL_DESIG_NUM_ESC = [
+        'Form Escuela Número', 'Form Escuela Numero', 'Form Escuela Nro',
+        'Form Escuela Nº', 'Form Escuela Numero Escuela'
+    ];
+    var COL_DESIG_NOM_ESC = ['Form Escuela Nombre', 'Form Escuela Nombre Escuela'];
+    var COL_DESIG_DISTRITO = ['Form Escuela Distrito', 'Form Escuela D.E.', 'Form Escuela DE'];
+    var COL_DESIG_CARGO = ['Cargo', 'CODIGO CARGO', 'Código Cargo'];
+    var COL_DESIG_DESC_CARGO = ['Descripcion Cargo', 'Descripción Cargo', 'DESCRIPCION CARGO'];
+    var COL_DESIG_ASIG = ['Asignatura', 'CODIGO ASIGNATURA', 'Código Asignatura'];
+    var COL_DESIG_DESC_ASIG = ['Descripcion Asignatura', 'Descripción Asignatura', 'DESCRIPCION ASIGNATURA'];
+    var COL_DESIG_ESP = ['Especialidad', 'CODIGO ESPECIALIDAD', 'Código Especialidad'];
+    var COL_DESIG_DESC_ESP = ['Descripcion Especialidad', 'Descripción Especialidad', 'DESCRIPCION ESPECIALIDAD'];
+    var COL_DESIG_TURNO = ['Form Escuela Turno', 'Turno', 'TURNO'];
+    var COL_DESIG_HORAS = [
+        'Form Cantidad de horas cubiertas', 'Form Cantidad de Horas Cubiertas',
+        'Cantidad de horas cubiertas', 'Cant. Horas'
+    ];
+    var COL_DESIG_DOCENTE = ['Docente', 'DOCENTE'];
+    var COL_DESIG_POF = [
+        'Form Número POF', 'Form Numero POF', 'Form Número Pof', 'Form Numero Pof',
+        'Form Numero de POF', 'Número POF', 'Numero POF', 'Id. POF', 'IDPOF'
+    ];
+
+    function puntajeFilaEncabezadoDesignacion(row) {
+        var n = (row || []).map(function (x) { return normalizar(String(x)); }).join(' | ');
+        var markers = [
+            'descripcion area', 'form escuela', 'numero pof', 'horas cubiertas',
+            'establecimiento', 'descripcion cargo', 'descripcion asignatura',
+            'descripcion especialidad', 'form escuela turno'
+        ];
+        var hits = 0;
+        markers.forEach(function (m) {
+            if (n.indexOf(m) !== -1) hits += 1;
+        });
+        return hits;
+    }
+
+    function leerFilasDesignacionTraslado(workbook) {
+        var datos = [];
+        (workbook.SheetNames || []).forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            var rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (!rawJson.length) return;
+
+            var headerRowIndex = 0;
+            var bestScore = -1;
+            var limit = Math.min(25, rawJson.length);
+            for (var i = 0; i < limit; i++) {
+                var sc = puntajeFilaEncabezadoDesignacion(rawJson[i]);
+                if (sc > bestScore) {
+                    bestScore = sc;
+                    headerRowIndex = i;
+                }
+            }
+            if (bestScore < 2) return;
+
+            var headers = rawJson[headerRowIndex];
+            for (var r = headerRowIndex + 1; r < rawJson.length; r++) {
+                var row = rawJson[r];
+                var obj = {};
+                var tieneDatos = false;
+                for (var j = 0; j < headers.length; j++) {
+                    if (headers[j]) {
+                        obj[headers[j]] = row[j];
+                        if (String(row[j] == null ? '' : row[j]).trim() !== '') tieneDatos = true;
+                    }
+                }
+                if (tieneDatos) datos.push(obj);
+            }
+        });
+        if (!datos.length) {
+            throw new Error('No se encontraron datos de designación de traslado. Revisá que el archivo tenga columnas Form Escuela / Descripcion Area / Form Número POF.');
+        }
+        return datos;
+    }
+
+    async function procesarControlV2(proc) {
+        var statusDiv = document.getElementById('status');
+        var fileInput = document.getElementById('fileInput');
+
+        if (!fileInput || !fileInput.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el archivo de designación de traslado.';
+            return;
+        }
+
+        var inputsModal = await pedirDatosPopUp({
+            title: 'Definí Publicación y Apertura',
+            intro: 'Completá las fechas y horas de publicación y de apertura para CONTROLv2.',
+            secondLabel: 'Fecha y Hora de Apertura'
+        });
+        if (!inputsModal) {
+            statusDiv.className = '';
+            statusDiv.innerText = 'Proceso cancelado.';
+            return;
+        }
+
+        statusDiv.className = '';
+        statusDiv.innerText = 'Procesando CONTROLv2, por favor espera...';
+
+        try {
+            var buf = await leerArchivoComoArrayBuffer(fileInput.files[0]);
+            var workbook = XLSX.read(buf, { type: 'array' });
+            var filasOrigen = leerFilasDesignacionTraslado(workbook);
+            var anioActual = new Date().getFullYear();
+            var fechaDesde = getExcelDate(anioActual, 2, 31);
+            var fechaHasta = getExcelDate(anioActual, 11, 31);
+            var areaDetectada = 'Generico';
+
+            var dataFinal = filasOrigen.map(function (fila) {
+                var idPof = obtenerValorColumna(fila, COL_DESIG_POF);
+                var areaDesc = obtenerValorColumna(fila, COL_DESIG_AREA_DESC);
+                var areaCod = obtenerValorColumna(fila, COL_DESIG_AREA_COD);
+                var docente = obtenerValorColumna(fila, COL_DESIG_DOCENTE);
+                var cantHoras = obtenerValorColumna(fila, COL_DESIG_HORAS);
+
+                if (areaDesc && areaDetectada === 'Generico') {
+                    areaDetectada = String(areaDesc).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
+                }
+
+                var nuevaFila = {};
+                nuevaFila[''] = '';
+                nuevaFila['AREA'] = areaDesc;
+                nuevaFila['BASE/ASCENSO'] = 3;
+                nuevaFila['ESTABLECIMIENTO ID'] = obtenerValorColumna(fila, COL_DESIG_ESTAB_ID);
+                nuevaFila['TIPO DE LISTADO'] = 3;
+                nuevaFila['COD DE AREA'] = areaCod;
+                nuevaFila['Numero de Escuela'] = obtenerValorColumna(fila, COL_DESIG_NUM_ESC);
+                nuevaFila['Nombre de la escuela'] = obtenerValorColumna(fila, COL_DESIG_NOM_ESC);
+                nuevaFila['Direccion'] = '';
+                nuevaFila['Distrito'] = obtenerValorColumna(fila, COL_DESIG_DISTRITO);
+                nuevaFila['CODIGO CARGO'] = obtenerValorColumna(fila, COL_DESIG_CARGO);
+                nuevaFila['DESCRIPCION CARGO'] = obtenerValorColumna(fila, COL_DESIG_DESC_CARGO);
+                nuevaFila['CODIGO ASIGNATURA'] = obtenerValorColumna(fila, COL_DESIG_ASIG);
+                nuevaFila['DESCRIPCION ASIGNATURA'] = obtenerValorColumna(fila, COL_DESIG_DESC_ASIG);
+                nuevaFila['CODIGO ESPECIALIDAD'] = obtenerValorColumna(fila, COL_DESIG_ESP);
+                nuevaFila['DESCRIPCION ESPECIALIDAD'] = obtenerValorColumna(fila, COL_DESIG_DESC_ESP);
+                nuevaFila['TURNO'] = obtenerValorColumna(fila, COL_DESIG_TURNO);
+                nuevaFila['Motivo de la Vacante'] = '';
+                nuevaFila['Sit. Rev.'] = 'Interino';
+                nuevaFila['Cant. Horas'] = cantHoras;
+                nuevaFila['HORARIO A CUMPLIR'] = '';
+                nuevaFila['Observación'] = '';
+                nuevaFila['AÑO'] = anioActual;
+                nuevaFila['DOCENTE'] = docente;
+                nuevaFila['Novedad Mayor 60 dias habiles'] = 2;
+                nuevaFila['FECHA DESDE'] = fechaDesde;
+                nuevaFila['FECHA HASTA'] = fechaHasta;
+                nuevaFila['FECHA PUBLICACION'] = inputsModal.fechaPub;
+                nuevaFila['HORA PUBLICACION'] = inputsModal.horaPub;
+                nuevaFila['FECHA APERTURA'] = inputsModal.fechaApe;
+                nuevaFila['HORA APERTURA'] = inputsModal.horaApe;
+                nuevaFila['CONTINUIDAD'] = '';
+                nuevaFila['Numero de propuesta'] = idPof;
+                nuevaFila['Id. POF'] = idPof;
+
+                var ordenada = {};
+                COLUMNAS_RESULTADO.forEach(function (col) {
+                    ordenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
+                });
+                return ordenada;
+            });
+
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
+            aplicarFormatoFechasHoras(ws);
+            XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+
+            var informe = construirHojaInforme(dataFinal, { procesador: proc, duplicadosEliminados: 0 });
+            var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+            wsInforme['!cols'] = [
+                { wch: 28 }, { wch: 14 }, { wch: 36 }, { wch: 16 },
+                { wch: 36 }, { wch: 16 }, { wch: 36 }, { wch: 18 }
+            ];
+            if (informe.lastDataRowIndex > informe.headerRowIndex) {
+                var start = XLSX.utils.encode_cell({ r: informe.headerRowIndex, c: 0 });
+                var end = XLSX.utils.encode_cell({ r: informe.lastDataRowIndex, c: 7 });
+                wsInforme['!autofilter'] = { ref: start + ':' + end };
+            }
+            XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
+
+            var nombreArchivo = areaDetectada + '_' + proc.suffix + '_' + formatearFechaHoraNombre() + '.xlsx';
+            XLSX.writeFile(wb, nombreArchivo, { cellStyles: true });
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_concursos',
+                    moduleLabel: 'Eleves Concursos',
+                    procesador: proc.id,
+                    procesadorLabel: proc.label,
+                    archivoOrigen: fileInput.files[0].name || '',
+                    archivoSalida: nombreArchivo,
+                    filas: dataFinal.length,
+                    area: areaDetectada,
+                    detalle: 'Designación de traslado → eleve control. Filas: ' + dataFinal.length,
+                    extras: {
+                        hojas: ['Resultado', 'Informe'],
+                        anio: anioActual
+                    }
+                });
+            }
+
+            statusDiv.className = '';
+            statusDiv.innerText =
+                '¡Proceso CONTROLv2 completado! Archivo guardado como:\n"' + nombreArchivo + '"\n' +
+                '(Hojas: Resultado + Informe)\n' +
+                'Filas: ' + dataFinal.length + ' · Año: ' + anioActual +
+                '\nFECHA DESDE 31/03/' + anioActual + ' · FECHA HASTA 31/12/' + anioActual;
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = 'error';
+            statusDiv.innerText = error.message || 'Hubo un error al procesar la designación de traslado.';
+        }
+    }
+
     function separarConfirmadasExcluidas(filas) {
         var confirmadas = [];
         var excluidas = [];
@@ -1736,6 +1980,9 @@
         }
         if (proc.id === 'traslado') {
             return procesarTraslado(proc);
+        }
+        if (proc.id === 'controlv2') {
+            return procesarControlV2(proc);
         }
         
         if (!fileInput.files.length) {
