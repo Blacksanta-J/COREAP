@@ -122,7 +122,7 @@
         <strong>COD CARGO</strong> = <strong>Código cargo</strong>.
         <code>CODES</code> del listado de memos no se impacta (no tiene columna en la base).
         Si el memo trae <code>SME/SC</code> y también <code>85</code>, prevalece <code>85</code> sobre la columna <strong>85</strong> de la base.
-        En <code>MERITO 1</code> y <code>MERITO 2</code> se deja solo el número (se saca <code>BIS</code>) y se duplica cada columna.
+        En <code>MERITO 1</code> y <code>MERITO 2</code> se deja solo el número (se saca <code>BIS</code>), se exportan como número y se duplica cada columna.
         <code>cond</code>, <code>csup</code> y <code>csec</code> con contenido pasan a <code>SI</code>.
         <div class="map-table-wrap">
             <table class="map-table" id="mapPreview">
@@ -155,7 +155,7 @@
                 <li><strong>Archivo 2 (Listado de memos):</strong> se leen las columnas del memo y se cruzan con la base.</li>
                 <li><strong>Clave:</strong> documento (DNI) + código de cargo. No se usa asignatura ni especialidad para el cruce.</li>
                 <li><strong>Impacto:</strong> en cada fila de la base que coincide con un memo, se copian los valores según el mapeo de columnas. El resto de columnas de la base no se toca.</li>
-                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). Cada columna se duplica en el Excel de salida.</li>
+                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel de salida esas columnas van en formato número. Cada columna se duplica.</li>
                 <li><strong>cond / csup / csec:</strong> si el memo trae contenido, en la base se escribe <code>SI</code>; si viene vacío, queda vacío.</li>
                 <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
                 <li><strong>Excel de salida:</strong> hoja 1 <em>Modificados</em> (formato de la base, solo filas que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base).</li>
@@ -243,7 +243,7 @@
         if (!tbody) return;
         tbody.innerHTML = FIELD_MAP.map(function (f) {
             var dest = f.skip ? '<em>(no se impacta)</em>' : f.db;
-            if (f.keepNumberDropBis) dest += ' <em>(solo número, sin BIS; columna duplicada)</em>';
+            if (f.keepNumberDropBis) dest += ' <em>(número, sin BIS; columna duplicada)</em>';
             if (f.yesIfFilled) dest += ' <em>(SI si hay contenido)</em>';
             return '<tr><td>' + f.memo + '</td><td>' + dest + '</td></tr>';
         }).join('');
@@ -372,15 +372,42 @@
         return String(v == null ? '' : v).trim() !== '';
     }
 
-    function keepNumberDropBis(value) {
+    function parseMeritoNumber(value) {
         if (value == null || value === '') return '';
         if (typeof value === 'number' && isFinite(value)) {
-            return String(parseInt(value, 10));
+            return parseInt(value, 10);
         }
         var s = String(value).replace(/\bBIS\b/gi, ' ').replace(/\s+/g, ' ').trim();
         if (!s) return '';
         var m = s.match(/-?\d+/);
-        return m ? m[0] : '';
+        if (!m) return '';
+        var n = parseInt(m[0], 10);
+        return isFinite(n) ? n : '';
+    }
+
+    function keepNumberDropBis(value) {
+        return parseMeritoNumber(value);
+    }
+
+    function meritoColumnIndexes(headers) {
+        var aliases = ['MERITO 1', 'MERITO1', 'MERITO 2', 'MERITO2'];
+        var want = aliases.map(normalizeHeader);
+        var idxs = [];
+        (headers || []).forEach(function (h, i) {
+            if (want.indexOf(normalizeHeader(h)) !== -1) idxs.push(i);
+        });
+        return idxs;
+    }
+
+    function coerceMeritoColumnsToNumber(headers, rows) {
+        var idxs = meritoColumnIndexes(headers);
+        if (!idxs.length) return;
+        (rows || []).forEach(function (r) {
+            idxs.forEach(function (i) {
+                var num = parseMeritoNumber(r[i]);
+                r[i] = num === '' ? '' : num;
+            });
+        });
     }
 
     function transformMappedValue(field, value) {
@@ -431,13 +458,29 @@
             + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.xlsx';
     }
 
-    function sheetFromAoa(headers, dataRows) {
+    function sheetFromAoa(headers, dataRows, numberColIdxs) {
         var aoa = [headers.slice()].concat(dataRows.map(function (r) {
             var copy = [];
             for (var i = 0; i < headers.length; i++) copy[i] = r[i] != null ? r[i] : '';
             return copy;
         }));
-        return XLSX.utils.aoa_to_sheet(aoa);
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        var cols = numberColIdxs || [];
+        if (cols.length && ws['!ref']) {
+            var range = XLSX.utils.decode_range(ws['!ref']);
+            for (var r = 1; r <= range.e.r; r++) {
+                for (var c = 0; c < cols.length; c++) {
+                    var addr = XLSX.utils.encode_cell({ r: r, c: cols[c] });
+                    var cell = ws[addr];
+                    if (!cell || cell.v === '' || cell.v == null) continue;
+                    if (typeof cell.v === 'number' && isFinite(cell.v)) {
+                        cell.t = 'n';
+                        cell.z = '0';
+                    }
+                }
+            }
+        }
+        return ws;
     }
 
     function setStatus(msg, isError) {
@@ -589,11 +632,12 @@
                 var outHeaders = baseTable.headers.slice();
                 var outRows = modificados.map(function (r) { return r.slice(); });
                 duplicateMarkedColumns(outHeaders, outRows);
+                coerceMeritoColumnsToNumber(outHeaders, outRows);
 
                 var wbOut = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(
                     wbOut,
-                    sheetFromAoa(outHeaders, outRows),
+                    sheetFromAoa(outHeaders, outRows, meritoColumnIndexes(outHeaders)),
                     'Modificados'
                 );
                 XLSX.utils.book_append_sheet(
