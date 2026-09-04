@@ -122,6 +122,8 @@
         <strong>COD CARGO</strong> = <strong>Código cargo</strong>.
         <code>CODES</code> del listado de memos no se impacta (no tiene columna en la base).
         Si el memo trae <code>SME/SC</code> y también <code>85</code>, prevalece <code>85</code> sobre la columna <strong>85</strong> de la base.
+        <code>MERITO 1</code> y <code>MERITO 2</code> salen vacíos y se duplican.
+        <code>cond</code>, <code>csup</code> y <code>csec</code> con contenido pasan a <code>SI</code>.
         <div class="map-table-wrap">
             <table class="map-table" id="mapPreview">
                 <thead><tr><th>Listado memos</th><th>Base de datos</th></tr></thead>
@@ -153,6 +155,8 @@
                 <li><strong>Archivo 2 (Listado de memos):</strong> se leen las columnas del memo y se cruzan con la base.</li>
                 <li><strong>Clave:</strong> documento (DNI) + código de cargo. No se usa asignatura ni especialidad para el cruce.</li>
                 <li><strong>Impacto:</strong> en cada fila de la base que coincide con un memo, se copian los valores según el mapeo de columnas. El resto de columnas de la base no se toca.</li>
+                <li><strong>MERITO 1 y MERITO 2:</strong> el contenido se deja vacío (sin el texto del memo) y se duplica cada columna en el Excel de salida.</li>
+                <li><strong>cond / csup / csec:</strong> si el memo trae contenido, en la base se escribe <code>SI</code>; si viene vacío, queda vacío.</li>
                 <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
                 <li><strong>Excel de salida:</strong> hoja 1 <em>Modificados</em> (formato de la base, solo filas que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base).</li>
                 <li>Si varios memos tienen el mismo DNI + cargo, se usa el primero y el resto se cuenta como duplicado.</li>
@@ -204,11 +208,11 @@
         { memo: 'PUNTOT', db: 'PUNTOT', aliasesMemo: ['PUNTOT'], aliasesDb: ['PUNTOT'] },
         { memo: 'JUNTA', db: 'JUNTA', aliasesMemo: ['JUNTA'], aliasesDb: ['JUNTA'] },
         { memo: 'TIPO', db: 'TIPO', aliasesMemo: ['TIPO'], aliasesDb: ['TIPO'] },
-        { memo: 'OM BIS', db: 'MERITO 1', aliasesMemo: ['OM BIS', 'OMBIS', 'MERITO 1'], aliasesDb: ['MERITO 1', 'MERITO1', 'OM BIS'] },
-        { memo: 'MERITO 2', db: 'MERITO 2', aliasesMemo: ['MERITO 2', 'MERITO2'], aliasesDb: ['MERITO 2', 'MERITO2'] },
-        { memo: 'T2C', db: 'cond', aliasesMemo: ['T2C', 'COND'], aliasesDb: ['cond', 'T2C'] },
-        { memo: 'T2S', db: 'csup', aliasesMemo: ['T2S', 'CSUP'], aliasesDb: ['csup', 'T2S'] },
-        { memo: 'T1', db: 'csec', aliasesMemo: ['T1', 'CSEC'], aliasesDb: ['csec', 'T1'] },
+        { memo: 'OM BIS', db: 'MERITO 1', clearText: true, duplicateCol: true, aliasesMemo: ['OM BIS', 'OMBIS', 'MERITO 1'], aliasesDb: ['MERITO 1', 'MERITO1', 'OM BIS'] },
+        { memo: 'MERITO 2', db: 'MERITO 2', clearText: true, duplicateCol: true, aliasesMemo: ['MERITO 2', 'MERITO2'], aliasesDb: ['MERITO 2', 'MERITO2'] },
+        { memo: 'T2C', db: 'cond', yesIfFilled: true, aliasesMemo: ['T2C', 'COND', 'CCOND'], aliasesDb: ['cond', 'ccond', 'CCOND', 'T2C'] },
+        { memo: 'T2S', db: 'csup', yesIfFilled: true, aliasesMemo: ['T2S', 'CSUP'], aliasesDb: ['csup', 'T2S'] },
+        { memo: 'T1', db: 'csec', yesIfFilled: true, aliasesMemo: ['T1', 'CSEC'], aliasesDb: ['csec', 'T1'] },
         { memo: 'NOTA', db: 'nota', aliasesMemo: ['NOTA'], aliasesDb: ['nota', 'NOTA'] },
         { memo: 'SE', db: 'se', aliasesMemo: ['SE'], aliasesDb: ['se', 'SE'] },
         { memo: 'SA', db: 'sa', aliasesMemo: ['SA'], aliasesDb: ['sa', 'SA'] },
@@ -239,6 +243,8 @@
         if (!tbody) return;
         tbody.innerHTML = FIELD_MAP.map(function (f) {
             var dest = f.skip ? '<em>(no se impacta)</em>' : f.db;
+            if (f.clearText) dest += ' <em>(sin texto; columna duplicada)</em>';
+            if (f.yesIfFilled) dest += ' <em>(SI si hay contenido)</em>';
             return '<tr><td>' + f.memo + '</td><td>' + dest + '</td></tr>';
         }).join('');
     })();
@@ -360,6 +366,38 @@
 
     function cell(row, i) {
         return i >= 0 && row ? row[i] : '';
+    }
+
+    function hasCellContent(v) {
+        return String(v == null ? '' : v).trim() !== '';
+    }
+
+    function transformMappedValue(field, value) {
+        if (field.clearText) return '';
+        if (field.yesIfFilled) return hasCellContent(value) ? 'SI' : '';
+        return value;
+    }
+
+    function duplicateMarkedColumns(headers, rows) {
+        FIELD_MAP.forEach(function (f) {
+            if (!f.duplicateCol || !f.db) return;
+            var aliases = (f.aliasesDb || []).concat([f.db]);
+            var idx = findColumnIndex(headers, aliases);
+            if (idx < 0) {
+                headers.push(f.db);
+                headers.push(f.db);
+                rows.forEach(function (r) {
+                    r.push('');
+                    r.push('');
+                });
+                return;
+            }
+            headers.splice(idx + 1, 0, headers[idx] || f.db);
+            rows.forEach(function (r) {
+                var val = r[idx] != null ? r[idx] : '';
+                r.splice(idx + 1, 0, val);
+            });
+        });
     }
 
     function valuesEqual(a, b) {
@@ -509,10 +547,16 @@
                     var changed = 0;
                     FIELD_MAP.forEach(function (f, i) {
                         if (f.skip) return;
-                        var mi = memoIdx[i];
                         var di = dbIdx[i];
-                        if (mi < 0 || di < 0) return;
-                        var nuevo = cell(hit.row, mi);
+                        if (di < 0) return;
+                        var nuevo;
+                        if (f.clearText) {
+                            nuevo = '';
+                        } else {
+                            var mi = memoIdx[i];
+                            if (mi < 0) return;
+                            nuevo = transformMappedValue(f, cell(hit.row, mi));
+                        }
                         var actual = cell(copy, di);
                         if (!valuesEqual(actual, nuevo)) {
                             copy[di] = nuevo;
@@ -536,10 +580,14 @@
                     throw new Error('No hubo coincidencias por DNI + cargo, ni filas para exportar.');
                 }
 
+                var outHeaders = baseTable.headers.slice();
+                var outRows = modificados.map(function (r) { return r.slice(); });
+                duplicateMarkedColumns(outHeaders, outRows);
+
                 var wbOut = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(
                     wbOut,
-                    sheetFromAoa(baseTable.headers, modificados),
+                    sheetFromAoa(outHeaders, outRows),
                     'Modificados'
                 );
                 XLSX.utils.book_append_sheet(
