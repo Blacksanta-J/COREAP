@@ -48,6 +48,7 @@
     pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
+    admin_roles: 'admin_roles',
     admin_logs: 'admin_logs'
   };
 
@@ -71,6 +72,7 @@
       MODULES.pof_apel,
       MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
+      MODULES.admin_roles,
       MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel, MODULES.impactar_memos]),
@@ -78,6 +80,132 @@
     listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
   };
+
+  var ADMIN_LOCKED_MODULES = [MODULES.admin_usuarios, MODULES.admin_roles, MODULES.admin_logs];
+  var STORAGE_ROLE_PERMS = 'portal-role-permissions-v1';
+  var ROLE_PERMS_COL = 'config';
+  var ROLE_PERMS_DOC = 'role_permissions';
+  var MODULE_LABELS = {
+    acto_publico: 'Acto Público',
+    clasificacion: 'Clasificación',
+    estatuto: 'Estatuto',
+    cronograma: 'Cronograma',
+    eleves_acto: 'Eleves Acto Público',
+    eleves_concursos: 'Eleves Concursos',
+    control_pof: 'Control POF',
+    impactar_memos: 'Impactar Memos',
+    pof_apel: 'POF APEL',
+    vacantes_provisorias: 'Vacantes Provisorias',
+    admin_usuarios: 'Usuarios',
+    admin_roles: 'Permisos de roles',
+    admin_logs: 'Log de procesos'
+  };
+  var MODULE_GROUPS = [
+    { label: 'Portal', modules: [MODULES.acto_publico, MODULES.cronograma, MODULES.clasificacion, MODULES.estatuto] },
+    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.pof_apel, MODULES.vacantes_provisorias] },
+    { label: 'Admin', modules: [MODULES.admin_usuarios, MODULES.admin_roles, MODULES.admin_logs] }
+  ];
+  var ROLE_ORDER = [ROLES.usuarios, ROLES.apel, ROLES.concursos, ROLES.listados, ROLES.admin];
+  var _effectiveRolePerms = null;
+  var _rolePermsMeta = { updatedAt: '', updatedBy: '', source: 'default' };
+
+  function knownModuleIds() {
+    return Object.keys(MODULES).map(function (k) { return MODULES[k]; });
+  }
+
+  function copyRolesMap(src) {
+    var out = {};
+    Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
+      out[role] = ((src && src[role]) || ROLE_PERMISSIONS[role] || []).slice();
+    });
+    return out;
+  }
+
+  function sanitizeRoleModules(role, modules) {
+    var known = knownModuleIds();
+    var set = {};
+    (modules || []).forEach(function (m) {
+      if (known.indexOf(m) !== -1) set[m] = true;
+    });
+    if (role === ROLES.admin) {
+      ADMIN_LOCKED_MODULES.forEach(function (m) { set[m] = true; });
+    } else {
+      ADMIN_LOCKED_MODULES.forEach(function (m) { delete set[m]; });
+    }
+    return known.filter(function (m) { return set[m]; });
+  }
+
+  function sanitizeRolesMap(src) {
+    var out = {};
+    Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
+      out[role] = sanitizeRoleModules(role, src && src[role]);
+    });
+    return out;
+  }
+
+  function writeRolePermsLocal(map, meta) {
+    _effectiveRolePerms = sanitizeRolesMap(map);
+    if (meta) _rolePermsMeta = meta;
+    try {
+      localStorage.setItem(STORAGE_ROLE_PERMS, JSON.stringify({
+        roles: _effectiveRolePerms,
+        updatedAt: (_rolePermsMeta && _rolePermsMeta.updatedAt) || '',
+        updatedBy: (_rolePermsMeta && _rolePermsMeta.updatedBy) || ''
+      }));
+    } catch (e) {}
+    return _effectiveRolePerms;
+  }
+
+  function readRolePermsLocal() {
+    try {
+      var raw = localStorage.getItem(STORAGE_ROLE_PERMS);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (!data || !data.roles) return null;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyLocalRolePermsIfAny() {
+    var local = readRolePermsLocal();
+    if (local) {
+      _effectiveRolePerms = sanitizeRolesMap(local.roles);
+      _rolePermsMeta = {
+        updatedAt: local.updatedAt || '',
+        updatedBy: local.updatedBy || '',
+        source: 'local'
+      };
+    } else {
+      _effectiveRolePerms = sanitizeRolesMap(ROLE_PERMISSIONS);
+      _rolePermsMeta = { updatedAt: '', updatedBy: '', source: 'default' };
+    }
+    return _effectiveRolePerms;
+  }
+
+  function getDefaultRolePermissions() {
+    return copyRolesMap(ROLE_PERMISSIONS);
+  }
+
+  function getRolePermissions() {
+    if (!_effectiveRolePerms) applyLocalRolePermsIfAny();
+    return copyRolesMap(_effectiveRolePerms);
+  }
+
+  function getRolePermissionsMeta() {
+    return {
+      updatedAt: (_rolePermsMeta && _rolePermsMeta.updatedAt) || '',
+      updatedBy: (_rolePermsMeta && _rolePermsMeta.updatedBy) || '',
+      source: (_rolePermsMeta && _rolePermsMeta.source) || 'default'
+    };
+  }
+
+  function isAdminLockedModule(moduleKey) {
+    return ADMIN_LOCKED_MODULES.indexOf(moduleKey) !== -1;
+  }
+
+  applyLocalRolePermsIfAny();
 
   var SEED_ADMIN = {
     email: 'jonathanalejandro.perez@bue.edu.ar',
@@ -830,12 +958,109 @@
     });
   }
 
+  function isoFromFirestoreTime(value) {
+    if (!value) return '';
+    if (typeof value.toDate === 'function') {
+      try { return value.toDate().toISOString(); } catch (e) { return ''; }
+    }
+    return String(value);
+  }
+
+  function fetchRolePermissionsFromFirestore() {
+    if (!initFirebase() || !_firestore) return Promise.resolve(null);
+    return _firestore.collection(ROLE_PERMS_COL).doc(ROLE_PERMS_DOC).get()
+      .then(function (snap) {
+        if (!snap.exists) return null;
+        var d = snap.data() || {};
+        if (!d.roles) return null;
+        return {
+          roles: d.roles,
+          updatedAt: isoFromFirestoreTime(d.updatedAt) || d.updatedAtIso || '',
+          updatedBy: d.updatedBy || ''
+        };
+      });
+  }
+
+  function syncRolePermissions() {
+    applyLocalRolePermsIfAny();
+    if (!initFirebase() || !_firestore) {
+      return Promise.resolve(getRolePermissions());
+    }
+    return fetchRolePermissionsFromFirestore().then(function (remote) {
+      if (remote) {
+        writeRolePermsLocal(remote.roles, {
+          updatedAt: remote.updatedAt,
+          updatedBy: remote.updatedBy,
+          source: 'firestore'
+        });
+      }
+      return getRolePermissions();
+    }).catch(function (err) {
+      if (!isPermissionDenied(err)) {
+        console.warn('Role permissions sync', err);
+      }
+      return getRolePermissions();
+    });
+  }
+
+  function saveRolePermissions(rolesMap, actor) {
+    var who = actor || currentUser();
+    if (!isAdminUser(who)) {
+      return Promise.resolve({ ok: false, error: 'Solo Admin puede modificar los permisos de los roles.' });
+    }
+    var clean = sanitizeRolesMap(rolesMap);
+    var meta = {
+      updatedAt: new Date().toISOString(),
+      updatedBy: normalizeEmail(who.email),
+      source: 'local'
+    };
+    writeRolePermsLocal(clean, meta);
+
+    function okResult(source, warning) {
+      return {
+        ok: true,
+        roles: getRolePermissions(),
+        meta: getRolePermissionsMeta(),
+        source: source,
+        warning: warning || ''
+      };
+    }
+
+    if (!initFirebase() || !_firestore) {
+      return Promise.resolve(okResult('local'));
+    }
+
+    return ensureFirebaseAuthForWrite().then(function () {
+      return _firestore.collection(ROLE_PERMS_COL).doc(ROLE_PERMS_DOC).set({
+        version: 1,
+        roles: clean,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAtIso: meta.updatedAt,
+        updatedBy: meta.updatedBy
+      }, { merge: true });
+    }).then(function () {
+      _rolePermsMeta.source = 'firestore';
+      return okResult('firestore');
+    }).catch(function (err) {
+      console.error(err);
+      return okResult(
+        'local',
+        (err && err.message) || 'Se guardó en este navegador, pero no en Firebase. Publicá las reglas de /config.'
+      );
+    });
+  }
+
+  function resetRolePermissionsToDefault(actor) {
+    return saveRolePermissions(copyRolesMap(ROLE_PERMISSIONS), actor);
+  }
+
   /** Carga local inmediata; Firebase/Firestore en background. */
   var _syncPromise = null;
 
   function startBackgroundSync() {
     if (_syncPromise) return _syncPromise;
     ensureSeedLocal();
+    applyLocalRolePermsIfAny();
     if (!isFirebaseEnabled()) {
       _syncPromise = Promise.resolve(getUsers());
       return _syncPromise;
@@ -849,7 +1074,9 @@
         if (fbUser && fbUser.email && !currentUser()) {
           restoreSessionFromFirebaseUser(fbUser);
         }
-        return getUsers();
+        return syncRolePermissions().then(function () {
+          return getUsers();
+        });
       });
     }).catch(function (err) {
       console.warn('Background sync', err);
@@ -866,6 +1093,7 @@
     if (_readyPromise) return _readyPromise;
     _readyPromise = Promise.resolve().then(function () {
       ensureSeedLocal();
+      applyLocalRolePermsIfAny();
       getSession();
       startBackgroundSync();
       return getUsers();
@@ -970,7 +1198,9 @@
   }
 
   function permissionsFor(role) {
-    return (ROLE_PERMISSIONS[role] || []).slice();
+    if (!_effectiveRolePerms) applyLocalRolePermsIfAny();
+    var map = _effectiveRolePerms || ROLE_PERMISSIONS;
+    return (map[role] || []).slice();
   }
 
   function permissionsForUser(user) {
@@ -1988,24 +2218,10 @@
   }
 
   function describePermissions(roleOrUser) {
-    var map = {
-      acto_publico: 'Acto Público',
-      clasificacion: 'Clasificación',
-      estatuto: 'Estatuto',
-      cronograma: 'Cronograma',
-      eleves_acto: 'Eleves Acto Público',
-      eleves_concursos: 'Eleves Concursos',
-      control_pof: 'Control POF',
-      impactar_memos: 'Impactar Memos',
-      pof_apel: 'POF APEL',
-      vacantes_provisorias: 'Vacantes Provisorias',
-      admin_usuarios: 'Gestión de usuarios',
-      admin_logs: 'Log de procesos'
-    };
     var mods = roleOrUser && typeof roleOrUser === 'object'
       ? permissionsForUser(roleOrUser)
       : permissionsFor(roleOrUser);
-    return mods.map(function (k) { return map[k] || k; });
+    return mods.map(function (k) { return MODULE_LABELS[k] || k; });
   }
 
   global.PortalAuth = {
@@ -2013,6 +2229,10 @@
     ROLES: ROLES,
     ROLE_LABELS: ROLE_LABELS,
     MODULES: MODULES,
+    MODULE_LABELS: MODULE_LABELS,
+    MODULE_GROUPS: MODULE_GROUPS,
+    ROLE_ORDER: ROLE_ORDER,
+    ADMIN_LOCKED_MODULES: ADMIN_LOCKED_MODULES,
     MANUALES: MANUALES,
     SEED_ADMIN_EMAIL: SEED_ADMIN.email,
     SEED_ADMIN_DNI: SEED_ADMIN.dni,
@@ -2039,6 +2259,13 @@
     canAccess: canAccess,
     permissionsFor: permissionsFor,
     permissionsForUser: permissionsForUser,
+    getRolePermissions: getRolePermissions,
+    getDefaultRolePermissions: getDefaultRolePermissions,
+    getRolePermissionsMeta: getRolePermissionsMeta,
+    saveRolePermissions: saveRolePermissions,
+    resetRolePermissionsToDefault: resetRolePermissionsToDefault,
+    syncRolePermissions: syncRolePermissions,
+    isAdminLockedModule: isAdminLockedModule,
     userRoles: userRoles,
     userHasRole: userHasRole,
     isAdminUser: isAdminUser,

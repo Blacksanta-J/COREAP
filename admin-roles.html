@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal COREAP · Permisos de roles</title>
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
+<script src="portal-theme.js"></script>
+<script src="portal-header.js?v=20260825-sess2"></script>
+<script src="portal-sidebar.js?v=20260904-roles1"></script>
+<script src="portal-footer.js"></script>
+<link rel="stylesheet" href="portal-theme.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260826-fastpages1"></script>
+<script src="auth.js?v=20260904-roles1"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --az:#1d3343;--am:#FFCC00;--cy:#009688;--gr:#08202f;--gr-light:#6d6d6d;
+  --bg:#f3f6f9;--surface:#ffffff;--border:#e6ebf0;--error:#b91c1c;--ok:#166534;
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  font-family:'Open Sans',sans-serif;color-scheme:light;
+}
+html[data-theme="dark"]{
+  --gr:#f2f5f7;--gr-light:#c5d0d8;--bg:#0b1218;--surface:#1a2733;
+  --border:#3a4f5e;--error:#fb8a8a;--ok:#6ee7a0;--shadow:0 8px 24px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--gr);min-height:100vh}
+.wrap{max-width:none;width:100%;margin:0;padding:28px 40px 40px}
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);padding:22px;
+}
+h1{font-family:'Archivo',Georgia,serif;font-size:28px;color:#1d3343;margin-bottom:6px}
+html[data-theme="dark"] h1{color:#f2f5f7}
+.lead{color:var(--gr-light);font-size:14px;margin-bottom:18px;line-height:1.5}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+button{
+  border:none;border-radius:8px;padding:10px 14px;font-weight:700;font-size:12px;
+  letter-spacing:.4px;text-transform:uppercase;cursor:pointer;
+}
+.btn-primary{background:#1d3343;color:var(--am)}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--gr)}
+.btn-primary:disabled,.btn-secondary:disabled{opacity:.5;cursor:not-allowed}
+.callout{
+  margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+  background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.45);color:var(--gr);
+}
+html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
+.toast{
+  display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;
+}
+.toast.visible{display:block}
+.toast.ok{background:rgba(22,101,52,.08);border:1px solid rgba(22,101,52,.25);color:var(--ok)}
+.toast.err{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.25);color:var(--error)}
+.meta-line{font-size:12px;color:var(--gr-light);margin-top:4px}
+.matrix-wrap{overflow:auto}
+table.matrix{width:100%;border-collapse:collapse;min-width:720px}
+.matrix th,.matrix td{border-bottom:1px solid var(--border);padding:10px 8px;text-align:center;font-size:13px}
+.matrix th.mod,.matrix td.mod{text-align:left;font-weight:600;white-space:nowrap}
+.matrix thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--gr-light)}
+.matrix tr.group td{background:rgba(0,150,136,.08);font-size:11px;font-weight:700;letter-spacing:.4px;
+  text-transform:uppercase;text-align:left;color:var(--cy);padding-top:14px}
+.matrix input{width:18px;height:18px;accent-color:#1d3343;cursor:pointer}
+.matrix input:disabled{cursor:not-allowed;opacity:.7}
+.locked{font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--gr-light);margin-left:6px}
+</style>
+<link rel="stylesheet" href="portal-obelisco.css">
+</head>
+<body class="portal-tool-body">
+  <div class="page-shell">
+  <header id="portal-header"></header>
+
+  <div class="layout">
+  <aside id="portal-sidebar"></aside>
+  <div class="content portal-tool-content">
+  <div class="wrap">
+    <h1>Permisos de roles</h1>
+    <p class="lead">Marcá qué módulos puede ver cada rol. Al guardar, el home y el menú lateral usan esta matriz. Usuarios, Permisos de roles y Log quedan solo para Admin.</p>
+
+    <div class="callout" id="publishHint">
+      Con Firebase, el cambio se publica en la nube y aplica en todos los navegadores.
+      Hay que publicar las reglas de Firestore que incluyen <code>config/role_permissions</code>.
+    </div>
+
+    <div class="toast" id="pageToast"></div>
+
+    <div class="toolbar">
+      <button type="button" class="btn-primary" id="btnSave">Guardar permisos</button>
+      <button type="button" class="btn-secondary" id="btnReset">Volver a los valores por defecto</button>
+    </div>
+
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="font-size:16px;margin:0">Módulos por rol</h2>
+        <span class="meta-line" id="metaLine">—</span>
+      </div>
+      <div class="matrix-wrap">
+        <table class="matrix" id="permTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  </div>
+  </div>
+
+  <footer id="portal-footer"></footer>
+  </div>
+
+<script>
+(function () {
+  PortalAuth.ready().then(function () {
+    var user = PortalAuth.requireAuth({ module: PortalAuth.MODULES.admin_roles });
+    if (!user) return;
+
+    if (window.PortalHeader && typeof PortalHeader.fillUserMenu === 'function') {
+      PortalHeader.fillUserMenu(user);
+    }
+
+    var fbOn = PortalAuth.isFirebaseEnabled && PortalAuth.isFirebaseEnabled();
+    var hint = document.getElementById('publishHint');
+    if (hint && fbOn) {
+      hint.innerHTML = 'Firebase activo: al guardar, la matriz se publica en la nube y aplica para todos. Si falla el guardado en la nube, queda en este navegador hasta que publiques las reglas de <code>config</code>.';
+    }
+
+    var table = document.getElementById('permTable');
+    var thead = table.querySelector('thead');
+    var tbody = table.querySelector('tbody');
+    var toast = document.getElementById('pageToast');
+    var metaLine = document.getElementById('metaLine');
+    var btnSave = document.getElementById('btnSave');
+    var btnReset = document.getElementById('btnReset');
+
+    var roles = (PortalAuth.ROLE_ORDER || ['usuarios', 'apel', 'concursos', 'listados', 'admin']).slice();
+    var groups = PortalAuth.MODULE_GROUPS || [];
+    var labels = PortalAuth.MODULE_LABELS || {};
+    var roleLabels = PortalAuth.ROLE_LABELS || {};
+
+    function showToast(text, ok) {
+      toast.textContent = text;
+      toast.className = 'toast visible ' + (ok ? 'ok' : 'err');
+    }
+
+    function formatMeta(meta) {
+      meta = meta || (PortalAuth.getRolePermissionsMeta && PortalAuth.getRolePermissionsMeta()) || {};
+      var parts = [];
+      if (meta.source === 'firestore') parts.push('Nube');
+      else if (meta.source === 'local') parts.push('Este navegador');
+      else parts.push('Valores por defecto');
+      if (meta.updatedBy) parts.push(meta.updatedBy);
+      if (meta.updatedAt) {
+        var d = new Date(meta.updatedAt);
+        parts.push(isNaN(d.getTime()) ? String(meta.updatedAt) : d.toLocaleString('es-AR'));
+      }
+      metaLine.textContent = parts.join(' · ');
+    }
+
+    function isLocked(mod, role) {
+      return role !== 'admin' && PortalAuth.isAdminLockedModule && PortalAuth.isAdminLockedModule(mod);
+    }
+
+    function isForced(mod, role) {
+      return role === 'admin' && PortalAuth.isAdminLockedModule && PortalAuth.isAdminLockedModule(mod);
+    }
+
+    function render(map) {
+      map = map || PortalAuth.getRolePermissions();
+      thead.innerHTML = '<tr><th class="mod">Módulo</th>' + roles.map(function (r) {
+        return '<th>' + (roleLabels[r] || r) + '</th>';
+      }).join('') + '</tr>';
+
+      var html = '';
+      groups.forEach(function (group) {
+        html += '<tr class="group"><td colspan="' + (roles.length + 1) + '">' + group.label + '</td></tr>';
+        (group.modules || []).forEach(function (mod) {
+          html += '<tr><td class="mod">' + (labels[mod] || mod);
+          if (PortalAuth.isAdminLockedModule && PortalAuth.isAdminLockedModule(mod)) {
+            html += '<span class="locked">solo admin</span>';
+          }
+          html += '</td>';
+          roles.forEach(function (role) {
+            var on = (map[role] || []).indexOf(mod) !== -1;
+            var forced = isForced(mod, role);
+            var locked = isLocked(mod, role);
+            var checked = forced || (on && !locked);
+            html += '<td><input type="checkbox" data-role="' + role + '" data-mod="' + mod + '"';
+            if (checked) html += ' checked';
+            if (forced || locked) html += ' disabled';
+            html += '></td>';
+          });
+          html += '</tr>';
+        });
+      });
+      tbody.innerHTML = html;
+      formatMeta();
+    }
+
+    function collectMap() {
+      var map = {};
+      roles.forEach(function (role) { map[role] = []; });
+      tbody.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+        var role = box.getAttribute('data-role');
+        var mod = box.getAttribute('data-mod');
+        if (box.checked || isForced(mod, role)) map[role].push(mod);
+      });
+      return map;
+    }
+
+    function setBusy(busy) {
+      btnSave.disabled = busy;
+      btnReset.disabled = busy;
+    }
+
+    btnSave.addEventListener('click', function () {
+      setBusy(true);
+      PortalAuth.saveRolePermissions(collectMap(), user).then(function (res) {
+        setBusy(false);
+        if (!res || !res.ok) {
+          showToast((res && res.error) || 'No se pudo guardar.', false);
+          return;
+        }
+        render(res.roles);
+        if (window.PortalSidebar && typeof PortalSidebar.render === 'function') {
+          PortalSidebar.render(document.getElementById('portal-sidebar'));
+        }
+        if (res.warning) showToast('Guardado acá. ' + res.warning, false);
+        else showToast(res.source === 'firestore' ? 'Permisos guardados en la nube.' : 'Permisos guardados en este navegador.', true);
+      }).catch(function (err) {
+        setBusy(false);
+        showToast((err && err.message) || 'No se pudo guardar.', false);
+      });
+    });
+
+    btnReset.addEventListener('click', function () {
+      if (!confirm('¿Volver a los permisos por defecto de cada rol?')) return;
+      setBusy(true);
+      PortalAuth.resetRolePermissionsToDefault(user).then(function (res) {
+        setBusy(false);
+        if (!res || !res.ok) {
+          showToast((res && res.error) || 'No se pudo restaurar.', false);
+          return;
+        }
+        render(res.roles);
+        if (window.PortalSidebar && typeof PortalSidebar.render === 'function') {
+          PortalSidebar.render(document.getElementById('portal-sidebar'));
+        }
+        showToast('Se restauraron los permisos por defecto.', true);
+      }).catch(function (err) {
+        setBusy(false);
+        showToast((err && err.message) || 'No se pudo restaurar.', false);
+      });
+    });
+
+    render(PortalAuth.getRolePermissions());
+
+    if (PortalAuth.whenSynced) {
+      PortalAuth.whenSynced().then(function () {
+        render(PortalAuth.getRolePermissions());
+      });
+    }
+  }).catch(function () {
+    PortalAuth.requireAuth({ module: 'admin_roles' });
+  });
+})();
+</script>
+</body>
+</html>

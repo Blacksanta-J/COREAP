@@ -7,6 +7,7 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 - `index.html` — portal home; navigation hub linking to the module pages below.
 - `login.html` — login (email `@bue.edu.ar` + DNI against preloaded users).
 - `admin-usuarios.html` — admin panel to preload users and assign roles.
+- `admin-roles.html` — admin panel to choose which modules each role can see.
 - `auth.js` — client-side auth, roles, and permissions.
 - `actopublico_final.html` — "Acto Público" module (rules/priorities/escalafones).
 - `seguimiento_final.html` — "Seguimiento" module (expediente tracking).
@@ -23,9 +24,9 @@ Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS i
 - Login with Google (same pattern as https://actopublico.bue.edu.ar/login): button **Ingresá con tu cuenta @bue.edu.ar**.
 - Only preloaded users with `@bue.edu.ar` email can enter after Google auth.
 - Configure `googleClientId` in `auth-config.js` (Google Cloud OAuth Web Client ID; add the portal URL as authorized JavaScript origin).
-- Roles: **Admin** (all + manage users), **APEL** (Eleves Acto Público, POF APEL, Impactar Memos + Manuales), **Concursos** (Eleves Concursos + Manuales), **Listados** (Control POF, Impactar Memos + Manuales), **Usuarios** (Manuales only).
-- Control POF is visible to **Admin** and **Listados**. Impactar Memos is visible to **Admin**, **APEL** and **Listados**.
-- Manuales = Acto Público, Clasificación, Estatuto.
+- Roles: **Admin**, **APEL**, **Concursos**, **Listados**, **Usuarios**. Defaults: Admin (all + manage users/roles), APEL (Eleves Acto Público, POF APEL, Impactar Memos + Manuales), Concursos (Eleves Concursos + Manuales), Listados (Control POF, Impactar Memos + Manuales), Usuarios (Manuales only).
+- An Admin can change which modules each role sees from **Permisos de roles** (`admin-roles.html`). The matrix is stored in `localStorage` and in Firestore `config/role_permissions` (requires published rules). Admin modules (Usuarios, Permisos de roles, Log) stay locked to Admin.
+- Manuales = Acto Público, Clasificación, Estatuto, Cronograma.
 - Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (DNI is for the user registry; change from Usuarios panel).
 - User store and session live in browser storage (`localStorage` / `sessionStorage`) — suitable for an internal static portal; not a hardened server-side auth system.
 

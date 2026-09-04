@@ -33,6 +33,7 @@
       label: 'Admin',
       items: [
         { href: 'admin-usuarios.html', label: 'Usuarios', icon: '👥', module: 'admin_usuarios' },
+        { href: 'admin-roles.html', label: 'Permisos de roles', icon: '🔑', module: 'admin_roles' },
         { href: 'admin-logs.html', label: 'Log de procesos', icon: '📜', module: 'admin_logs' }
       ]
     }
@@ -129,6 +130,11 @@
     if (global.PortalAuth && typeof global.PortalAuth.ready === 'function') {
       global.PortalAuth.ready().then(function () {
         renderSidebar(mount);
+        if (typeof global.PortalAuth.whenSynced === 'function') {
+          return global.PortalAuth.whenSynced().then(function () {
+            renderSidebar(mount);
+          });
+        }
       }).catch(function () {});
     }
   }

@@ -55,6 +55,12 @@ service cloud.firestore {
       allow read, write: if isSeedAdmin() || isAdmin();
     }
 
+    /* Matriz rol → módulos: todos @bue leen; solo Admin escribe */
+    match /config/{docId} {
+      allow get, list: if isBue();
+      allow create, update, delete: if isAdmin() || isSeedAdmin();
+    }
+
     function hasVacantesRole() {
       let data = userData();
       return data.role == 'admin'
