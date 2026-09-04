@@ -44,6 +44,7 @@
     eleves_acto: 'eleves_acto',
     eleves_concursos: 'eleves_concursos',
     control_pof: 'control_pof',
+    impactar_memos: 'impactar_memos',
     pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
@@ -66,6 +67,7 @@
       MODULES.eleves_acto,
       MODULES.eleves_concursos,
       MODULES.control_pof,
+      MODULES.impactar_memos,
       MODULES.pof_apel,
       MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
@@ -73,7 +75,7 @@
     ],
     apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel]),
     concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.vacantes_provisorias]),
-    listados: MANUALES.concat([MODULES.control_pof, MODULES.vacantes_provisorias]),
+    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
   };
 
@@ -1994,6 +1996,7 @@
       eleves_acto: 'Eleves Acto Público',
       eleves_concursos: 'Eleves Concursos',
       control_pof: 'Control POF',
+      impactar_memos: 'Impactar Memos',
       pof_apel: 'POF APEL',
       vacantes_provisorias: 'Vacantes Provisorias',
       admin_usuarios: 'Gestión de usuarios',

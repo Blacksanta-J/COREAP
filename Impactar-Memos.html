@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal COREAP · Impactar Memos</title>
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="shortcut icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
+<script src="portal-theme.js"></script>
+    <script src="portal-header.js?v=20260825-sess2"></script>
+    <script src="portal-nav.js"></script>
+    <script src="portal-sidebar.js?v=20260904-memos1"></script>
+    <script src="portal-footer.js"></script>
+    <link rel="stylesheet" href="portal-theme.css">
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="auth-config.js"></script>
+<script src="users-data.js?v=20260826-fastpages1"></script>
+<script src="auth.js?v=20260904-memos1"></script>
+    <script>PortalAuth.ready().then(function(){ PortalAuth.requireAuth({ module: 'impactar_memos' }); }).catch(function(){ PortalAuth.requireAuth({ module: 'impactar_memos' }); });</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: var(--portal-bg); --text: var(--portal-text); --card: var(--portal-surface); --heading: var(--portal-heading);
+            --muted: var(--portal-muted); --border: var(--portal-border); --input-bg: var(--portal-input-bg);
+            --btn: var(--portal-topbar-bg); --btn-hover: var(--portal-az-hover); --btn-text: var(--portal-am);
+            --btn-secondary: var(--portal-border); --btn-secondary-hover: var(--portal-cy-light); --btn-secondary-text: var(--portal-text);
+            --success: var(--portal-success); --error: var(--portal-error); --shadow: var(--portal-shadow-md);
+            --overlay: var(--portal-overlay); --toggle-bg: var(--portal-cy-light);
+        }
+        body.portal-tool-body { margin: 0; }
+        .container { width: 100%; max-width: 100%; min-width: 0; text-align: left; box-sizing: border-box; }
+        .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+        h2 { margin: 0; color: var(--heading); flex: 1; text-align: left; min-width: 0; }
+        p { color: var(--muted); text-align: left; font-size: 14px; margin-top: 10px;}
+        button.theme-toggle, button.info-close {
+            width: 42px; min-width: 42px; height: 42px; padding: 0; border-radius: 8px; border: none;
+            background: var(--toggle-bg); color: var(--heading); font-size: 18px; line-height: 1; cursor: pointer;
+        }
+        button.theme-toggle:hover, button.info-close:hover { background: var(--btn-secondary-hover); }
+        .label-text { text-align: left; display: block; font-size: 14px; font-weight: bold; margin-top: 15px; color: var(--muted); }
+        input[type="file"] { margin: 10px 0 10px 0; display: block; width: 100%; color: var(--text); background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        button.btn-primary { background-color: var(--btn); color: var(--btn-text); border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s; margin-top: 10px;}
+        button.btn-primary:hover { background-color: var(--btn-hover); }
+        button.btn-primary:disabled {
+            background-color: var(--btn-secondary);
+            color: var(--btn-secondary-text);
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+        button.secondary { background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s;}
+        button.secondary:hover { background-color: var(--btn-secondary-hover); }
+        #status { margin-top: 15px; font-weight: bold; color: var(--success); white-space: pre-wrap; }
+        .error { color: var(--error) !important; }
+        .equiv-box {
+            margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+            background: var(--input-bg); border: 1px solid var(--border);
+            font-size: 13px; color: var(--text); line-height: 1.55;
+        }
+        .equiv-box strong { color: var(--heading); }
+        .equiv-box code { font-size: 12px; }
+        .map-table-wrap { max-height: 220px; overflow: auto; margin-top: 8px; }
+        .map-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .map-table th, .map-table td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+        .map-table th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .3px; }
+        .stats-grid {
+            display: none; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px; margin-top: 16px;
+        }
+        .stats-grid.visible { display: grid; }
+        .stat-card {
+            background: var(--input-bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px 14px;
+        }
+        .stat-card .n { font-size: 22px; font-weight: 700; color: var(--heading); }
+        .stat-card .l { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto;}
+        .modal-overlay.visible { display: flex; }
+        .modal { background: var(--card); border-radius: 10px; padding: 24px; width: 100%; max-width: 560px; box-shadow: var(--shadow); text-align: left; border: 1px solid var(--border); margin: auto; }
+        .modal h3 { margin: 0 0 10px 0; color: var(--heading); font-size: 18px;}
+        .info-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
+        .info-content { font-size: 14px; color: var(--text); line-height: 1.5; max-height: 60vh; overflow-y: auto; padding-right: 10px;}
+        .info-content li { margin-bottom: 8px; }
+        .info-content strong { color: var(--heading); }
+        .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    </style>
+<link rel="stylesheet" href="portal-obelisco.css"></head>
+<body class="portal-tool-body">
+
+<div class="page-shell portal-tool-body">
+<header id="portal-header"></header>
+
+<div class="layout">
+<aside id="portal-sidebar"></aside>
+<div class="content portal-tool-content">
+<main class="portal-tool-main">
+<div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
+    <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Impactar Memos</h1>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Cargá la base de datos y el listado de memos. Se identifican coincidencias por DNI y cargo, se actualizan los campos mapeados y se descarga un Excel en formato de base solo con los registros modificados.</p>
+</div>
+
+<div class="portal-tool-panel container">
+    <div class="header-row">
+        <h2>Impactar listado de memos</h2>
+        <div class="header-actions">
+            <button type="button" class="theme-toggle" id="infoOpen" title="Cómo funciona" aria-label="Cómo funciona">ℹ</button>
+        </div>
+    </div>
+
+    <label class="label-text" for="fileBase">1. Base de datos</label>
+    <input type="file" id="fileBase" accept=".csv, .xls, .xlsx" />
+
+    <label class="label-text" for="fileMemos">2. Listado de memos</label>
+    <input type="file" id="fileMemos" accept=".csv, .xls, .xlsx" />
+
+    <div class="equiv-box">
+        Clave de coincidencia: <strong>DNI</strong> = <strong>Documento</strong> ·
+        <strong>COD CARGO</strong> = <strong>Código cargo</strong>.
+        <code>CODES</code> del listado de memos no se impacta (no tiene columna en la base).
+        Si el memo trae <code>SME/SC</code> y también <code>85</code>, prevalece <code>85</code> sobre la columna <strong>85</strong> de la base.
+        <div class="map-table-wrap">
+            <table class="map-table" id="mapPreview">
+                <thead><tr><th>Listado memos</th><th>Base de datos</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <button class="btn-primary" id="btnProcesar" type="button">Impactar y descargar</button>
+    <div id="status"></div>
+    <div class="stats-grid" id="statsGrid"></div>
+</div>
+</main>
+</div>
+</div>
+
+<div class="portal-footer" id="portal-footer"></div>
+</div>
+
+<div id="infoOverlay" class="modal-overlay">
+    <div class="modal">
+        <div class="info-modal-head">
+            <h3 style="margin: 0;">Cómo funciona Impactar Memos</h3>
+            <button type="button" class="info-close" id="infoClose">✕</button>
+        </div>
+        <div class="info-content">
+            <ul>
+                <li><strong>Archivo 1 (Base de datos):</strong> se detecta la fila de encabezados y se conservan todas las columnas originales.</li>
+                <li><strong>Archivo 2 (Listado de memos):</strong> se leen las columnas del memo y se cruzan con la base.</li>
+                <li><strong>Clave:</strong> documento (DNI) + código de cargo. No se usa asignatura ni especialidad para el cruce.</li>
+                <li><strong>Impacto:</strong> en cada fila de la base que coincide con un memo, se copian los valores según el mapeo de columnas. El resto de columnas de la base no se toca.</li>
+                <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
+                <li><strong>Excel de salida:</strong> hoja 1 <em>Modificados</em> (formato de la base, solo filas que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base).</li>
+                <li>Si varios memos tienen el mismo DNI + cargo, se usa el primero y el resto se cuenta como duplicado.</li>
+                <li>Si una misma clave aparece varias veces en la base, se actualizan todas esas filas.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    /**
+     * Mapeo Listado memos → Base de datos.
+     * aliasesMemo / aliasesDb se usan para encontrar encabezados flexibles.
+     * skip: true = no se copia (CODES).
+     */
+    var FIELD_MAP = [
+        { memo: 'TIPO DE LISTADO', db: 'Tipo listado', aliasesMemo: ['TIPO DE LISTADO', 'TIPO LISTADO'], aliasesDb: ['Tipo listado', 'TIPO LISTADO', 'TIPO DE LISTADO'] },
+        { memo: 'DNI', db: 'Documento', aliasesMemo: ['DNI', 'DOCUMENTO', 'NDOC'], aliasesDb: ['Documento', 'DNI', 'NDOC'] },
+        { memo: 'SEXO', db: 'Sexo', aliasesMemo: ['SEXO'], aliasesDb: ['Sexo'] },
+        { memo: 'APELLIDO Y NOMBRE', db: 'Apellido y Nombre', aliasesMemo: ['APELLIDO Y NOMBRE', 'APELLIDO Y NOMBRE'], aliasesDb: ['Apellido y Nombre', 'APELLIDO Y NOMBRE'] },
+        { memo: 'CODES', db: '', skip: true, aliasesMemo: ['CODES'], aliasesDb: [] },
+        { memo: 'COD CARGO', db: 'Código cargo', aliasesMemo: ['COD CARGO', 'CODIGO CARGO', 'CÓDIGO CARGO'], aliasesDb: ['Código cargo', 'Codigo cargo', 'COD CARGO'] },
+        { memo: 'DESC CARGO', db: 'Descripción', aliasesMemo: ['DESC CARGO', 'DESCRIPCION CARGO', 'DESCRIPCIÓN CARGO'], aliasesDb: ['Descripción', 'Descripcion', 'DESC CARGO'] },
+        { memo: 'COD ASIG', db: 'Código asignatura', aliasesMemo: ['COD ASIG', 'COD ASIGNATURA', 'CODIGO ASIGNATURA'], aliasesDb: ['Código asignatura', 'Codigo asignatura', 'COD ASIG'] },
+        { memo: 'DESC ASIGNATURA', db: 'Descripción asignatura', aliasesMemo: ['DESC ASIGNATURA', 'DESC ASIG', 'DESCRIPCION ASIGNATURA'], aliasesDb: ['Descripción asignatura', 'Descripcion asignatura'] },
+        { memo: 'COD ESPECIALIDAD', db: 'ESPEC', aliasesMemo: ['COD ESPECIALIDAD', 'CODESPEC', 'COD ESPEC'], aliasesDb: ['ESPEC', 'COD ESPECIALIDAD'] },
+        { memo: 'DESC ESPECIALIDAD', db: 'Curso', aliasesMemo: ['DESC ESPECIALIDAD', 'DESCRIPCION ESPECIALIDAD'], aliasesDb: ['Curso', 'DESC ESPECIALIDAD'] },
+        { memo: 'DE', db: 'DE', aliasesMemo: ['DE'], aliasesDb: ['DE'] },
+        { memo: 'SECTOR', db: 'SECTOR', aliasesMemo: ['SECTOR'], aliasesDb: ['SECTOR'] },
+        { memo: 'MATER', db: 'MATER', aliasesMemo: ['MATER'], aliasesDb: ['MATER'] },
+        { memo: 'TB', db: 'TB', aliasesMemo: ['TB'], aliasesDb: ['TB'] },
+        { memo: 'CONC', db: 'CONCE', aliasesMemo: ['CONC', 'CONCE'], aliasesDb: ['CONCE', 'CONC'] },
+        { memo: 'OT', db: 'OT', aliasesMemo: ['OT'], aliasesDb: ['OT'] },
+        { memo: 'DYM', db: 'DYM', aliasesMemo: ['DYM'], aliasesDb: ['DYM'] },
+        { memo: 'CURSOS', db: 'cursos', aliasesMemo: ['CURSOS'], aliasesDb: ['cursos', 'CURSOS'] },
+        { memo: 'APED', db: 'APED', aliasesMemo: ['APED'], aliasesDb: ['APED'] },
+        { memo: 'PMCJD', db: 'ACULT', aliasesMemo: ['PMCJD', 'ACULT'], aliasesDb: ['ACULT', 'PMCJD'] },
+        { memo: 'OANT', db: 'OANT', aliasesMemo: ['OANT'], aliasesDb: ['OANT'] },
+        { memo: 'ATOTAL', db: 'ARELA', aliasesMemo: ['ATOTAL', 'ARELA'], aliasesDb: ['ARELA', 'ATOTAL'] },
+        { memo: 'AAREA', db: 'AAREA', aliasesMemo: ['AAREA'], aliasesDb: ['AAREA'] },
+        { memo: 'AJUNTA', db: 'AJUNTA', aliasesMemo: ['AJUNTA'], aliasesDb: ['AJUNTA'] },
+        { memo: 'ACALIF', db: 'ACALIF', aliasesMemo: ['ACALIF'], aliasesDb: ['ACALIF'] },
+        { memo: 'PING', db: 'plus_ing', aliasesMemo: ['PING', 'PLUS ING', 'PLUS_ING'], aliasesDb: ['plus_ing', 'PLUS_ING', 'PING'] },
+        { memo: 'JB', db: 'JB', aliasesMemo: ['JB'], aliasesDb: ['JB'] },
+        { memo: 'TP', db: 'TP', aliasesMemo: ['TP'], aliasesDb: ['TP'] },
+        { memo: 'IN', db: 'IN', aliasesMemo: ['IN'], aliasesDb: ['IN'] },
+        { memo: 'TIAREA', db: 'tiarea', aliasesMemo: ['TIAREA'], aliasesDb: ['tiarea', 'TIAREA'] },
+        { memo: 'PUNTOT', db: 'PUNTOT', aliasesMemo: ['PUNTOT'], aliasesDb: ['PUNTOT'] },
+        { memo: 'JUNTA', db: 'JUNTA', aliasesMemo: ['JUNTA'], aliasesDb: ['JUNTA'] },
+        { memo: 'TIPO', db: 'TIPO', aliasesMemo: ['TIPO'], aliasesDb: ['TIPO'] },
+        { memo: 'OM BIS', db: 'MERITO 1', aliasesMemo: ['OM BIS', 'OMBIS', 'MERITO 1'], aliasesDb: ['MERITO 1', 'MERITO1', 'OM BIS'] },
+        { memo: 'MERITO 2', db: 'MERITO 2', aliasesMemo: ['MERITO 2', 'MERITO2'], aliasesDb: ['MERITO 2', 'MERITO2'] },
+        { memo: 'T2C', db: 'cond', aliasesMemo: ['T2C', 'COND'], aliasesDb: ['cond', 'T2C'] },
+        { memo: 'T2S', db: 'csup', aliasesMemo: ['T2S', 'CSUP'], aliasesDb: ['csup', 'T2S'] },
+        { memo: 'T1', db: 'csec', aliasesMemo: ['T1', 'CSEC'], aliasesDb: ['csec', 'T1'] },
+        { memo: 'NOTA', db: 'nota', aliasesMemo: ['NOTA'], aliasesDb: ['nota', 'NOTA'] },
+        { memo: 'SE', db: 'se', aliasesMemo: ['SE'], aliasesDb: ['se', 'SE'] },
+        { memo: 'SA', db: 'sa', aliasesMemo: ['SA'], aliasesDb: ['sa', 'SA'] },
+        { memo: 'DI', db: 'di', aliasesMemo: ['DI'], aliasesDb: ['di', 'DI'] },
+        { memo: 'VD', db: 'vd', aliasesMemo: ['VD'], aliasesDb: ['vd', 'VD'] },
+        { memo: 'SEC', db: 'sec', aliasesMemo: ['SEC'], aliasesDb: ['sec', 'SEC'] },
+        { memo: 'SME/SC', db: '85', aliasesMemo: ['SME/SC', 'SME SC', 'SMESC'], aliasesDb: ['85'] },
+        { memo: 'NT', db: 'nt', aliasesMemo: ['NT'], aliasesDb: ['nt', 'NT'] },
+        { memo: 'NA', db: 'na', aliasesMemo: ['NA'], aliasesDb: ['na', 'NA'] },
+        { memo: 'CT', db: 'ct', aliasesMemo: ['CT'], aliasesDb: ['ct', 'CT'] },
+        { memo: '85', db: '85', aliasesMemo: ['85'], aliasesDb: ['85'] },
+        { memo: '27', db: '27', aliasesMemo: ['27'], aliasesDb: ['27'] },
+        { memo: 'DA', db: 'da', aliasesMemo: ['DA'], aliasesDb: ['da', 'DA'] },
+        { memo: 'SB', db: 'sb', aliasesMemo: ['SB'], aliasesDb: ['sb', 'SB'] }
+    ];
+
+    var infoOpen = document.getElementById('infoOpen');
+    var infoClose = document.getElementById('infoClose');
+    var infoOverlay = document.getElementById('infoOverlay');
+    if (infoOpen) infoOpen.addEventListener('click', function () { infoOverlay.classList.add('visible'); });
+    if (infoClose) infoClose.addEventListener('click', function () { infoOverlay.classList.remove('visible'); });
+    if (infoOverlay) infoOverlay.addEventListener('click', function (e) {
+        if (e.target === infoOverlay) infoOverlay.classList.remove('visible');
+    });
+
+    (function fillMapPreview() {
+        var tbody = document.querySelector('#mapPreview tbody');
+        if (!tbody) return;
+        tbody.innerHTML = FIELD_MAP.map(function (f) {
+            var dest = f.skip ? '<em>(no se impacta)</em>' : f.db;
+            return '<tr><td>' + f.memo + '</td><td>' + dest + '</td></tr>';
+        }).join('');
+    })();
+
+    function normalizeHeader(s) {
+        return String(s == null ? '' : s)
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase()
+            .replace(/[._]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function normalizeDoc(v) {
+        var d = String(v == null ? '' : v).replace(/\D/g, '');
+        if (!d || /^0+$/.test(d)) return '';
+        return d;
+    }
+
+    function normalizeCode(v) {
+        var s = String(v == null ? '' : v).trim();
+        if (s === '') return '';
+        var compact = s.replace(',', '.');
+        if (/^-?\d+(\.0+)?$/.test(compact)) {
+            var n = parseInt(compact, 10);
+            return String(n);
+        }
+        return normalizeHeader(s);
+    }
+
+    function makeKey(dni, cargo) {
+        return [normalizeDoc(dni), normalizeCode(cargo)].join('|');
+    }
+
+    function findColumnIndex(headers, aliases) {
+        var norms = headers.map(normalizeHeader);
+        var i, a, want;
+        for (a = 0; a < aliases.length; a++) {
+            want = normalizeHeader(aliases[a]);
+            if (!want) continue;
+            for (i = 0; i < norms.length; i++) {
+                if (norms[i] === want) return i;
+            }
+        }
+        return -1;
+    }
+
+    function headerScore(row, markers) {
+        var n = (row || []).map(normalizeHeader);
+        var hits = 0;
+        markers.forEach(function (m) {
+            if (n.indexOf(normalizeHeader(m)) !== -1) hits += 1;
+        });
+        return hits;
+    }
+
+    function findHeaderRowIndex(aoa, markers) {
+        var bestIdx = 0;
+        var bestScore = -1;
+        var limit = Math.min(20, aoa.length);
+        for (var i = 0; i < limit; i++) {
+            var sc = headerScore(aoa[i], markers);
+            if (sc > bestScore) {
+                bestScore = sc;
+                bestIdx = i;
+            }
+        }
+        return bestScore > 0 ? bestIdx : 0;
+    }
+
+    function rowHasData(row) {
+        if (!row) return false;
+        for (var i = 0; i < row.length; i++) {
+            if (String(row[i] == null ? '' : row[i]).trim() !== '') return true;
+        }
+        return false;
+    }
+
+    function readFileToWorkbook(file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var wb = XLSX.read(data, { type: 'array', cellDates: false });
+                    resolve(wb);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = function () { reject(new Error('No se pudo leer ' + file.name)); };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function extractTable(workbook, markers) {
+        var headers = [];
+        var rows = [];
+        workbook.SheetNames.forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            if (!worksheet) return;
+            var aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true });
+            if (!aoa.length) return;
+            var headerIdx = findHeaderRowIndex(aoa, markers);
+            var sheetHeaders = (aoa[headerIdx] || []).map(function (h) { return h == null ? '' : h; });
+            if (!headers.length) headers = sheetHeaders.slice();
+            var width = Math.max(headers.length, sheetHeaders.length);
+            while (headers.length < width) headers.push('');
+            for (var i = headerIdx + 1; i < aoa.length; i++) {
+                var row = aoa[i] || [];
+                if (!rowHasData(row)) continue;
+                var copy = [];
+                for (var c = 0; c < headers.length; c++) copy[c] = row[c] != null ? row[c] : '';
+                rows.push(copy);
+            }
+        });
+        return { headers: headers, rows: rows };
+    }
+
+    function cell(row, i) {
+        return i >= 0 && row ? row[i] : '';
+    }
+
+    function valuesEqual(a, b) {
+        var sa = a == null ? '' : a;
+        var sb = b == null ? '' : b;
+        if (sa === sb) return true;
+        if (typeof sa === 'number' || typeof sb === 'number') {
+            var na = Number(String(sa).toString().replace(',', '.'));
+            var nb = Number(String(sb).toString().replace(',', '.'));
+            if (isFinite(na) && isFinite(nb) && na === nb) return true;
+        }
+        return String(sa).trim() === String(sb).trim();
+    }
+
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+    function nombreSalida() {
+        var d = new Date();
+        return 'Impactar_Memos_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate())
+            + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.xlsx';
+    }
+
+    function sheetFromAoa(headers, dataRows) {
+        var aoa = [headers.slice()].concat(dataRows.map(function (r) {
+            var copy = [];
+            for (var i = 0; i < headers.length; i++) copy[i] = r[i] != null ? r[i] : '';
+            return copy;
+        }));
+        return XLSX.utils.aoa_to_sheet(aoa);
+    }
+
+    function setStatus(msg, isError) {
+        var el = document.getElementById('status');
+        el.className = isError ? 'error' : '';
+        el.innerText = msg;
+    }
+
+    function renderStats(s) {
+        var grid = document.getElementById('statsGrid');
+        var items = [
+            { n: s.baseTotal, l: 'Filas base' },
+            { n: s.memosTotal, l: 'Filas memos' },
+            { n: s.memosUnicos, l: 'Memos únicos' },
+            { n: s.memosDup, l: 'Memos duplicados' },
+            { n: s.impactados, l: 'Filas modificadas' },
+            { n: s.celdasCambiadas, l: 'Celdas cambiadas' },
+            { n: s.coincidenSinCambio, l: 'Coinciden sin cambio' },
+            { n: s.sinCoincidencia, l: 'Memos sin match' }
+        ];
+        grid.innerHTML = items.map(function (it) {
+            return '<div class="stat-card"><div class="n">' + it.n + '</div><div class="l">' + it.l + '</div></div>';
+        }).join('');
+        grid.classList.add('visible');
+    }
+
+    function resolveIndexes(headers, fieldMap, side) {
+        var idx = {};
+        fieldMap.forEach(function (f, i) {
+            var aliases = side === 'memo' ? f.aliasesMemo : f.aliasesDb;
+            idx[i] = aliases && aliases.length ? findColumnIndex(headers, aliases) : -1;
+        });
+        return idx;
+    }
+
+    window.iniciarProceso = function () {
+        var fileBase = document.getElementById('fileBase').files[0];
+        var fileMemos = document.getElementById('fileMemos').files[0];
+        var btn = document.getElementById('btnProcesar');
+        document.getElementById('statsGrid').classList.remove('visible');
+
+        if (!fileBase || !fileMemos) {
+            setStatus('Seleccioná los dos archivos: base de datos y listado de memos.', true);
+            return;
+        }
+        if (typeof XLSX === 'undefined') {
+            setStatus('No se pudo cargar la librería de Excel. Revisá la conexión.', true);
+            return;
+        }
+
+        btn.disabled = true;
+        setStatus('Procesando…');
+
+        var memoMarkers = ['TIPO DE LISTADO', 'DNI', 'COD CARGO', 'APELLIDO Y NOMBRE'];
+        var dbMarkers = ['Tipo listado', 'Documento', 'Código cargo', 'Apellido y Nombre'];
+
+        Promise.all([readFileToWorkbook(fileBase), readFileToWorkbook(fileMemos)])
+            .then(function (wbs) {
+                var baseTable = extractTable(wbs[0], dbMarkers.concat(memoMarkers));
+                var memoTable = extractTable(wbs[1], memoMarkers.concat(dbMarkers));
+                if (!baseTable.rows.length) throw new Error('La base de datos no tiene filas.');
+                if (!memoTable.rows.length) throw new Error('El listado de memos no tiene filas.');
+
+                var memoIdx = resolveIndexes(memoTable.headers, FIELD_MAP, 'memo');
+                var dbIdx = resolveIndexes(baseTable.headers, FIELD_MAP, 'db');
+
+                var dniMemoI = findColumnIndex(memoTable.headers, ['DNI', 'DOCUMENTO', 'NDOC']);
+                var cargoMemoI = findColumnIndex(memoTable.headers, ['COD CARGO', 'CODIGO CARGO', 'CÓDIGO CARGO']);
+                var dniDbI = findColumnIndex(baseTable.headers, ['Documento', 'DNI', 'NDOC']);
+                var cargoDbI = findColumnIndex(baseTable.headers, ['Código cargo', 'Codigo cargo', 'COD CARGO']);
+
+                var missing = [];
+                if (dniMemoI < 0) missing.push('DNI (memos)');
+                if (cargoMemoI < 0) missing.push('COD CARGO (memos)');
+                if (dniDbI < 0) missing.push('Documento (base)');
+                if (cargoDbI < 0) missing.push('Código cargo (base)');
+                if (missing.length) throw new Error('Faltan columnas de cruce: ' + missing.join(', '));
+
+                var mappedPairs = 0;
+                FIELD_MAP.forEach(function (f, i) {
+                    if (f.skip) return;
+                    if (memoIdx[i] >= 0 && dbIdx[i] >= 0) mappedPairs += 1;
+                });
+                if (!mappedPairs) {
+                    throw new Error('No se encontraron columnas mapeables entre memos y base (además de DNI/cargo). Revisá los encabezados.');
+                }
+
+                var memoByKey = Object.create(null);
+                var memosUnicos = 0;
+                var memosDup = 0;
+                var memosSinClave = 0;
+                memoTable.rows.forEach(function (row, rowPos) {
+                    var key = makeKey(cell(row, dniMemoI), cell(row, cargoMemoI));
+                    if (key === '|' || key === '') {
+                        memosSinClave += 1;
+                        return;
+                    }
+                    if (memoByKey[key]) {
+                        memosDup += 1;
+                        return;
+                    }
+                    memoByKey[key] = { row: row, pos: rowPos };
+                    memosUnicos += 1;
+                });
+
+                var matchedMemoKeys = Object.create(null);
+                var modificados = [];
+                var coincidenSinCambio = 0;
+                var celdasCambiadas = 0;
+
+                baseTable.rows.forEach(function (row) {
+                    var key = makeKey(cell(row, dniDbI), cell(row, cargoDbI));
+                    var hit = key && key !== '|' ? memoByKey[key] : null;
+                    if (!hit) return;
+                    matchedMemoKeys[key] = true;
+
+                    var copy = row.slice();
+                    var changed = 0;
+                    FIELD_MAP.forEach(function (f, i) {
+                        if (f.skip) return;
+                        var mi = memoIdx[i];
+                        var di = dbIdx[i];
+                        if (mi < 0 || di < 0) return;
+                        var nuevo = cell(hit.row, mi);
+                        var actual = cell(copy, di);
+                        if (!valuesEqual(actual, nuevo)) {
+                            copy[di] = nuevo;
+                            changed += 1;
+                        }
+                    });
+                    if (changed) {
+                        celdasCambiadas += changed;
+                        modificados.push(copy);
+                    } else {
+                        coincidenSinCambio += 1;
+                    }
+                });
+
+                var sinCoincidencia = [];
+                Object.keys(memoByKey).forEach(function (key) {
+                    if (!matchedMemoKeys[key]) sinCoincidencia.push(memoByKey[key].row);
+                });
+
+                if (!modificados.length && !sinCoincidencia.length) {
+                    throw new Error('No hubo coincidencias por DNI + cargo, ni filas para exportar.');
+                }
+
+                var wbOut = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(baseTable.headers, modificados),
+                    'Modificados'
+                );
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(memoTable.headers, sinCoincidencia),
+                    'Memos sin coincidencia'
+                );
+
+                var nombre = nombreSalida();
+                XLSX.writeFile(wbOut, nombre);
+
+                var stats = {
+                    baseTotal: baseTable.rows.length,
+                    memosTotal: memoTable.rows.length,
+                    memosUnicos: memosUnicos,
+                    memosDup: memosDup,
+                    impactados: modificados.length,
+                    celdasCambiadas: celdasCambiadas,
+                    coincidenSinCambio: coincidenSinCambio,
+                    sinCoincidencia: sinCoincidencia.length,
+                    memosSinClave: memosSinClave,
+                    columnasMapeadas: mappedPairs
+                };
+                renderStats(stats);
+
+                if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                    PortalAuth.logProcessRun({
+                        module: 'impactar_memos',
+                        moduleLabel: 'Impactar Memos',
+                        procesador: 'impactar_memos',
+                        procesadorLabel: 'Impactar DNI+cargo',
+                        archivoOrigen: (fileBase.name || '') + ' + ' + (fileMemos.name || ''),
+                        archivoSalida: nombre,
+                        filas: modificados.length,
+                        detalle: 'modificados ' + modificados.length
+                            + ' · celdas ' + celdasCambiadas
+                            + ' · sin match ' + sinCoincidencia.length
+                            + ' · dup memos ' + memosDup
+                            + ' · columnas mapeadas ' + mappedPairs,
+                        extras: stats
+                    });
+                }
+
+                setStatus(
+                    'Proceso completado. Archivo: "' + nombre + '"\n'
+                    + 'Hoja 1 Modificados: ' + modificados.length + ' registro(s) (' + celdasCambiadas + ' celda(s) cambiada(s))\n'
+                    + 'Hoja 2 Memos sin coincidencia: ' + sinCoincidencia.length + '\n'
+                    + 'Columnas mapeadas encontradas: ' + mappedPairs + '.'
+                    + (memosDup ? '\nMemos duplicados (mismo DNI+cargo, se usó el primero): ' + memosDup + '.' : '')
+                    + (coincidenSinCambio ? '\nCoincidencias sin cambios: ' + coincidenSinCambio + '.' : '')
+                    + (memosSinClave ? '\nMemos sin DNI o cargo: ' + memosSinClave + '.' : '')
+                );
+            })
+            .catch(function (err) {
+                console.error(err);
+                setStatus(err && err.message ? err.message : 'Hubo un error al procesar los archivos.', true);
+            })
+            .then(function () {
+                btn.disabled = false;
+            });
+    };
+
+    var btnBind = document.getElementById('btnProcesar');
+    if (btnBind) btnBind.addEventListener('click', function () { window.iniciarProceso(); });
+})();
+</script>
+
+</body>
+</html>
