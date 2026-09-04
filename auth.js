@@ -73,7 +73,7 @@
       MODULES.admin_usuarios,
       MODULES.admin_logs
     ],
-    apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel]),
+    apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel, MODULES.impactar_memos]),
     concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.vacantes_provisorias]),
     listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()

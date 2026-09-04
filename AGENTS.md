@@ -23,8 +23,8 @@ Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS i
 - Login with Google (same pattern as https://actopublico.bue.edu.ar/login): button **Ingresá con tu cuenta @bue.edu.ar**.
 - Only preloaded users with `@bue.edu.ar` email can enter after Google auth.
 - Configure `googleClientId` in `auth-config.js` (Google Cloud OAuth Web Client ID; add the portal URL as authorized JavaScript origin).
-- Roles: **Admin** (all + manage users), **APEL** (Eleves Acto Público + Manuales), **Concursos** (Eleves Concursos + Manuales), **Listados** (Control POF + Manuales), **Usuarios** (Manuales only).
-- Control POF and Impactar Memos are visible only to **Admin** and **Listados**.
+- Roles: **Admin** (all + manage users), **APEL** (Eleves Acto Público, POF APEL, Impactar Memos + Manuales), **Concursos** (Eleves Concursos + Manuales), **Listados** (Control POF, Impactar Memos + Manuales), **Usuarios** (Manuales only).
+- Control POF is visible to **Admin** and **Listados**. Impactar Memos is visible to **Admin**, **APEL** and **Listados**.
 - Manuales = Acto Público, Clasificación, Estatuto.
 - Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (DNI is for the user registry; change from Usuarios panel).
 - User store and session live in browser storage (`localStorage` / `sessionStorage`) — suitable for an internal static portal; not a hardened server-side auth system.
