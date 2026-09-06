@@ -653,6 +653,11 @@
                 duplicateMarkedColumns(outHeaders, outRows);
                 coerceMeritoColumnsToNumber(outHeaders, outRows);
 
+                var unmatchedHeaders = baseTable.headers.slice();
+                var unmatchedRows = sinCoincidencia.map(function (r) { return r.slice(); });
+                duplicateMarkedColumns(unmatchedHeaders, unmatchedRows);
+                coerceMeritoColumnsToNumber(unmatchedHeaders, unmatchedRows);
+
                 var wbOut = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(
                     wbOut,
@@ -661,7 +666,7 @@
                 );
                 XLSX.utils.book_append_sheet(
                     wbOut,
-                    sheetFromAoa(baseTable.headers, sinCoincidencia),
+                    sheetFromAoa(unmatchedHeaders, unmatchedRows, meritoColumnIndexes(unmatchedHeaders)),
                     'Memos sin coincidencia'
                 );
 
