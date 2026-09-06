@@ -100,7 +100,7 @@
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Impactar Memos</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Cargá la base de datos y el listado de memos. Se identifican coincidencias por DNI y cargo, se actualizan los campos mapeados y se descarga un Excel en formato de base solo con los registros modificados.</p>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Cargá la base de datos y el listado de memos. Se identifican coincidencias por DNI y cargo: las que están en ambos se actualizan, y las que solo están en memos salen como altas nuevas. Ambas hojas usan el formato y las mismas reglas de la base.</p>
 </div>
 
 <div class="portal-tool-panel container">
@@ -155,10 +155,10 @@
                 <li><strong>Archivo 2 (Listado de memos):</strong> se leen las columnas del memo y se cruzan con la base.</li>
                 <li><strong>Clave:</strong> documento (DNI) + código de cargo. No se usa asignatura ni especialidad para el cruce.</li>
                 <li><strong>Impacto:</strong> en cada fila de la base que coincide con un memo, se copian los valores según el mapeo de columnas. El resto de columnas de la base no se toca.</li>
-                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel de salida esas columnas van en formato número, una sola vez cada una.</li>
+                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel queda una sola columna de cada una (se unifica también <code>OM BIS</code> con MERITO 1).</li>
                 <li><strong>cond / csup / csec:</strong> si el memo trae contenido, en la base se escribe <code>SI</code>; si viene vacío, queda vacío.</li>
                 <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
-                <li><strong>Excel de salida:</strong> ambas hojas usan el formato de la base. Hoja 1 <em>Modificados</em> (solo filas de la base que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base, proyectados a las columnas de la base).</li>
+                <li><strong>Excel de salida:</strong> ambas hojas usan el formato de la base y las mismas reglas. Hoja 1 <em>Modificados</em> (filas de la base que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (altas nuevas: memos que no estaban en la base).</li>
                 <li>Si varios memos tienen el mismo DNI + cargo, se usa el primero y el resto se cuenta como duplicado.</li>
                 <li>Si una misma clave aparece varias veces en la base, se actualizan todas esas filas.</li>
             </ul>
@@ -243,7 +243,7 @@
         if (!tbody) return;
         tbody.innerHTML = FIELD_MAP.map(function (f) {
             var dest = f.skip ? '<em>(no se impacta)</em>' : f.db;
-            if (f.keepNumberDropBis) dest += ' <em>(número, sin BIS; columna duplicada)</em>';
+            if (f.keepNumberDropBis) dest += ' <em>(número, sin BIS; una sola columna)</em>';
             if (f.yesIfFilled) dest += ' <em>(SI si hay contenido)</em>';
             return '<tr><td>' + f.memo + '</td><td>' + dest + '</td></tr>';
         }).join('');
@@ -389,12 +389,23 @@
         return parseMeritoNumber(value);
     }
 
+    function compactHeaderKey(s) {
+        return normalizeHeader(s).replace(/\s+/g, '');
+    }
+
+    function isMerito1Header(h) {
+        var n = compactHeaderKey(h);
+        return n === 'MERITO1' || n === 'OMBIS';
+    }
+
+    function isMerito2Header(h) {
+        return compactHeaderKey(h) === 'MERITO2';
+    }
+
     function meritoColumnIndexes(headers) {
-        var aliases = ['MERITO 1', 'MERITO1', 'MERITO 2', 'MERITO2'];
-        var want = aliases.map(normalizeHeader);
         var idxs = [];
         (headers || []).forEach(function (h, i) {
-            if (want.indexOf(normalizeHeader(h)) !== -1) idxs.push(i);
+            if (isMerito1Header(h) || isMerito2Header(h)) idxs.push(i);
         });
         return idxs;
     }
@@ -416,34 +427,48 @@
         return value;
     }
 
-    /** Si la base trae MERITO 1 o MERITO 2 repetidas, deja una sola con el valor. */
-    function collapseDuplicateNamedColumns(headers, rows, aliases) {
-        var want = aliases.map(normalizeHeader);
+    /** Une columnas equivalentes (MERITO 1 / MERITO1 / OM BIS, etc.) en una sola. */
+    function collapseMeritoFamily(headers, rows, pred, keepName) {
         var idxs = [];
         (headers || []).forEach(function (h, i) {
-            if (want.indexOf(normalizeHeader(h)) !== -1) idxs.push(i);
+            if (pred(h)) idxs.push(i);
         });
-        if (idxs.length <= 1) return;
+        if (!idxs.length) return;
         var keep = idxs[0];
+        idxs.forEach(function (i) {
+            if (compactHeaderKey(headers[i]) === compactHeaderKey(keepName)) keep = i;
+        });
         (rows || []).forEach(function (r) {
-            if (r[keep] != null && String(r[keep]).trim() !== '') return;
-            for (var k = 1; k < idxs.length; k++) {
-                if (r[idxs[k]] != null && String(r[idxs[k]]).trim() !== '') {
-                    r[keep] = r[idxs[k]];
-                    break;
+            var chosen = parseMeritoNumber(r[keep]);
+            if (chosen === '') {
+                for (var k = 0; k < idxs.length; k++) {
+                    var n = parseMeritoNumber(r[idxs[k]]);
+                    if (n !== '') {
+                        chosen = n;
+                        break;
+                    }
                 }
             }
+            r[keep] = chosen === '' ? '' : chosen;
         });
-        for (var j = idxs.length - 1; j >= 1; j--) {
+        headers[keep] = keepName;
+        for (var j = idxs.length - 1; j >= 0; j--) {
             var rm = idxs[j];
+            if (rm === keep) continue;
             headers.splice(rm, 1);
             (rows || []).forEach(function (r) { r.splice(rm, 1); });
+            if (rm < keep) keep -= 1;
         }
     }
 
     function collapseDuplicateMeritoColumns(headers, rows) {
-        collapseDuplicateNamedColumns(headers, rows, ['MERITO 1', 'MERITO1']);
-        collapseDuplicateNamedColumns(headers, rows, ['MERITO 2', 'MERITO2']);
+        collapseMeritoFamily(headers, rows, isMerito1Header, 'MERITO 1');
+        collapseMeritoFamily(headers, rows, isMerito2Header, 'MERITO 2');
+    }
+
+    function applyExportRules(headers, rows) {
+        collapseDuplicateMeritoColumns(headers, rows);
+        coerceMeritoColumnsToNumber(headers, rows);
     }
 
     function valuesEqual(a, b) {
@@ -491,7 +516,7 @@
         return ws;
     }
 
-    /** Proyecta una fila de memos a las columnas de la base (mismo formato que Modificados). */
+    /** Alta nueva: misma proyección y reglas que se aplican al impactar la base. */
     function memoRowToBaseFormat(memoRow, baseHeaders, memoIdx, dbIdx) {
         var out = [];
         var i;
@@ -501,7 +526,7 @@
             var mi = memoIdx[fi];
             var di = dbIdx[fi];
             if (mi < 0 || di < 0) return;
-            out[di] = cell(memoRow, mi);
+            out[di] = transformMappedValue(f, cell(memoRow, mi));
         });
         return out;
     }
@@ -658,13 +683,11 @@
 
                 var outHeaders = baseTable.headers.slice();
                 var outRows = modificados.map(function (r) { return r.slice(); });
-                collapseDuplicateMeritoColumns(outHeaders, outRows);
-                coerceMeritoColumnsToNumber(outHeaders, outRows);
+                applyExportRules(outHeaders, outRows);
 
                 var unmatchedHeaders = baseTable.headers.slice();
                 var unmatchedRows = sinCoincidencia.map(function (r) { return r.slice(); });
-                collapseDuplicateMeritoColumns(unmatchedHeaders, unmatchedRows);
-                coerceMeritoColumnsToNumber(unmatchedHeaders, unmatchedRows);
+                applyExportRules(unmatchedHeaders, unmatchedRows);
 
                 var wbOut = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(
@@ -716,7 +739,7 @@
                 setStatus(
                     'Proceso completado. Archivo: "' + nombre + '"\n'
                     + 'Hoja 1 Modificados: ' + modificados.length + ' registro(s) (' + celdasCambiadas + ' celda(s) cambiada(s))\n'
-                    + 'Hoja 2 Memos sin coincidencia (formato base): ' + sinCoincidencia.length + '\n'
+                    + 'Hoja 2 Memos sin coincidencia (altas, mismas reglas): ' + sinCoincidencia.length + '\n'
                     + 'Columnas mapeadas encontradas: ' + mappedPairs + '.'
                     + (memosDup ? '\nMemos duplicados (mismo DNI+cargo, se usó el primero): ' + memosDup + '.' : '')
                     + (coincidenSinCambio ? '\nCoincidencias sin cambios: ' + coincidenSinCambio + '.' : '')
