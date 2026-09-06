@@ -158,7 +158,7 @@
                 <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel de salida esas columnas van en formato número. Cada columna se duplica.</li>
                 <li><strong>cond / csup / csec:</strong> si el memo trae contenido, en la base se escribe <code>SI</code>; si viene vacío, queda vacío.</li>
                 <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
-                <li><strong>Excel de salida:</strong> hoja 1 <em>Modificados</em> (formato de la base, solo filas que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base).</li>
+                <li><strong>Excel de salida:</strong> ambas hojas usan el formato de la base. Hoja 1 <em>Modificados</em> (solo filas de la base que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base, proyectados a las columnas de la base).</li>
                 <li>Si varios memos tienen el mismo DNI + cargo, se usa el primero y el resto se cuenta como duplicado.</li>
                 <li>Si una misma clave aparece varias veces en la base, se actualizan todas esas filas.</li>
             </ul>
@@ -483,6 +483,21 @@
         return ws;
     }
 
+    /** Proyecta una fila de memos a las columnas de la base (mismo formato que Modificados). */
+    function memoRowToBaseFormat(memoRow, baseHeaders, memoIdx, dbIdx) {
+        var out = [];
+        var i;
+        for (i = 0; i < baseHeaders.length; i++) out[i] = '';
+        FIELD_MAP.forEach(function (f, fi) {
+            if (f.skip) return;
+            var mi = memoIdx[fi];
+            var di = dbIdx[fi];
+            if (mi < 0 || di < 0) return;
+            out[di] = cell(memoRow, mi);
+        });
+        return out;
+    }
+
     function setStatus(msg, isError) {
         var el = document.getElementById('status');
         el.className = isError ? 'error' : '';
@@ -622,7 +637,11 @@
 
                 var sinCoincidencia = [];
                 Object.keys(memoByKey).forEach(function (key) {
-                    if (!matchedMemoKeys[key]) sinCoincidencia.push(memoByKey[key].row);
+                    if (!matchedMemoKeys[key]) {
+                        sinCoincidencia.push(
+                            memoRowToBaseFormat(memoByKey[key].row, baseTable.headers, memoIdx, dbIdx)
+                        );
+                    }
                 });
 
                 if (!modificados.length && !sinCoincidencia.length) {
@@ -642,7 +661,7 @@
                 );
                 XLSX.utils.book_append_sheet(
                     wbOut,
-                    sheetFromAoa(memoTable.headers, sinCoincidencia),
+                    sheetFromAoa(baseTable.headers, sinCoincidencia),
                     'Memos sin coincidencia'
                 );
 
@@ -684,7 +703,7 @@
                 setStatus(
                     'Proceso completado. Archivo: "' + nombre + '"\n'
                     + 'Hoja 1 Modificados: ' + modificados.length + ' registro(s) (' + celdasCambiadas + ' celda(s) cambiada(s))\n'
-                    + 'Hoja 2 Memos sin coincidencia: ' + sinCoincidencia.length + '\n'
+                    + 'Hoja 2 Memos sin coincidencia (formato base): ' + sinCoincidencia.length + '\n'
                     + 'Columnas mapeadas encontradas: ' + mappedPairs + '.'
                     + (memosDup ? '\nMemos duplicados (mismo DNI+cargo, se usó el primero): ' + memosDup + '.' : '')
                     + (coincidenSinCambio ? '\nCoincidencias sin cambios: ' + coincidenSinCambio + '.' : '')
