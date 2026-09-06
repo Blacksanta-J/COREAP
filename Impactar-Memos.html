@@ -122,7 +122,7 @@
         <strong>COD CARGO</strong> = <strong>Código cargo</strong>.
         <code>CODES</code> del listado de memos no se impacta (no tiene columna en la base).
         Si el memo trae <code>SME/SC</code> y también <code>85</code>, prevalece <code>85</code> sobre la columna <strong>85</strong> de la base.
-        En <code>MERITO 1</code> y <code>MERITO 2</code> se deja solo el número (se saca <code>BIS</code>), se exportan como número y se duplica cada columna.
+        En <code>MERITO 1</code> y <code>MERITO 2</code> se deja solo el número (se saca <code>BIS</code>) y se exportan como número, una sola columna de cada una.
         <code>cond</code>, <code>csup</code> y <code>csec</code> con contenido pasan a <code>SI</code>.
         <div class="map-table-wrap">
             <table class="map-table" id="mapPreview">
@@ -155,7 +155,7 @@
                 <li><strong>Archivo 2 (Listado de memos):</strong> se leen las columnas del memo y se cruzan con la base.</li>
                 <li><strong>Clave:</strong> documento (DNI) + código de cargo. No se usa asignatura ni especialidad para el cruce.</li>
                 <li><strong>Impacto:</strong> en cada fila de la base que coincide con un memo, se copian los valores según el mapeo de columnas. El resto de columnas de la base no se toca.</li>
-                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel de salida esas columnas van en formato número. Cada columna se duplica.</li>
+                <li><strong>MERITO 1 y MERITO 2:</strong> del memo se deja solo el número y se elimina <code>BIS</code> (ejemplo: <code>1 BIS</code> → <code>1</code>). En el Excel de salida esas columnas van en formato número, una sola vez cada una.</li>
                 <li><strong>cond / csup / csec:</strong> si el memo trae contenido, en la base se escribe <code>SI</code>; si viene vacío, queda vacío.</li>
                 <li><strong>CODES:</strong> se ignora; no hay destino en la base.</li>
                 <li><strong>Excel de salida:</strong> ambas hojas usan el formato de la base. Hoja 1 <em>Modificados</em> (solo filas de la base que cambiaron) y hoja 2 <em>Memos sin coincidencia</em> (memos que no estaban en la base, proyectados a las columnas de la base).</li>
@@ -208,8 +208,8 @@
         { memo: 'PUNTOT', db: 'PUNTOT', aliasesMemo: ['PUNTOT'], aliasesDb: ['PUNTOT'] },
         { memo: 'JUNTA', db: 'JUNTA', aliasesMemo: ['JUNTA'], aliasesDb: ['JUNTA'] },
         { memo: 'TIPO', db: 'TIPO', aliasesMemo: ['TIPO'], aliasesDb: ['TIPO'] },
-        { memo: 'OM BIS', db: 'MERITO 1', keepNumberDropBis: true, duplicateCol: true, aliasesMemo: ['OM BIS', 'OMBIS', 'MERITO 1'], aliasesDb: ['MERITO 1', 'MERITO1', 'OM BIS'] },
-        { memo: 'MERITO 2', db: 'MERITO 2', keepNumberDropBis: true, duplicateCol: true, aliasesMemo: ['MERITO 2', 'MERITO2'], aliasesDb: ['MERITO 2', 'MERITO2'] },
+        { memo: 'OM BIS', db: 'MERITO 1', keepNumberDropBis: true, aliasesMemo: ['OM BIS', 'OMBIS', 'MERITO 1'], aliasesDb: ['MERITO 1', 'MERITO1', 'OM BIS'] },
+        { memo: 'MERITO 2', db: 'MERITO 2', keepNumberDropBis: true, aliasesMemo: ['MERITO 2', 'MERITO2'], aliasesDb: ['MERITO 2', 'MERITO2'] },
         { memo: 'T2C', db: 'cond', yesIfFilled: true, aliasesMemo: ['T2C', 'COND', 'CCOND'], aliasesDb: ['cond', 'ccond', 'CCOND', 'T2C'] },
         { memo: 'T2S', db: 'csup', yesIfFilled: true, aliasesMemo: ['T2S', 'CSUP'], aliasesDb: ['csup', 'T2S'] },
         { memo: 'T1', db: 'csec', yesIfFilled: true, aliasesMemo: ['T1', 'CSEC'], aliasesDb: ['csec', 'T1'] },
@@ -416,26 +416,34 @@
         return value;
     }
 
-    function duplicateMarkedColumns(headers, rows) {
-        FIELD_MAP.forEach(function (f) {
-            if (!f.duplicateCol || !f.db) return;
-            var aliases = (f.aliasesDb || []).concat([f.db]);
-            var idx = findColumnIndex(headers, aliases);
-            if (idx < 0) {
-                headers.push(f.db);
-                headers.push(f.db);
-                rows.forEach(function (r) {
-                    r.push('');
-                    r.push('');
-                });
-                return;
-            }
-            headers.splice(idx + 1, 0, headers[idx] || f.db);
-            rows.forEach(function (r) {
-                var val = r[idx] != null ? r[idx] : '';
-                r.splice(idx + 1, 0, val);
-            });
+    /** Si la base trae MERITO 1 o MERITO 2 repetidas, deja una sola con el valor. */
+    function collapseDuplicateNamedColumns(headers, rows, aliases) {
+        var want = aliases.map(normalizeHeader);
+        var idxs = [];
+        (headers || []).forEach(function (h, i) {
+            if (want.indexOf(normalizeHeader(h)) !== -1) idxs.push(i);
         });
+        if (idxs.length <= 1) return;
+        var keep = idxs[0];
+        (rows || []).forEach(function (r) {
+            if (r[keep] != null && String(r[keep]).trim() !== '') return;
+            for (var k = 1; k < idxs.length; k++) {
+                if (r[idxs[k]] != null && String(r[idxs[k]]).trim() !== '') {
+                    r[keep] = r[idxs[k]];
+                    break;
+                }
+            }
+        });
+        for (var j = idxs.length - 1; j >= 1; j--) {
+            var rm = idxs[j];
+            headers.splice(rm, 1);
+            (rows || []).forEach(function (r) { r.splice(rm, 1); });
+        }
+    }
+
+    function collapseDuplicateMeritoColumns(headers, rows) {
+        collapseDuplicateNamedColumns(headers, rows, ['MERITO 1', 'MERITO1']);
+        collapseDuplicateNamedColumns(headers, rows, ['MERITO 2', 'MERITO2']);
     }
 
     function valuesEqual(a, b) {
@@ -650,12 +658,12 @@
 
                 var outHeaders = baseTable.headers.slice();
                 var outRows = modificados.map(function (r) { return r.slice(); });
-                duplicateMarkedColumns(outHeaders, outRows);
+                collapseDuplicateMeritoColumns(outHeaders, outRows);
                 coerceMeritoColumnsToNumber(outHeaders, outRows);
 
                 var unmatchedHeaders = baseTable.headers.slice();
                 var unmatchedRows = sinCoincidencia.map(function (r) { return r.slice(); });
-                duplicateMarkedColumns(unmatchedHeaders, unmatchedRows);
+                collapseDuplicateMeritoColumns(unmatchedHeaders, unmatchedRows);
                 coerceMeritoColumnsToNumber(unmatchedHeaders, unmatchedRows);
 
                 var wbOut = XLSX.utils.book_new();
