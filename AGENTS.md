@@ -15,7 +15,7 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 - `Elevador.html` — "Eleves Acto Publico".
 - `Elevador-Control.html` — "Eleves Concursos" (client-side spreadsheet processor titled "Procesador de Vacantes").
 - `Control-POF.html` — "Control POF": cruzá archivo POF (filtro CARACTER=TITULAR) con un segundo listado de docentes por documento, cargo y asignatura (sin ID PLAN / COD ESPECIALIDAD); Excel de coincidencias / no coincidencias en formato POF.
-- `Impactar-Memos.html` — "Impactar Memos": cruzá una base de datos con un listado de memos por DNI y cargo; actualizá los campos mapeados y descargá un Excel en formato de base solo con los registros modificados.
+- `Impactar-Memos.html` — "Impactar Memos": cruzá una base de datos con un listado de memos por DNI y cargo; actualizá los campos mapeados y descargá un Excel en formato de base (hoja Modificados + hoja Memos sin coincidencia).
 
 Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks (except shared `auth.js`). Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
 
