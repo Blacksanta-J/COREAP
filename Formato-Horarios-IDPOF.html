@@ -119,6 +119,8 @@
         Por defecto: columna <strong>L</strong> = día · <strong>M</strong> = desde · <strong>N</strong> = hasta.
         Si L/M/N no tienen datos, se buscan encabezados <code>DIA</code>, <code>DESDE</code> / <code>HASTA</code>.
         Días: <strong>LU MA MI JU VI SA DO</strong>.
+        Si un tramo termina a la misma hora en que arranca el siguiente (mismo día), se unifican:
+        <code>MA-18:20-18:55|MA-18:55-19:30|MA-19:30-20:05|MA-20:05-20:40</code> → <code>MA-18:20-20:40</code>.
         Salida:
         <div class="preview-horario">LU-18:15-23:15|MA-18:15-23:15|MI-18:15-23:15|JU-18:15-23:15|VI-18:15-23:15</div>
     </div>
@@ -148,6 +150,7 @@
                 <li><strong>Días aceptados:</strong> lunes→LU, martes→MA, miércoles→MI, jueves→JU, viernes→VI, sábado→SA, domingo→DO (también LU, MA, etc.).</li>
                 <li><strong>Horas:</strong> se normalizan a <code>HH:MM</code> (acepta 18:15, 18.15, hora de Excel).</li>
                 <li><strong>Agrupado:</strong> se unen los tramos del mismo Id. POF, se sacan duplicados y se ordenan LU→DO.</li>
+                <li><strong>Tramos continuos:</strong> si en el mismo día un horario termina cuando arranca el siguiente (o se pisan), quedan en un solo tramo. Ejemplo: <code>MA-18:20-18:55|MA-18:55-19:30|MA-19:30-20:05|MA-20:05-20:40</code> → <code>MA-18:20-20:40</code>.</li>
                 <li><strong>Excel de salida:</strong> hoja 1 <em>Horarios</em> (Id. POF + HORARIO) y hoja 2 <em>Agrupado</em> (primera fila de cada Id. POF con la columna HORARIO completa).</li>
             </ul>
         </div>
@@ -384,8 +387,43 @@
         return slots;
     }
 
+    function timeToMinutes(hhmm) {
+        var p = String(hhmm || '').split(':');
+        var h = parseInt(p[0], 10);
+        var m = parseInt(p[1], 10);
+        if (!isFinite(h) || !isFinite(m)) return -1;
+        return h * 60 + m;
+    }
+
+    function slotToken(s) {
+        return s.dia + '-' + s.desde + '-' + s.hasta;
+    }
+
+    /** Une tramos del mismo día si el siguiente arranca cuando termina el anterior (o se solapan). */
+    function mergeContiguousSlots(slots) {
+        var sorted = sortSlots(slots.slice());
+        var out = [];
+        sorted.forEach(function (s) {
+            var last = out.length ? out[out.length - 1] : null;
+            var start = timeToMinutes(s.desde);
+            var end = timeToMinutes(s.hasta);
+            if (last && last.dia === s.dia && start >= 0 && timeToMinutes(last.hasta) >= start) {
+                if (end > timeToMinutes(last.hasta)) last.hasta = s.hasta;
+                last.token = slotToken(last);
+                return;
+            }
+            out.push({
+                dia: s.dia,
+                desde: s.desde,
+                hasta: s.hasta,
+                token: slotToken(s)
+            });
+        });
+        return out;
+    }
+
     function buildHorario(slots) {
-        return sortSlots(slots.slice()).map(function (s) { return s.token; }).join('|');
+        return mergeContiguousSlots(slots).map(function (s) { return s.token; }).join('|');
     }
 
     function nombreSalida() {
