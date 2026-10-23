@@ -139,9 +139,19 @@
   }
 
   function sanitizeRolesMap(src) {
+    var mentioned = {};
+    Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
+      ((src && src[role]) || []).forEach(function (m) {
+        mentioned[m] = true;
+      });
+    });
     var out = {};
     Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
-      out[role] = sanitizeRoleModules(role, src && src[role]);
+      var list = ((src && src[role]) || ROLE_PERMISSIONS[role] || []).slice();
+      (ROLE_PERMISSIONS[role] || []).forEach(function (m) {
+        if (!mentioned[m] && list.indexOf(m) === -1) list.push(m);
+      });
+      out[role] = sanitizeRoleModules(role, list);
     });
     return out;
   }
