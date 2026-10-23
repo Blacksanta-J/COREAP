@@ -119,6 +119,7 @@
         Por defecto: columna <strong>L</strong> = día · <strong>M</strong> = desde · <strong>N</strong> = hasta.
         Si L/M/N no tienen datos, se buscan encabezados <code>DIA</code>, <code>DESDE</code> / <code>HASTA</code>.
         Días: <strong>LU MA MI JU VI SA DO</strong>.
+        La columna <strong>Id. POF</strong> sale como número (para cruzar después).
         Si un tramo termina a la misma hora en que arranca el siguiente (mismo día), se unifican:
         <code>MA-18:20-18:55|MA-18:55-19:30|MA-19:30-20:05|MA-20:05-20:40</code> → <code>MA-18:20-20:40</code>.
         Salida:
@@ -151,7 +152,7 @@
                 <li><strong>Horas:</strong> se normalizan a <code>HH:MM</code> (acepta 18:15, 18.15, hora de Excel).</li>
                 <li><strong>Agrupado:</strong> se unen los tramos del mismo Id. POF, se sacan duplicados y se ordenan LU→DO.</li>
                 <li><strong>Tramos continuos:</strong> si en el mismo día un horario termina cuando arranca el siguiente (o se pisan), quedan en un solo tramo. Ejemplo: <code>MA-18:20-18:55|MA-18:55-19:30|MA-19:30-20:05|MA-20:05-20:40</code> → <code>MA-18:20-20:40</code>.</li>
-                <li><strong>Excel de salida:</strong> hoja 1 <em>Horarios</em> (Id. POF + HORARIO) y hoja 2 <em>Agrupado</em> (primera fila de cada Id. POF con la columna HORARIO completa).</li>
+                <li><strong>Excel de salida:</strong> hoja 1 <em>Horarios</em> (Id. POF + HORARIO) y hoja 2 <em>Agrupado</em> (primera fila de cada Id. POF con la columna HORARIO completa). <em>Id. POF</em> se exporta como número para facilitar el cruce.</li>
             </ul>
         </div>
     </div>
@@ -261,6 +262,17 @@
         }
         var s = String(v).trim();
         if (/^\d+\.0+$/.test(s)) s = s.replace(/\.0+$/, '');
+        return s;
+    }
+
+    /** Valor de Id. POF para Excel: número entero cuando es numérico. */
+    function idPofExcelValue(id) {
+        var s = String(id == null ? '' : id).trim().replace(',', '.');
+        if (!s) return '';
+        if (/^-?\d+(\.0+)?$/.test(s)) {
+            var n = parseInt(s, 10);
+            return isFinite(n) ? n : s;
+        }
         return s;
     }
 
@@ -432,13 +444,32 @@
             + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.xlsx';
     }
 
-    function sheetFromAoa(headers, dataRows) {
+    function sheetFromAoa(headers, dataRows, numberColIndexes) {
         var aoa = [headers.slice()].concat(dataRows.map(function (r) {
             var copy = [];
             for (var i = 0; i < headers.length; i++) copy[i] = r[i] != null ? r[i] : '';
             return copy;
         }));
-        return XLSX.utils.aoa_to_sheet(aoa);
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        (numberColIndexes || []).forEach(function (colIdx) {
+            if (colIdx < 0) return;
+            for (var r = 1; r < aoa.length; r++) {
+                var addr = XLSX.utils.encode_cell({ r: r, c: colIdx });
+                var c = ws[addr];
+                if (!c || c.v === '' || c.v == null) continue;
+                if (typeof c.v === 'number' && isFinite(c.v)) {
+                    c.t = 'n';
+                    c.z = '0';
+                    delete c.w;
+                } else if (/^-?\d+(\.0+)?$/.test(String(c.v).trim().replace(',', '.'))) {
+                    c.v = parseInt(String(c.v).trim().replace(',', '.'), 10);
+                    c.t = 'n';
+                    c.z = '0';
+                    delete c.w;
+                }
+            }
+        });
+        return ws;
     }
 
     function setStatus(msg, isError) {
@@ -541,20 +572,29 @@
                 order.forEach(function (id) {
                     var g = groups[id];
                     var horario = buildHorario(g.slots);
-                    simpleRows.push([id, horario]);
+                    var idNum = idPofExcelValue(id);
+                    simpleRows.push([idNum, horario]);
                     var copy = [];
                     var i;
                     for (i = 0; i < outHeaders.length; i++) {
                         copy[i] = i < g.first.length && g.first[i] != null ? g.first[i] : '';
                     }
-                    copy[idIdx] = id;
+                    copy[idIdx] = idNum;
                     copy[horarioIdx] = horario;
                     groupedRows.push(copy);
                 });
 
                 var wbOut = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(['Id. POF', 'HORARIO'], simpleRows), 'Horarios');
-                XLSX.utils.book_append_sheet(wbOut, sheetFromAoa(outHeaders, groupedRows), 'Agrupado');
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(['Id. POF', 'HORARIO'], simpleRows, [0]),
+                    'Horarios'
+                );
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetFromAoa(outHeaders, groupedRows, [idIdx]),
+                    'Agrupado'
+                );
 
                 var nombre = nombreSalida();
                 XLSX.writeFile(wbOut, nombre);
