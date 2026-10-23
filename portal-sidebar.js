@@ -25,6 +25,7 @@
         { href: 'Elevador-Control.html', label: 'Eleves Concursos', icon: '🏆', module: 'eleves_concursos' },
         { href: 'Control-POF.html', label: 'Control POF', icon: '🔎', module: 'control_pof' },
         { href: 'Impactar-Memos.html', label: 'Impactar Memos', icon: '📝', module: 'impactar_memos' },
+        { href: 'Formato-Horarios-IDPOF.html', label: 'Formato Horarios x IDPOF', icon: '🕒', module: 'formato_horarios_idpof' },
         { href: 'POF-APEL.html', label: 'POF APEL', icon: '📑', module: 'pof_apel' },
         { href: 'Vacantes-Provisorias.html', label: 'Vacantes Provisorias', icon: '📌', module: 'vacantes_provisorias' }
       ]

@@ -45,6 +45,7 @@
     eleves_concursos: 'eleves_concursos',
     control_pof: 'control_pof',
     impactar_memos: 'impactar_memos',
+    formato_horarios_idpof: 'formato_horarios_idpof',
     pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
@@ -69,6 +70,7 @@
       MODULES.eleves_concursos,
       MODULES.control_pof,
       MODULES.impactar_memos,
+      MODULES.formato_horarios_idpof,
       MODULES.pof_apel,
       MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
@@ -76,8 +78,8 @@
       MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel, MODULES.impactar_memos]),
-    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.vacantes_provisorias]),
-    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.vacantes_provisorias]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.formato_horarios_idpof, MODULES.vacantes_provisorias]),
+    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
   };
 
@@ -94,6 +96,7 @@
     eleves_concursos: 'Eleves Concursos',
     control_pof: 'Control POF',
     impactar_memos: 'Impactar Memos',
+    formato_horarios_idpof: 'Formato Horarios x IDPOF',
     pof_apel: 'POF APEL',
     vacantes_provisorias: 'Vacantes Provisorias',
     admin_usuarios: 'Usuarios',
@@ -102,7 +105,7 @@
   };
   var MODULE_GROUPS = [
     { label: 'Portal', modules: [MODULES.acto_publico, MODULES.cronograma, MODULES.clasificacion, MODULES.estatuto] },
-    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.pof_apel, MODULES.vacantes_provisorias] },
+    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.pof_apel, MODULES.vacantes_provisorias] },
     { label: 'Admin', modules: [MODULES.admin_usuarios, MODULES.admin_roles, MODULES.admin_logs] }
   ];
   var ROLE_ORDER = [ROLES.usuarios, ROLES.apel, ROLES.concursos, ROLES.listados, ROLES.admin];
