@@ -16,6 +16,7 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 - `Elevador-Control.html` — "Eleves Concursos" (client-side spreadsheet processor titled "Procesador de Vacantes").
 - `Control-POF.html` — "Control POF": cruzá archivo POF (filtro CARACTER=TITULAR) con un segundo listado de docentes por documento, cargo y asignatura (sin ID PLAN / COD ESPECIALIDAD); Excel de coincidencias / no coincidencias en formato POF.
 - `Impactar-Memos.html` — "Impactar Memos": cruzá una base de datos con un listado de memos por DNI y cargo; actualizá los campos mapeados y descargá un Excel en formato de base (hoja Modificados + hoja Memos sin coincidencia).
+- `Formato-Horarios-IDPOF.html` — "Formato Horarios x IDPOF": agrupá filas con el mismo Id. POF (columna L día, M desde, N hasta) en una sola celda `LU-18:15-23:15|MA-18:15-23:15|…`.
 
 Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks (except shared `auth.js`). Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
 
@@ -24,7 +25,7 @@ Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS i
 - Login with Google (same pattern as https://actopublico.bue.edu.ar/login): button **Ingresá con tu cuenta @bue.edu.ar**.
 - Only preloaded users with `@bue.edu.ar` email can enter after Google auth.
 - Configure `googleClientId` in `auth-config.js` (Google Cloud OAuth Web Client ID; add the portal URL as authorized JavaScript origin).
-- Roles: **Admin**, **APEL**, **Concursos**, **Listados**, **Usuarios**. Defaults: Admin (all + manage users/roles), APEL (Eleves Acto Público, POF APEL, Impactar Memos + Manuales), Concursos (Eleves Concursos + Manuales), Listados (Control POF, Impactar Memos + Manuales), Usuarios (Manuales only).
+- Roles: **Admin**, **APEL**, **Concursos**, **Listados**, **Usuarios**. Defaults: Admin (all + manage users/roles), APEL (Eleves Acto Público, POF APEL, Impactar Memos + Manuales), Concursos (Eleves Concursos, Formato Horarios x IDPOF + Manuales), Listados (Control POF, Impactar Memos, Formato Horarios x IDPOF + Manuales), Usuarios (Manuales only).
 - An Admin can change which modules each role sees from **Permisos de roles** (`admin-roles.html`). The matrix is stored in `localStorage` and in Firestore `config/role_permissions` (requires published rules). Admin modules (Usuarios, Permisos de roles, Log) stay locked to Admin.
 - Manuales = Acto Público, Clasificación, Estatuto, Cronograma.
 - Seed admin: `jonathanalejandro.perez@bue.edu.ar` / DNI `00000000` (DNI is for the user registry; change from Usuarios panel).
@@ -34,4 +35,4 @@ Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS i
 
 - There are no dependencies to install and nothing to build — this is a pure static HTML site. There is no lint/test/build tooling in the repo.
 - To run it, serve the repo root with any static file server and open `index.html`. Example: `python3 -m http.server 8000` (run from the repo root), then browse `http://localhost:8000/index.html`. Opening the files via `file://` also works, but a server is closer to the real deployment and avoids any path/CORS surprises.
-- The `Elevador.html`, `Elevador-Control.html`, `Control-POF.html` and `Impactar-Memos.html` processors load the `xlsx` library from a CDN and process user-uploaded `.csv`/`.xls`/`.xlsx` files entirely in the browser; testing their full flow requires uploading a spreadsheet.
+- The `Elevador.html`, `Elevador-Control.html`, `Control-POF.html`, `Impactar-Memos.html` and `Formato-Horarios-IDPOF.html` processors load the `xlsx` library from a CDN and process user-uploaded `.csv`/`.xls`/`.xlsx` files entirely in the browser; testing their full flow requires uploading a spreadsheet.
