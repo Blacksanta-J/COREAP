@@ -116,6 +116,7 @@
             <li>Columna <strong>AREA ESCOLAR</strong>: solo quedan las áreas de cobertura listadas.</li>
             <li>Columna <strong>CARGO</strong>: se eliminan los que mencionan <strong>terciaria</strong> o <strong>BEDEL</strong>.</li>
             <li>Se eliminan vacantes de establecimientos <strong>IFTS</strong>.</li>
+            <li>Se eliminan <strong>filas duplicadas</strong> (se conserva la primera).</li>
         </ul>
     </div>
 
@@ -142,6 +143,7 @@
                 <li><strong>AREA ESCOLAR:</strong> se filtra por esa columna. Quedan Educación Media, Curricular de Materias Especiales, Primaria, Artística, Adulto y Adolescente, Técnica, Especial, Programas Socioeducativos, Superior, Inicial y Servicios Profesionales.</li>
                 <li><strong>CARGO:</strong> si el texto contiene <em>terciaria</em> (o terciario) o <em>BEDEL</em>, la fila sale.</li>
                 <li><strong>IFTS:</strong> si el establecimiento (o la fila) menciona IFTS / I.F.T.S., la fila sale.</li>
+                <li><strong>Duplicados:</strong> si dos filas quedan iguales después de los filtros, se conserva la primera y el resto sale a Descartados con motivo DUPLICADO.</li>
                 <li><strong>Excel de salida:</strong> hoja 1 <em>Base limpia</em> y hoja 2 <em>Descartados</em> (con columna MOTIVO).</li>
             </ul>
         </div>
@@ -352,6 +354,22 @@
         return '';
     }
 
+    function rowFingerprint(row, width) {
+        var parts = [];
+        var i;
+        for (i = 0; i < width; i++) {
+            parts.push(String(row[i] == null ? '' : row[i]).replace(/\s+/g, ' ').trim());
+        }
+        return parts.join('\u0001');
+    }
+
+    function filaDescartada(row, headers, motivo) {
+        var copy = row.slice();
+        while (copy.length < headers.length) copy.push('');
+        copy.push(motivo);
+        return copy;
+    }
+
     function nombreSalida() {
         var d = new Date();
         return 'Base_Dotacion_Cobertura_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate())
@@ -381,7 +399,8 @@
             { n: s.area, l: 'Fuera de área' },
             { n: s.terciaria, l: 'Terciaria' },
             { n: s.bedel, l: 'BEDEL' },
-            { n: s.ifts, l: 'IFTS' }
+            { n: s.ifts, l: 'IFTS' },
+            { n: s.duplicados, l: 'Duplicados' }
         ];
         grid.innerHTML = items.map(function (it) {
             return '<div class="stat-card"><div class="n">' + it.n + '</div><div class="l">' + it.l + '</div></div>';
@@ -422,22 +441,27 @@
                 var cols = { area: areaIdx, cargo: cargoIdx, estabIdxs: estabIdxs };
                 var limpias = [];
                 var descartados = [];
-                var counts = { area: 0, terciaria: 0, bedel: 0, ifts: 0 };
+                var counts = { area: 0, terciaria: 0, bedel: 0, ifts: 0, duplicados: 0 };
+                var seen = Object.create(null);
 
                 table.rows.forEach(function (row) {
                     var motivo = motivoDescarte(row, cols);
-                    if (!motivo) {
-                        limpias.push(row.slice());
+                    if (motivo) {
+                        if (motivo === 'AREA') counts.area += 1;
+                        else if (motivo === 'TERCIARIA') counts.terciaria += 1;
+                        else if (motivo === 'BEDEL') counts.bedel += 1;
+                        else if (motivo === 'IFTS') counts.ifts += 1;
+                        descartados.push(filaDescartada(row, table.headers, motivo));
                         return;
                     }
-                    if (motivo === 'AREA') counts.area += 1;
-                    else if (motivo === 'TERCIARIA') counts.terciaria += 1;
-                    else if (motivo === 'BEDEL') counts.bedel += 1;
-                    else if (motivo === 'IFTS') counts.ifts += 1;
-                    var copy = row.slice();
-                    while (copy.length < table.headers.length) copy.push('');
-                    copy.push(motivo);
-                    descartados.push(copy);
+                    var fp = rowFingerprint(row, table.headers.length);
+                    if (seen[fp]) {
+                        counts.duplicados += 1;
+                        descartados.push(filaDescartada(row, table.headers, 'DUPLICADO'));
+                        return;
+                    }
+                    seen[fp] = true;
+                    limpias.push(row.slice());
                 });
 
                 if (!limpias.length) {
@@ -460,7 +484,8 @@
                     area: counts.area,
                     terciaria: counts.terciaria,
                     bedel: counts.bedel,
-                    ifts: counts.ifts
+                    ifts: counts.ifts,
+                    duplicados: counts.duplicados
                 };
                 renderStats(stats);
 
@@ -477,7 +502,8 @@
                             + ' · fuera área ' + counts.area
                             + ' · terciaria ' + counts.terciaria
                             + ' · BEDEL ' + counts.bedel
-                            + ' · IFTS ' + counts.ifts,
+                            + ' · IFTS ' + counts.ifts
+                            + ' · dup ' + counts.duplicados,
                         extras: stats
                     });
                 }
@@ -489,7 +515,8 @@
                     + ' (área ' + counts.area
                     + ', terciaria ' + counts.terciaria
                     + ', BEDEL ' + counts.bedel
-                    + ', IFTS ' + counts.ifts + ').'
+                    + ', IFTS ' + counts.ifts
+                    + ', duplicados ' + counts.duplicados + ').'
                 );
             })
             .catch(function (err) {
