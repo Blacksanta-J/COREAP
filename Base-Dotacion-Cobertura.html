@@ -113,7 +113,7 @@
         Procedimiento:
         <ul>
             <li>Se eliminan las <strong>primeras 2 filas</strong> del archivo.</li>
-            <li>Columna <strong>AREA</strong>: solo quedan las áreas de cobertura listadas.</li>
+            <li>Columna <strong>AREA ESCOLAR</strong>: solo quedan las áreas de cobertura listadas.</li>
             <li>Columna <strong>CARGO</strong>: se eliminan los que mencionan <strong>terciaria</strong> o <strong>BEDEL</strong>.</li>
             <li>Se eliminan vacantes de establecimientos <strong>IFTS</strong>.</li>
         </ul>
@@ -139,7 +139,7 @@
         <div class="info-content">
             <ul>
                 <li><strong>Primeras 2 filas:</strong> se descartan (títulos / filas de más del archivo) y después se detecta el encabezado.</li>
-                <li><strong>Áreas que quedan:</strong> Educación Media, Curricular de Materias Especiales, Primaria, Artística, Adulto y Adolescente, Técnica, Especial, Programas Socioeducativos, Superior, Inicial y Servicios Profesionales.</li>
+                <li><strong>AREA ESCOLAR:</strong> se filtra por esa columna. Quedan Educación Media, Curricular de Materias Especiales, Primaria, Artística, Adulto y Adolescente, Técnica, Especial, Programas Socioeducativos, Superior, Inicial y Servicios Profesionales.</li>
                 <li><strong>CARGO:</strong> si el texto contiene <em>terciaria</em> (o terciario) o <em>BEDEL</em>, la fila sale.</li>
                 <li><strong>IFTS:</strong> si el establecimiento (o la fila) menciona IFTS / I.F.T.S., la fila sale.</li>
                 <li><strong>Excel de salida:</strong> hoja 1 <em>Base limpia</em> y hoja 2 <em>Descartados</em> (con columna MOTIVO).</li>
@@ -150,7 +150,7 @@
 
 <script>
 (function () {
-    var COL_AREA = ['AREA', 'ÁREA', 'AREA EDUCATIVA', 'NIVEL', 'AREA DE EDUCACION', 'ÁREA DE EDUCACIÓN'];
+    var COL_AREA = ['AREA ESCOLAR', 'ÁREA ESCOLAR', 'AREA', 'ÁREA', 'AREA EDUCATIVA'];
     var COL_CARGO = ['CARGO', 'DESC CARGO', 'DESCRIPCION CARGO', 'DESCRIPCIÓN CARGO', 'DENOMINACION CARGO', 'DENOMINACIÓN CARGO'];
     var COL_ESTAB = [
         'ESTABLECIMIENTO', 'ESCUELA', 'NOMBRE ESTABLECIMIENTO', 'DESC ESTABLECIMIENTO',
@@ -238,7 +238,7 @@
 
     function headerScore(row) {
         var n = (row || []).map(normalizeHeader);
-        var markers = ['AREA', 'CARGO', 'ESTABLECIMIENTO', 'ESCUELA', 'ASIGNATURA', 'DOCUMENTO', 'VACANTE'];
+        var markers = ['AREA ESCOLAR', 'AREA', 'CARGO', 'ESTABLECIMIENTO', 'ESCUELA', 'ASIGNATURA', 'DOCUMENTO', 'VACANTE'];
         var hits = 0;
         markers.forEach(function (m) {
             if (n.indexOf(normalizeHeader(m)) !== -1) hits += 1;
@@ -416,7 +416,7 @@
                 var areaIdx = findColumnIndex(table.headers, COL_AREA);
                 var cargoIdx = findColumnIndex(table.headers, COL_CARGO);
                 var estabIdxs = findEstabIndexes(table.headers);
-                if (areaIdx < 0) throw new Error('No se encontró la columna AREA.');
+                if (areaIdx < 0) throw new Error('No se encontró la columna AREA ESCOLAR.');
                 if (cargoIdx < 0) throw new Error('No se encontró la columna CARGO.');
 
                 var cols = { area: areaIdx, cargo: cargoIdx, estabIdxs: estabIdxs };
