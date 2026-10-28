@@ -17,7 +17,7 @@ Portal COREAP — a static web portal for the GCBA "Dirección de Carrera Docent
 - `Control-POF.html` — "Control POF": cruzá archivo POF (filtro CARACTER=TITULAR) con un segundo listado de docentes por documento, cargo y asignatura (sin ID PLAN / COD ESPECIALIDAD); Excel de coincidencias / no coincidencias en formato POF.
 - `Impactar-Memos.html` — "Impactar Memos": cruzá una base de datos con un listado de memos por DNI y cargo; actualizá los campos mapeados y descargá un Excel en formato de base (hoja Modificados + hoja Memos sin coincidencia).
 - `Formato-Horarios-IDPOF.html` — "Formato Horarios x IDPOF": agrupá filas con el mismo Id. POF (columna L día, M desde, N hasta) en una sola celda `LU-18:15-23:15|MA-18:15-23:15|…`.
-- `Base-Dotacion-Cobertura.html` — "BASE DOTACION - COBERTURA": limpiá la base (sacá las 2 primeras filas, filtrá AREA ESCOLAR, y descartá terciaria, BEDEL e IFTS).
+- `Base-Dotacion-Cobertura.html` — "BASE DOTACION - COBERTURA": limpiá la base (sacá las 2 primeras filas, filtrá AREA ESCOLAR, descartá terciaria, BEDEL e IFTS, y filas duplicadas).
 
 Each page is fully self-contained: CSS lives in inline `<style>` blocks and JS in inline `<script>` blocks (except shared `auth.js`). Third-party libraries (e.g. `xlsx`, Google Fonts) load from CDNs at runtime, so an internet connection is needed for full functionality of the processor pages.
 
