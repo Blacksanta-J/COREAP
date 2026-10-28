@@ -11,7 +11,7 @@
 <script src="portal-auth-gate.js?v=20260826-fastpages1"></script>
 <script src="portal-theme.js"></script>
 <script src="portal-header.js?v=20260825-sess2"></script>
-<script src="portal-sidebar.js?v=20261022-horarios1"></script>
+<script src="portal-sidebar.js?v=20261028-dotacion1"></script>
 <script src="portal-footer.js"></script>
 <link rel="stylesheet" href="portal-theme.css">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -19,7 +19,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="auth-config.js"></script>
 <script src="users-data.js?v=20260826-fastpages1"></script>
-<script src="auth.js?v=20261022-horarios1"></script>
+<script src="auth.js?v=20261028-dotacion1"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -94,7 +94,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
   <div class="content portal-tool-content">
   <div class="wrap">
     <h1>Log de procesos</h1>
-    <p class="lead">Auditoría de cada ejecución de Eleves Acto Público, Eleves Concursos, Control POF, Impactar Memos y Formato Horarios x IDPOF. Solo visible para rol Admin.</p>
+    <p class="lead">Auditoría de cada ejecución de Eleves Acto Público, Eleves Concursos, Control POF, Impactar Memos, Formato Horarios x IDPOF y BASE DOTACION - COBERTURA. Solo visible para rol Admin.</p>
 
     <div class="callout">
       Se guarda automáticamente al completar un proceso: usuario, módulo, procesador, área, archivos y cantidad de filas.
@@ -113,6 +113,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
           <option value="control_pof">Control POF</option>
           <option value="impactar_memos">Impactar Memos</option>
           <option value="formato_horarios_idpof">Formato Horarios x IDPOF</option>
+          <option value="base_dotacion_cobertura">BASE DOTACION - COBERTURA</option>
           <option value="pof_apel">POF APEL</option>
           <option value="vacantes_provisorias">Vacantes Provisorias</option>
         </select>
@@ -184,6 +185,7 @@ html[data-theme="dark"] .callout{background:rgba(255,204,0,.08);color:#f2f5f7}
     if (mod === 'control_pof') return '<span class="badge pof">POF</span>';
     if (mod === 'impactar_memos') return '<span class="badge pof">Memos</span>';
     if (mod === 'formato_horarios_idpof') return '<span class="badge pof">Horarios</span>';
+    if (mod === 'base_dotacion_cobertura') return '<span class="badge pof">Dotación</span>';
     if (mod === 'pof_apel') return '<span class="badge pof">APEL</span>';
     if (mod === 'vacantes_provisorias') return '<span class="badge concursos">Vacantes</span>';
     return '<span class="badge">' + (mod || '—') + '</span>';
