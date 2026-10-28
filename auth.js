@@ -46,6 +46,7 @@
     control_pof: 'control_pof',
     impactar_memos: 'impactar_memos',
     formato_horarios_idpof: 'formato_horarios_idpof',
+    base_dotacion_cobertura: 'base_dotacion_cobertura',
     pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
     admin_usuarios: 'admin_usuarios',
@@ -71,6 +72,7 @@
       MODULES.control_pof,
       MODULES.impactar_memos,
       MODULES.formato_horarios_idpof,
+      MODULES.base_dotacion_cobertura,
       MODULES.pof_apel,
       MODULES.vacantes_provisorias,
       MODULES.admin_usuarios,
@@ -78,8 +80,8 @@
       MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel, MODULES.impactar_memos]),
-    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.formato_horarios_idpof, MODULES.vacantes_provisorias]),
-    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.vacantes_provisorias]),
+    concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.vacantes_provisorias]),
+    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.vacantes_provisorias]),
     usuarios: MANUALES.slice()
   };
 
@@ -97,6 +99,7 @@
     control_pof: 'Control POF',
     impactar_memos: 'Impactar Memos',
     formato_horarios_idpof: 'Formato Horarios x IDPOF',
+    base_dotacion_cobertura: 'BASE DOTACION - COBERTURA',
     pof_apel: 'POF APEL',
     vacantes_provisorias: 'Vacantes Provisorias',
     admin_usuarios: 'Usuarios',
@@ -105,7 +108,7 @@
   };
   var MODULE_GROUPS = [
     { label: 'Portal', modules: [MODULES.acto_publico, MODULES.cronograma, MODULES.clasificacion, MODULES.estatuto] },
-    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.pof_apel, MODULES.vacantes_provisorias] },
+    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.pof_apel, MODULES.vacantes_provisorias] },
     { label: 'Admin', modules: [MODULES.admin_usuarios, MODULES.admin_roles, MODULES.admin_logs] }
   ];
   var ROLE_ORDER = [ROLES.usuarios, ROLES.apel, ROLES.concursos, ROLES.listados, ROLES.admin];
@@ -139,9 +142,19 @@
   }
 
   function sanitizeRolesMap(src) {
+    var mentioned = {};
+    Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
+      ((src && src[role]) || []).forEach(function (m) {
+        mentioned[m] = true;
+      });
+    });
     var out = {};
     Object.keys(ROLE_PERMISSIONS).forEach(function (role) {
-      out[role] = sanitizeRoleModules(role, src && src[role]);
+      var list = ((src && src[role]) || ROLE_PERMISSIONS[role] || []).slice();
+      (ROLE_PERMISSIONS[role] || []).forEach(function (m) {
+        if (!mentioned[m] && list.indexOf(m) === -1) list.push(m);
+      });
+      out[role] = sanitizeRoleModules(role, list);
     });
     return out;
   }
