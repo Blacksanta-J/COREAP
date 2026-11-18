@@ -95,7 +95,7 @@
 <main class="portal-tool-main">
 <div class="page-intro" style="margin-bottom:20px;background:var(--portal-surface);border:1px solid var(--portal-border);border-radius:10px;padding:18px 20px;box-shadow:var(--portal-shadow);">
     <h1 style="font-size:26px;margin:0 0 6px;color:var(--portal-heading);font-family:'Archivo','Open Sans',system-ui,sans-serif;">Listados de disponibles</h1>
-    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Armá el listado de horas disponibles a partir del archivo que cargás. El listado de disponibles queda en el mismo módulo.</p>
+    <p style="margin:0;color:var(--portal-muted);font-size:14px;line-height:1.6;">Armá el listado de horas disponibles y, en Disponibles, cruzalo con el listado de titulares por DNI y código de cargo.</p>
 </div>
 
 <div class="portal-tool-panel container">
@@ -134,9 +134,17 @@
     </section>
 
     <section id="panel-disponibles" class="processor-panel">
+        <label class="label-text" for="fileDispHoras">Horas disponibles</label>
+        <input type="file" id="fileDispHoras" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileDispTitulares">Listado de titulares</label>
+        <input type="file" id="fileDispTitulares" accept=".csv, .xls, .xlsx" />
         <div class="note-box">
-            El listado de disponibles se arma en este panel. La transformación de columnas todavía no está definida: cuando la pases, el archivo que cargues sale con ese formato.
+            Se buscan en el listado de titulares los registros cuyo DNI y código de cargo están en horas disponibles. El Excel sale con las columnas del listado de titulares y solo esas filas. Si un DNI y código de cargo de horas no está, se agrega una fila: se copian DNI y código de cargo, y el resto de las columnas queda en 1.
         </div>
+        <button class="btn-primary" id="btnCruzar" type="button">Cruzar y descargar</button>
+        <div id="statusDisp"></div>
+        <div class="stats-grid" id="statsDisp"></div>
+        <div class="preview-wrap" id="previewDisp"></div>
     </section>
 </div>
 </main>
@@ -149,18 +157,10 @@
 <div id="infoOverlay" class="modal-overlay">
     <div class="modal">
         <div class="info-modal-head">
-            <h3 style="margin: 0;">Cómo funciona Horas disponibles</h3>
+            <h3 style="margin: 0;" id="infoTitle">Cómo funciona Horas disponibles</h3>
             <button type="button" class="info-close" id="infoClose">✕</button>
         </div>
-        <div class="info-content">
-            <ul>
-                <li><strong>Archivo:</strong> CSV, XLS o XLSX. Si el CSV está separado por punto y coma, se detecta solo.</li>
-                <li><strong>Encabezados:</strong> se busca la fila que tiene Documento, Area, Codigo de Cargo, Cargo, Turno, HS y Codigo de Establecimiento. Pueden estar en cualquier orden y con tildes.</li>
-                <li><strong>Salida:</strong> un Excel, hoja <em>Horas disponibles</em>, solo con DNI, AREA, Codigo de Cargo, DESCRIPCION DE CARGO, Turno, horas e ID ESTABLECIMIENTO.</li>
-                <li><strong>Filas vacías:</strong> si las siete columnas quedan vacías, esa fila no sale.</li>
-                <li><strong>Varias hojas:</strong> se procesan todas las que tengan esos encabezados.</li>
-            </ul>
-        </div>
+        <div class="info-content" id="infoContent"></div>
     </div>
 </div>
 
@@ -177,6 +177,39 @@
     ];
     var OUTPUT_HEADERS = COLUMN_MAP.map(function (d) { return d.out; });
     var NUMERIC_FLOAT = { horas: true };
+    var DNI_ALIASES = ['DOCUMENTO', 'NRO DOCUMENTO', 'NRO DE DOCUMENTO', 'NUMERO DOCUMENTO', 'NUMERO DE DOCUMENTO', 'DNI', 'NDOC', 'DOCUMENTO DESIGNADO'];
+    var CARGO_ALIASES = ['CODIGO DE CARGO', 'CODIGO CARGO', 'COD DE CARGO', 'COD CARGO', 'ID CARGO', 'CODIGO DEL CARGO'];
+    var INFO_COPY = {
+        horas: {
+            title: 'Cómo funciona Horas disponibles',
+            html: '<ul>'
+                + '<li><strong>Archivo:</strong> CSV, XLS o XLSX. Si el CSV está separado por punto y coma, se detecta solo.</li>'
+                + '<li><strong>Encabezados:</strong> se busca la fila que tiene Documento, Area, Codigo de Cargo, Cargo, Turno, HS y Codigo de Establecimiento. Pueden estar en cualquier orden y con tildes.</li>'
+                + '<li><strong>Salida:</strong> un Excel, hoja <em>Horas disponibles</em>, solo con DNI, AREA, Codigo de Cargo, DESCRIPCION DE CARGO, Turno, horas e ID ESTABLECIMIENTO.</li>'
+                + '<li><strong>Filas vacías:</strong> si las siete columnas quedan vacías, esa fila no sale.</li>'
+                + '<li><strong>Varias hojas:</strong> se procesan todas las que tengan esos encabezados.</li>'
+                + '</ul>'
+        },
+        disponibles: {
+            title: 'Cómo funciona Disponibles',
+            html: '<ul>'
+                + '<li><strong>Archivos:</strong> horas disponibles (el listado original o el Excel ya armado) y el listado de titulares. CSV, XLS o XLSX.</li>'
+                + '<li><strong>Cruce:</strong> DNI y código de cargo. No importan puntos, espacios ni ceros a la izquierda. 1599 y 1599.0 cuentan como el mismo código.</li>'
+                + '<li><strong>Salida:</strong> un Excel, hoja <em>Titulares</em>, con las mismas columnas del listado de titulares y solo las filas que están en horas disponibles.</li>'
+                + '<li><strong>Si no está:</strong> se agrega una fila. DNI y código de cargo se copian de horas disponibles; el resto de las columnas queda en 1.</li>'
+                + '<li><strong>Repetidos:</strong> si el listado de titulares tiene varias filas con el mismo DNI y código, se conservan todas. En horas, el mismo par genera un solo registro nuevo.</li>'
+                + '</ul>'
+        }
+    };
+
+    function setInfo(id) {
+        var copy = INFO_COPY[id] || INFO_COPY.horas;
+        var title = document.getElementById('infoTitle');
+        var body = document.getElementById('infoContent');
+        if (title) title.textContent = copy.title;
+        if (body) body.innerHTML = copy.html;
+    }
+    setInfo('horas');
 
     var infoOpen = document.getElementById('infoOpen');
     var infoClose = document.getElementById('infoClose');
@@ -198,6 +231,7 @@
         });
         var title = document.getElementById('panelTitle');
         if (title) title.textContent = id === 'disponibles' ? 'Disponibles' : 'Horas disponibles';
+        setInfo(id);
         try { history.replaceState(null, '', '#' + id); } catch (e) {}
     }
 
@@ -510,6 +544,342 @@
             .catch(function (err) {
                 console.error(err);
                 setStatus((err && err.message) || 'Error al procesar.', true);
+            })
+            .then(function () {
+                btn.disabled = false;
+            });
+    });
+
+    function normalizeDoc(v) {
+        if (v == null || v === '') return '';
+        if (typeof v === 'number' && isFinite(v)) {
+            if (v === 0) return '';
+            return String(Math.round(v));
+        }
+        var s = String(v).trim();
+        if (!s) return '';
+        var compact = s.replace(/\s/g, '').replace(',', '.');
+        if (/^\d+\.0+$/.test(compact)) s = compact.replace(/\.0+$/, '');
+        var digits = s.replace(/\D/g, '').replace(/^0+/, '');
+        return digits;
+    }
+
+    function normalizeCargo(v) {
+        if (v == null || v === '') return '';
+        if (typeof v === 'number' && isFinite(v)) {
+            if (v === 0) return '';
+            return String(Math.round(v));
+        }
+        var s = String(v).trim();
+        if (!s) return '';
+        var compact = s.replace(/\s/g, '').replace(',', '.');
+        if (/^-?\d+(\.0+)?$/.test(compact)) {
+            var n = parseInt(compact, 10);
+            return n === 0 ? '' : String(n);
+        }
+        return normalizeHeader(s);
+    }
+
+    function matchKey(dni, cargo) {
+        if (!dni || !cargo) return '';
+        return dni + '|' + cargo;
+    }
+
+    function sheetRows(worksheet) {
+        return XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true });
+    }
+
+    function locateKeyHeader(aoa) {
+        var best = { index: 0, score: -1, dni: -1, cargo: -1, headers: [] };
+        var limit = Math.min(30, aoa.length);
+        for (var i = 0; i < limit; i++) {
+            var headers = (aoa[i] || []).map(function (h) { return h == null ? '' : h; });
+            var dni = findColumnIndex(headers, DNI_ALIASES, {});
+            var used = {};
+            if (dni >= 0) used[dni] = true;
+            var cargo = findColumnIndex(headers, CARGO_ALIASES, used);
+            var score = (dni >= 0 ? 1 : 0) + (cargo >= 0 ? 1 : 0);
+            if (score > best.score) {
+                best = { index: i, score: score, dni: dni, cargo: cargo, headers: headers };
+            }
+        }
+        return best;
+    }
+
+    function rowToWidth(row, width) {
+        var out = [];
+        for (var i = 0; i < width; i++) {
+            out.push(row && row[i] != null ? row[i] : '');
+        }
+        return out;
+    }
+
+    function extractTitulares(workbook) {
+        var blocks = [];
+        var best = null;
+        (workbook.SheetNames || []).forEach(function (sheetName) {
+            var worksheet = workbook.Sheets[sheetName];
+            if (!worksheet) return;
+            var aoa = sheetRows(worksheet);
+            if (!aoa.length) return;
+            var found = locateKeyHeader(aoa);
+            if (!best || found.score > best.score) best = found;
+            if (found.score < 2) return;
+            var rows = [];
+            for (var i = found.index + 1; i < aoa.length; i++) {
+                if (!rowHasData(aoa[i])) continue;
+                rows.push(rowToWidth(aoa[i], found.headers.length));
+            }
+            blocks.push({
+                headers: found.headers,
+                dni: found.dni,
+                cargo: found.cargo,
+                rows: rows
+            });
+        });
+        if (!blocks.length) {
+            var missing = [];
+            if (!best || best.dni < 0) missing.push('DNI / Documento');
+            if (!best || best.cargo < 0) missing.push('Codigo de Cargo');
+            return { headers: [], rows: [], hojas: 0, dni: -1, cargo: -1, missing: missing };
+        }
+        var base = blocks[0];
+        var baseNorm = base.headers.map(normalizeHeader);
+        var rows = base.rows.slice();
+        for (var b = 1; b < blocks.length; b++) {
+            var other = blocks[b];
+            var otherNorm = other.headers.map(normalizeHeader);
+            var map = [];
+            for (var c = 0; c < base.headers.length; c++) {
+                map.push(baseNorm[c] ? otherNorm.indexOf(baseNorm[c]) : -1);
+            }
+            other.rows.forEach(function (row) {
+                var aligned = [];
+                for (var k = 0; k < map.length; k++) {
+                    aligned.push(map[k] >= 0 && row[map[k]] != null ? row[map[k]] : '');
+                }
+                rows.push(aligned);
+            });
+        }
+        return {
+            headers: base.headers,
+            rows: rows,
+            hojas: blocks.length,
+            dni: base.dni,
+            cargo: base.cargo,
+            missing: []
+        };
+    }
+
+    function collectHorasKeys(rows) {
+        var dniIdx = OUTPUT_HEADERS.indexOf('DNI');
+        var cargoIdx = OUTPUT_HEADERS.indexOf('Codigo de Cargo');
+        var byKey = Object.create(null);
+        var order = [];
+        var sinClave = 0;
+        rows.forEach(function (row) {
+            var dni = normalizeDoc(row[dniIdx]);
+            var cargo = normalizeCargo(row[cargoIdx]);
+            var key = matchKey(dni, cargo);
+            if (!key) {
+                sinClave += 1;
+                return;
+            }
+            if (byKey[key]) return;
+            byKey[key] = { dni: row[dniIdx], cargo: row[cargoIdx] };
+            order.push(key);
+        });
+        return { byKey: byKey, order: order, sinClave: sinClave };
+    }
+
+    function cruzarTitulares(horasRows, titulares) {
+        var horas = collectHorasKeys(horasRows);
+        var coinciden = [];
+        var seen = Object.create(null);
+        var titularesSinClave = 0;
+        titulares.rows.forEach(function (row) {
+            var key = matchKey(normalizeDoc(cell(row, titulares.dni)), normalizeCargo(cell(row, titulares.cargo)));
+            if (!key) {
+                titularesSinClave += 1;
+                return;
+            }
+            if (!horas.byKey[key]) return;
+            coinciden.push(rowToWidth(row, titulares.headers.length));
+            seen[key] = true;
+        });
+        var generados = [];
+        horas.order.forEach(function (key) {
+            if (seen[key]) return;
+            var src = horas.byKey[key];
+            var row = titulares.headers.map(function () { return 1; });
+            row[titulares.dni] = src.dni === '' || src.dni == null ? 1 : src.dni;
+            row[titulares.cargo] = src.cargo === '' || src.cargo == null ? 1 : src.cargo;
+            generados.push(row);
+        });
+        return {
+            rows: coinciden.concat(generados),
+            coinciden: coinciden.length,
+            generados: generados.length,
+            clavesHoras: horas.order.length,
+            sinClaveHoras: horas.sinClave,
+            titularesSinClave: titularesSinClave
+        };
+    }
+
+    function sheetTitulares(headers, dataRows, keyIndexes) {
+        var aoa = [headers.slice()].concat(dataRows.map(function (row) {
+            return rowToWidth(row, headers.length);
+        }));
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        (keyIndexes || []).forEach(function (colIdx) {
+            if (colIdx < 0) return;
+            for (var r = 1; r < aoa.length; r++) {
+                var addr = XLSX.utils.encode_cell({ r: r, c: colIdx });
+                var c = ws[addr];
+                if (!c || c.v === '' || c.v == null || typeof c.v !== 'number') continue;
+                c.t = 'n';
+                c.z = Number.isInteger(c.v) ? '0' : '0.##';
+                delete c.w;
+            }
+        });
+        ws['!cols'] = headers.map(function (h) {
+            return { wch: Math.max(12, String(h == null ? '' : h).length + 2) };
+        });
+        return ws;
+    }
+
+    function nombreSalidaTitulares() {
+        var d = new Date();
+        return 'Titulares_disponibles_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate())
+            + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds()) + '.xlsx';
+    }
+
+    function setStatusDisp(msg, isError) {
+        var el = document.getElementById('statusDisp');
+        el.className = isError ? 'error' : '';
+        el.innerText = msg;
+    }
+
+    function renderStatsDisp(s) {
+        var grid = document.getElementById('statsDisp');
+        var items = [
+            { n: s.clavesHoras, l: 'DNI + cargo en horas' },
+            { n: s.titulares, l: 'Filas de titulares' },
+            { n: s.coinciden, l: 'Coincidieron' },
+            { n: s.generados, l: 'Agregados en 1' },
+            { n: s.salida, l: 'Filas de salida' }
+        ];
+        grid.innerHTML = items.map(function (it) {
+            return '<div class="stat-card"><div class="n">' + it.n + '</div><div class="l">' + it.l + '</div></div>';
+        }).join('');
+        grid.classList.add('visible');
+    }
+
+    function renderPreviewDisp(headers, rows) {
+        var wrap = document.getElementById('previewDisp');
+        var sample = rows.slice(0, 12);
+        var html = '<table><thead><tr>' + headers.map(function (h) {
+            return '<th>' + escapeHtml(h) + '</th>';
+        }).join('') + '</tr></thead><tbody>';
+        sample.forEach(function (row) {
+            html += '<tr>' + rowToWidth(row, headers.length).map(function (cellValue) {
+                return '<td>' + escapeHtml(cellValue) + '</td>';
+            }).join('') + '</tr>';
+        });
+        html += '</tbody></table>';
+        wrap.innerHTML = html;
+        wrap.classList.add('visible');
+    }
+
+    document.getElementById('btnCruzar').addEventListener('click', function () {
+        var fileHoras = document.getElementById('fileDispHoras').files[0];
+        var fileTit = document.getElementById('fileDispTitulares').files[0];
+        var btn = document.getElementById('btnCruzar');
+        document.getElementById('statsDisp').classList.remove('visible');
+        document.getElementById('previewDisp').classList.remove('visible');
+
+        if (!fileHoras || !fileTit) {
+            setStatusDisp('Seleccioná los dos archivos: horas disponibles y el listado de titulares.', true);
+            return;
+        }
+        if (typeof XLSX === 'undefined') {
+            setStatusDisp('No se pudo cargar la librería de Excel.', true);
+            return;
+        }
+
+        btn.disabled = true;
+        setStatusDisp('Procesando…');
+
+        Promise.all([readFileToWorkbook(fileHoras), readFileToWorkbook(fileTit)])
+            .then(function (wbs) {
+                var horas = extractRows(wbs[0]);
+                if (!horas.hojas) {
+                    var falta = horas.missing && horas.missing.length
+                        ? ' Faltan: ' + horas.missing.join(', ') + '.'
+                        : '';
+                    throw new Error('En horas disponibles no encontré Documento y Codigo de Cargo.' + falta);
+                }
+                if (!horas.rows.length) throw new Error('Horas disponibles no tiene filas para cruzar.');
+
+                var titulares = extractTitulares(wbs[1]);
+                if (!titulares.hojas) {
+                    var faltaTit = titulares.missing && titulares.missing.length
+                        ? ' Faltan: ' + titulares.missing.join(', ') + '.'
+                        : '';
+                    throw new Error('En el listado de titulares no encontré las columnas DNI y Codigo de Cargo.' + faltaTit);
+                }
+
+                var cruce = cruzarTitulares(horas.rows, titulares);
+                if (!cruce.rows.length) {
+                    throw new Error('No quedó ninguna fila. Revisá que horas disponibles tenga DNI y código de cargo.');
+                }
+
+                var wbOut = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(
+                    wbOut,
+                    sheetTitulares(titulares.headers, cruce.rows, [titulares.dni, titulares.cargo]),
+                    'Titulares'
+                );
+                var nombre = nombreSalidaTitulares();
+                XLSX.writeFile(wbOut, nombre);
+
+                var stats = {
+                    clavesHoras: cruce.clavesHoras,
+                    titulares: titulares.rows.length,
+                    coinciden: cruce.coinciden,
+                    generados: cruce.generados,
+                    salida: cruce.rows.length
+                };
+                renderStatsDisp(stats);
+                renderPreviewDisp(titulares.headers, cruce.rows);
+
+                if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                    PortalAuth.logProcessRun({
+                        module: 'listados_disponibles',
+                        moduleLabel: 'Listados de disponibles',
+                        procesador: 'disponibles_titulares',
+                        procesadorLabel: 'Disponibles',
+                        archivoOrigen: (fileHoras.name || '') + ' + ' + (fileTit.name || ''),
+                        archivoSalida: nombre,
+                        filas: cruce.rows.length,
+                        detalle: 'Claves horas ' + cruce.clavesHoras
+                            + ' · coincidieron ' + cruce.coinciden
+                            + ' · agregados ' + cruce.generados,
+                        extras: stats
+                    });
+                }
+
+                setStatusDisp(
+                    'Listado de titulares listo. Archivo: "' + nombre + '"\n'
+                    + 'Coincidieron: ' + cruce.coinciden + ' fila(s).\n'
+                    + 'Agregados (resto de columnas en 1): ' + cruce.generados + ' registro(s).'
+                    + (cruce.sinClaveHoras ? '\nFilas de horas sin DNI o código de cargo: ' + cruce.sinClaveHoras + '.' : '')
+                    + (cruce.titularesSinClave ? '\nFilas de titulares sin DNI o código de cargo, no cruzadas: ' + cruce.titularesSinClave + '.' : '')
+                );
+            })
+            .catch(function (err) {
+                console.error(err);
+                setStatusDisp((err && err.message) || 'Error al cruzar.', true);
             })
             .then(function () {
                 btn.disabled = false;
