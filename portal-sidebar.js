@@ -28,7 +28,8 @@
         { href: 'Formato-Horarios-IDPOF.html', label: 'Formato Horarios x IDPOF', icon: '🕒', module: 'formato_horarios_idpof' },
         { href: 'Base-Dotacion-Cobertura.html', label: 'BASE DOTACION - COBERTURA', icon: '🧹', module: 'base_dotacion_cobertura' },
         { href: 'POF-APEL.html', label: 'POF APEL', icon: '📑', module: 'pof_apel' },
-        { href: 'Vacantes-Provisorias.html', label: 'Vacantes Provisorias', icon: '📌', module: 'vacantes_provisorias' }
+        { href: 'Vacantes-Provisorias.html', label: 'Vacantes Provisorias', icon: '📌', module: 'vacantes_provisorias' },
+        { href: 'Listados-Disponibles.html', label: 'Listados de disponibles', icon: '📒', module: 'listados_disponibles' }
       ]
     },
     {
