@@ -49,6 +49,7 @@
     base_dotacion_cobertura: 'base_dotacion_cobertura',
     pof_apel: 'pof_apel',
     vacantes_provisorias: 'vacantes_provisorias',
+    listados_disponibles: 'listados_disponibles',
     admin_usuarios: 'admin_usuarios',
     admin_roles: 'admin_roles',
     admin_logs: 'admin_logs'
@@ -75,13 +76,14 @@
       MODULES.base_dotacion_cobertura,
       MODULES.pof_apel,
       MODULES.vacantes_provisorias,
+      MODULES.listados_disponibles,
       MODULES.admin_usuarios,
       MODULES.admin_roles,
       MODULES.admin_logs
     ],
     apel: MANUALES.concat([MODULES.eleves_acto, MODULES.pof_apel, MODULES.impactar_memos]),
     concursos: MANUALES.concat([MODULES.eleves_concursos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.vacantes_provisorias]),
-    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.vacantes_provisorias]),
+    listados: MANUALES.concat([MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.vacantes_provisorias, MODULES.listados_disponibles]),
     usuarios: MANUALES.slice()
   };
 
@@ -102,13 +104,14 @@
     base_dotacion_cobertura: 'BASE DOTACION - COBERTURA',
     pof_apel: 'POF APEL',
     vacantes_provisorias: 'Vacantes Provisorias',
+    listados_disponibles: 'Listados de disponibles',
     admin_usuarios: 'Usuarios',
     admin_roles: 'Permisos de roles',
     admin_logs: 'Log de procesos'
   };
   var MODULE_GROUPS = [
     { label: 'Portal', modules: [MODULES.acto_publico, MODULES.cronograma, MODULES.clasificacion, MODULES.estatuto] },
-    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.pof_apel, MODULES.vacantes_provisorias] },
+    { label: 'Herramientas', modules: [MODULES.eleves_acto, MODULES.eleves_concursos, MODULES.control_pof, MODULES.impactar_memos, MODULES.formato_horarios_idpof, MODULES.base_dotacion_cobertura, MODULES.pof_apel, MODULES.vacantes_provisorias, MODULES.listados_disponibles] },
     { label: 'Admin', modules: [MODULES.admin_usuarios, MODULES.admin_roles, MODULES.admin_logs] }
   ];
   var ROLE_ORDER = [ROLES.usuarios, ROLES.apel, ROLES.concursos, ROLES.listados, ROLES.admin];
