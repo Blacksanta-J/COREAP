@@ -59,7 +59,7 @@
         }
         button.secondary { background-color: var(--btn-secondary); color: var(--btn-secondary-text); margin-top: 8px; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.3s;}
         button.secondary:hover { background-color: var(--btn-secondary-hover); }
-        #status { margin-top: 15px; font-weight: bold; color: var(--success); }
+        #status { margin-top: 15px; font-weight: bold; color: var(--success); white-space: pre-line; }
         .error { color: var(--error) !important; }
         
         .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay); align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto;}
@@ -130,6 +130,14 @@
         <label class="label-text" for="fileControlv2Resultado">Resultado CONTROLv2</label>
         <input type="file" id="fileControlv2Resultado" accept=".csv, .xls, .xlsx" />
     </div>
+    <div id="fileInputAcumulacionWrap" style="display:none">
+        <label class="label-text" for="fileAcumVacantes">Vacantes a Traslado</label>
+        <input type="file" id="fileAcumVacantes" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileAcumResultadoTraslado">Resultado de Traslado</label>
+        <input type="file" id="fileAcumResultadoTraslado" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileAcumControlv2">Resultado de ControlV2</label>
+        <input type="file" id="fileAcumControlv2" accept=".csv, .xls, .xlsx" />
+    </div>
 
     <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Procesar y Descargar</button>
     <div id="status"></div>
@@ -162,7 +170,7 @@
         <p style="margin-bottom: 15px;">Completá las fechas y horas para el control de vacantes.</p>
         
         <div style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px;">
-            <label class="label-text" style="margin-top: 0;">Fecha y Hora de Publicación</label>
+            <label class="label-text" id="modalFirstDateLabel" style="margin-top: 0;">Fecha y Hora de Publicación</label>
             <div class="grid-2-col">
                 <input type="date" id="inputFechaPub" />
                 <input type="time" id="inputHoraPub" value="10:00" />
@@ -296,13 +304,21 @@
             id: 'acumulacion',
             label: 'Acumulación',
             suffix: 'ACUMULACION',
-            enabled: false,
-            descripcion: 'Procesador para eleves de acumulación de cargos y horas en concursos.',
-            pending: true,
+            enabled: true,
+            descripcion: 'Cruzá vacantes a traslado con el resultado de traslado y sumá el resultado de CONTROLv2. Los turnos completos salen aparte para ingreso; el resto queda con tipo de listado 14.',
+            pending: false,
             reglas: [
-                'Procesador destinado a vacantes de <strong>Acumulación</strong>.',
-                'Las reglas específicas de mapeo y campos fijos se configurarán en esta sección.',
-                'El archivo descargado incluirá el sufijo <strong>ACUMULACION</strong> en el nombre.'
+                '<strong>Archivo 1 — Vacantes a Traslado:</strong> listado de vacantes (eleve de traslado o equivalente) con <em>Id. POF</em> y turno.',
+                '<strong>Archivo 2 — Resultado de Traslado:</strong> resultado del acto. Se usa para saber qué Id. POF participó y cuáles tienen designación.',
+                '<strong>Archivo 3 — Resultado de ControlV2:</strong> vacantes a sumar después del cruce. Si trae columna <em>Excluida/Confirmada</em>, entran solo las Confirmadas.',
+                '<strong>Cruce por Id. POF:</strong> se aceptan Id. POF, IDPOF, Número de propuesta y Form Número POF.',
+                '<strong>Con designación:</strong> se eliminan de Vacantes a Traslado los Id. POF que en el resultado tengan designación (columna de designación con valor, estado “designado” o Docente con nombre).',
+                '<strong>Sin coincidencia:</strong> si un Id. POF de las vacantes no figura en Resultado de Traslado, también se elimina.',
+                '<strong>Suma:</strong> a las vacantes que quedan se les agregan las de Resultado de ControlV2.',
+                '<strong>Turno completo:</strong> Completo, Turno completo, C, D o Doble se separan en un archivo <strong>TURNOS_COMPLETOS_PARA_INGRESO</strong>. Esas filas no cambian el tipo de listado.',
+                '<strong>Resto:</strong> TIPO DE LISTADO = <strong>14</strong>.',
+                '<strong>Horarios:</strong> popup de publicación y cierre, igual que Traslado. La publicación se graba en FECHA/HORA PUBLICACION y el cierre en FECHA/HORA APERTURA.',
+                '<strong>Salida:</strong> dos Excel con hojas <em>Resultado</em> e <em>Informe</em>. Si un grupo queda vacío, no se descarga ese archivo.'
             ]
         },
         {
@@ -351,7 +367,7 @@
 
         panels.innerHTML = PROCESADORES.map(function (p) {
             var note = p.pending
-                ? '<div class="processor-note pending">Este procesador está en preparación. Por ahora solo <strong>Control</strong> está habilitado.</div>'
+                ? '<div class="processor-note pending">Este procesador está en preparación.</div>'
                 : '';
             var titleRow = (p.reglas && p.reglas.length && !p.pending)
                 ? '<div class="processor-title-row">' +
@@ -430,15 +446,18 @@
         var xnotaWrap = document.getElementById('fileInputXnotaWrap');
         var modeWrap = document.getElementById('controlv2ModeWrap');
         var finalWrap = document.getElementById('fileInputControlv2FinalWrap');
+        var acumWrap = document.getElementById('fileInputAcumulacionWrap');
         var baseLabel = document.getElementById('fileInputBaseLabel');
         var esXnota = proc.id === 'xnota';
         var esControlv2 = proc.id === 'controlv2';
+        var esAcumulacion = proc.id === 'acumulacion';
         var modoFinal = esControlv2 && getControlv2Mode() === 'final';
         if (modeWrap) modeWrap.style.display = esControlv2 ? 'block' : 'none';
         if (xnotaWrap) xnotaWrap.style.display = esXnota ? 'block' : 'none';
         if (finalWrap) finalWrap.style.display = modoFinal ? 'block' : 'none';
+        if (acumWrap) acumWrap.style.display = esAcumulacion ? 'block' : 'none';
         if (baseWrap) {
-            baseWrap.style.display = (esXnota || modoFinal) ? 'none' : 'block';
+            baseWrap.style.display = (esXnota || modoFinal || esAcumulacion) ? 'none' : 'block';
         }
         if (baseLabel) {
             if (proc.id === 'traslado') baseLabel.textContent = 'Archivo con hoja Confirmadas';
@@ -594,12 +613,14 @@
             const overlay = document.getElementById('modalOverlay');
             const errorMsg = document.getElementById('modalError');
             const title = document.getElementById('modalTitle');
+            const firstLabel = document.getElementById('modalFirstDateLabel');
             const secondLabel = document.getElementById('modalSecondDateLabel');
             const intro = overlay ? overlay.querySelector('.modal > p') : null;
             errorMsg.style.display = 'none';
 
             if (title) title.textContent = options.title || 'Definí los tiempos de Publicación y Apertura';
             if (intro) intro.textContent = options.intro || 'Completá las fechas y horas para el control de vacantes.';
+            if (firstLabel) firstLabel.textContent = options.firstLabel || 'Fecha y Hora de Publicación';
             if (secondLabel) secondLabel.textContent = options.secondLabel || 'Fecha y Hora de Apertura';
             
             document.getElementById('inputFechaPub').valueAsDate = new Date();
@@ -2269,6 +2290,403 @@
         }
     }
 
+    var COL_IDPOF_ACUM = COL_IDPOF_XNOTA.concat(COL_DESIG_POF);
+
+    function claveIdPofAcumulacion(val) {
+        if (val == null || val === '') return '';
+        if (typeof val === 'number' && isFinite(val)) {
+            if (Math.abs(val - Math.round(val)) < 1e-6) return String(Math.round(val));
+            return String(val);
+        }
+        var s = String(val).trim();
+        if (!s) return '';
+        var compact = s.replace(',', '.');
+        if (/^-?\d+(\.0+)?$/.test(compact)) return String(parseInt(compact, 10));
+        return s.toLowerCase();
+    }
+
+    function valorAfirmativoDesignacion(val) {
+        if (val == null) return false;
+        var s = normalizar(String(val));
+        if (!s || s === '.' || s === '-' || s === '0' || s === 'no' || s === 'n' || s === 'false') return false;
+        if (s === 'vacante' || s === 'sin designar' || s === 'sin designacion') return false;
+        return true;
+    }
+
+    function filaTieneDesignacionAcumulacion(fila) {
+        var keys = Object.keys(fila || {});
+        for (var i = 0; i < keys.length; i++) {
+            if (normalizar(keys[i]).indexOf('design') === -1) continue;
+            if (valorAfirmativoDesignacion(fila[keys[i]])) return true;
+        }
+        var estado = normalizar(String(
+            obtenerValorColumna(fila, ['Estado', 'ESTADO', 'Resultado', 'Situacion', 'Situación']) || ''
+        ));
+        if (estado.indexOf('design') !== -1) return true;
+        return docenteDesignacionCompleto(obtenerValorColumna(fila, COL_DOCENTE_XNOTA));
+    }
+
+    function esTurnoCompletoValor(val) {
+        var n = normalizar(val);
+        if (!n) return false;
+        if (mapaTurnos[n] && normalizar(mapaTurnos[n]) === 'completo') return true;
+        if (n === 'doble' || n === 'tc' || n === 'turno completo') return true;
+        return n.indexOf('completo') !== -1;
+    }
+
+    function leerFilasWorkbookAcumulacion(workbook, opciones) {
+        opciones = opciones || {};
+        if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+            throw new Error('El archivo no tiene hojas legibles.');
+        }
+        var names = workbook.SheetNames.filter(function (n) { return normalizar(n) !== 'informe'; });
+        if (!names.length) names = workbook.SheetNames.slice();
+        if (opciones.preferirResultado) {
+            var preferidas = ['resultado', 'confirmadas'];
+            var preferida = names.find(function (n) { return preferidas.indexOf(normalizar(n)) !== -1; });
+            if (preferida) names = [preferida];
+        }
+        var filas = [];
+        var usadas = [];
+        names.forEach(function (sheetName) {
+            var rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+            if (!rawJson.length) return;
+            var headerRowIndex = 0;
+            var bestScore = -1;
+            var limit = Math.min(25, rawJson.length);
+            for (var i = 0; i < limit; i++) {
+                var sc = puntajeFilaEncabezadoDesignacion(rawJson[i]);
+                var rowStr = rawJson[i].map(function (x) { return normalizar(String(x)); }).join(' ');
+                if (rowStr.indexOf('idpof') !== -1 || rowStr.indexOf('id pof') !== -1 || rowStr.indexOf('id. pof') !== -1) sc += 3;
+                if (rowStr.indexOf('cargo') !== -1) sc += 1;
+                if (rowStr.indexOf('area') !== -1) sc += 1;
+                if (rowStr.indexOf('turno') !== -1) sc += 1;
+                if (sc > bestScore) {
+                    bestScore = sc;
+                    headerRowIndex = i;
+                }
+            }
+            if (bestScore < 2) return;
+            var headers = rawJson[headerRowIndex];
+            var antes = filas.length;
+            for (var r = headerRowIndex + 1; r < rawJson.length; r++) {
+                var row = rawJson[r];
+                var obj = {};
+                var tieneDatos = false;
+                for (var j = 0; j < headers.length; j++) {
+                    if (headers[j]) {
+                        obj[headers[j]] = row[j];
+                        if (String(row[j] == null ? '' : row[j]).trim() !== '') tieneDatos = true;
+                    }
+                }
+                if (tieneDatos) filas.push(obj);
+            }
+            if (filas.length > antes) usadas.push(sheetName);
+        });
+        return { filas: filas, hojas: usadas };
+    }
+
+    function indexarResultadoTrasladoAcumulacion(filas) {
+        var presentes = Object.create(null);
+        var designados = Object.create(null);
+        var sinId = 0;
+        (filas || []).forEach(function (fila) {
+            var id = claveIdPofAcumulacion(obtenerValorColumna(fila, COL_IDPOF_ACUM));
+            if (!id) {
+                sinId += 1;
+                return;
+            }
+            presentes[id] = true;
+            if (filaTieneDesignacionAcumulacion(fila)) designados[id] = true;
+        });
+        return { presentes: presentes, designados: designados, sinId: sinId };
+    }
+
+    function filtrarVacantesTrasladoAcumulacion(filas, indice) {
+        var mantenidas = [];
+        var elimDesignacion = 0;
+        var elimAusente = 0;
+        var sinId = 0;
+        (filas || []).forEach(function (fila) {
+            var id = claveIdPofAcumulacion(obtenerValorColumna(fila, COL_IDPOF_ACUM));
+            if (!id) {
+                sinId += 1;
+                return;
+            }
+            if (indice.designados[id]) {
+                elimDesignacion += 1;
+                return;
+            }
+            if (!indice.presentes[id]) {
+                elimAusente += 1;
+                return;
+            }
+            mantenidas.push(fila);
+        });
+        return {
+            mantenidas: mantenidas,
+            elimDesignacion: elimDesignacion,
+            elimAusente: elimAusente,
+            sinId: sinId
+        };
+    }
+
+    function filtrarConfirmadasSiHayEstado(filas) {
+        var hayEstado = (filas || []).some(function (fila) {
+            return String(obtenerValorColumna(fila, COL_ESTADO_XNOTA) || '').trim() !== '';
+        });
+        if (!hayEstado) return { filas: filas || [], excluidas: 0 };
+        var partes = separarConfirmadasExcluidas(filas);
+        return { filas: partes.confirmadas, excluidas: partes.excluidas.length };
+    }
+
+    function normalizarFilaFormatoResultado(fila) {
+        var nuevaFila = {};
+        COLUMNAS_RESULTADO.forEach(function (col) {
+            if (!col) {
+                nuevaFila[col] = '';
+                return;
+            }
+            var val = obtenerValorColumna(fila, [col]);
+            if (val === '' || val == null) {
+                if (col === 'CODIGO CARGO') val = obtenerValorColumna(fila, COL_CARGO_XNOTA.concat(COL_DESIG_CARGO));
+                else if (col === 'DESCRIPCION CARGO') val = obtenerValorColumna(fila, COL_DESC_CARGO_XNOTA.concat(COL_DESIG_DESC_CARGO));
+                else if (col === 'CODIGO ASIGNATURA') val = obtenerValorColumna(fila, COL_ASIG_XNOTA.concat(COL_DESIG_ASIG));
+                else if (col === 'DESCRIPCION ASIGNATURA') val = obtenerValorColumna(fila, COL_DESC_ASIG_XNOTA.concat(COL_DESIG_DESC_ASIG));
+                else if (col === 'CODIGO ESPECIALIDAD') val = obtenerValorColumna(fila, COL_ESP_XNOTA.concat(COL_DESIG_ESP));
+                else if (col === 'DESCRIPCION ESPECIALIDAD') val = obtenerValorColumna(fila, COL_DESC_ESP_XNOTA.concat(COL_DESIG_DESC_ESP));
+                else if (col === 'DOCENTE') val = obtenerValorColumna(fila, COL_DOCENTE_XNOTA);
+                else if (col === 'ESTABLECIMIENTO ID') val = obtenerValorColumna(fila, COL_ESTAB_ID_XNOTA.concat(COL_DESIG_ESTAB_ID));
+                else if (col === 'Numero de Escuela') val = obtenerValorColumna(fila, COL_NUM_ESC_XNOTA.concat(COL_DESIG_NUM_ESC));
+                else if (col === 'Nombre de la escuela') val = obtenerValorColumna(fila, COL_NOMBRE_ESC_XNOTA.concat(COL_DESIG_NOM_ESC));
+                else if (col === 'Direccion') val = obtenerValorColumna(fila, COL_DIRECCION_XNOTA);
+                else if (col === 'Id. POF') val = obtenerValorColumna(fila, COL_IDPOF_ACUM);
+                else if (col === 'AREA') val = obtenerValorColumna(fila, COL_AREA_XNOTA.concat(COL_DESIG_AREA_DESC));
+                else if (col === 'TURNO') val = obtenerValorColumna(fila, ['TURNO', 'Turno'].concat(COL_DESIG_TURNO));
+                else if (col === 'Distrito') val = obtenerValorColumna(fila, ['Distrito', 'D.e.', 'DE'].concat(COL_DESIG_DISTRITO));
+                else if (col === 'COD DE AREA') val = obtenerValorColumna(fila, ['COD DE AREA', 'COD AREA'].concat(COL_DESIG_AREA_COD));
+                else if (col === 'Cant. Horas') val = obtenerValorColumna(fila, ['Cant. Horas', 'Cant Horas', 'Horas'].concat(COL_DESIG_HORAS));
+                else if (col === 'Numero de propuesta') val = obtenerValorColumna(fila, ['Numero de propuesta', 'Número de propuesta']);
+                else if (col === 'Motivo de la Vacante') val = obtenerValorColumna(fila, ['Motivo de la Vacante', 'Motivo Vac..', 'Motivo Vac'].concat(COL_DESIG_MOTIVO));
+                else if (col === 'Observación') val = obtenerValorColumna(fila, ['Observación', 'Observacion', 'Observaciones'].concat(COL_DESIG_OBS));
+            }
+            nuevaFila[col] = val !== undefined && val !== null ? val : '';
+        });
+        if (nuevaFila['Id. POF'] === '' || nuevaFila['Id. POF'] == null) {
+            nuevaFila['Id. POF'] = obtenerValorColumna(fila, COL_IDPOF_ACUM);
+        }
+        if (!nuevaFila['Numero de propuesta']) nuevaFila['Numero de propuesta'] = nuevaFila['Id. POF'];
+        var ordenada = {};
+        COLUMNAS_RESULTADO.forEach(function (col) {
+            ordenada[col] = nuevaFila[col] !== undefined ? nuevaFila[col] : '';
+        });
+        return ordenada;
+    }
+
+    function areaDesdeFilasResultado(filas) {
+        for (var i = 0; i < (filas || []).length; i++) {
+            var area = filas[i]['AREA'];
+            if (area && String(area).trim()) {
+                return String(area).replace(/[^a-zA-Z0-9]/g, '') || 'Generico';
+            }
+        }
+        return 'Generico';
+    }
+
+    function descargarEleveAcumulacion(dataFinal, nombreArchivo, procInforme) {
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.json_to_sheet(dataFinal, { header: COLUMNAS_RESULTADO });
+        aplicarFormatoFechasHoras(ws);
+        aplicarFormatoNumeroDistrito(ws);
+        XLSX.utils.book_append_sheet(wb, ws, 'Resultado');
+        var informe = construirHojaInforme(dataFinal, { procesador: procInforme, duplicadosEliminados: 0 });
+        var wsInforme = XLSX.utils.aoa_to_sheet(informe.aoa);
+        wsInforme['!cols'] = [
+            { wch: 28 }, { wch: 14 }, { wch: 36 }, { wch: 16 },
+            { wch: 36 }, { wch: 16 }, { wch: 36 }, { wch: 18 }
+        ];
+        if (informe.lastDataRowIndex > informe.headerRowIndex) {
+            var start = XLSX.utils.encode_cell({ r: informe.headerRowIndex, c: 0 });
+            var end = XLSX.utils.encode_cell({ r: informe.lastDataRowIndex, c: 7 });
+            wsInforme['!autofilter'] = { ref: start + ':' + end };
+        }
+        XLSX.utils.book_append_sheet(wb, wsInforme, 'Informe');
+        XLSX.writeFile(wb, nombreArchivo, { cellStyles: true });
+    }
+
+    async function procesarAcumulacion(proc) {
+        var statusDiv = document.getElementById('status');
+        var fileVacantes = document.getElementById('fileAcumVacantes');
+        var fileResultado = document.getElementById('fileAcumResultadoTraslado');
+        var fileControl = document.getElementById('fileAcumControlv2');
+
+        if (!fileVacantes || !fileVacantes.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el archivo de Vacantes a Traslado.';
+            return;
+        }
+        if (!fileResultado || !fileResultado.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el Resultado de Traslado.';
+            return;
+        }
+        if (!fileControl || !fileControl.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el Resultado de ControlV2.';
+            return;
+        }
+
+        statusDiv.className = '';
+        statusDiv.innerText = 'Leyendo archivos de Acumulación...';
+
+        try {
+            var bufVac = await leerArchivoComoArrayBuffer(fileVacantes.files[0]);
+            var bufRes = await leerArchivoComoArrayBuffer(fileResultado.files[0]);
+            var bufCtrl = await leerArchivoComoArrayBuffer(fileControl.files[0]);
+            var wbVac = XLSX.read(bufVac, { type: 'array' });
+            var wbRes = XLSX.read(bufRes, { type: 'array' });
+            var wbCtrl = XLSX.read(bufCtrl, { type: 'array' });
+
+            var leidoVac = leerFilasWorkbookAcumulacion(wbVac, { preferirResultado: true });
+            var leidoRes = leerFilasWorkbookAcumulacion(wbRes, { preferirResultado: false });
+            var leidoCtrl = leerFilasWorkbookAcumulacion(wbCtrl, { preferirResultado: true });
+
+            if (!leidoVac.filas.length) throw new Error('Vacantes a Traslado no tiene filas legibles.');
+            if (!leidoRes.filas.length) throw new Error('Resultado de Traslado no tiene filas legibles.');
+            if (!leidoCtrl.filas.length) throw new Error('Resultado de ControlV2 no tiene filas legibles.');
+
+            var indice = indexarResultadoTrasladoAcumulacion(leidoRes.filas);
+            if (!Object.keys(indice.presentes).length) {
+                throw new Error('Resultado de Traslado no tiene Id. POF para cruzar.');
+            }
+
+            var filtrado = filtrarVacantesTrasladoAcumulacion(leidoVac.filas, indice);
+            var control = filtrarConfirmadasSiHayEstado(leidoCtrl.filas);
+            var combinadas = filtrado.mantenidas.map(normalizarFilaFormatoResultado)
+                .concat(control.filas.map(normalizarFilaFormatoResultado));
+
+            var completos = [];
+            var resto = [];
+            combinadas.forEach(function (fila) {
+                if (esTurnoCompletoValor(fila['TURNO'])) completos.push(fila);
+                else resto.push(fila);
+            });
+
+            if (!completos.length && !resto.length) {
+                throw new Error('No quedaron vacantes después del cruce con Resultado de Traslado y ControlV2.');
+            }
+
+            var inputsModal = null;
+            if (resto.length) {
+                inputsModal = await pedirDatosPopUp({
+                    title: 'Definí Publicación y Cierre',
+                    intro: 'Completá las fechas y horas de publicación y de cierre para las vacantes de acumulación (tipo de listado 14).',
+                    secondLabel: 'Fecha y Hora de Cierre'
+                });
+                if (!inputsModal) {
+                    statusDiv.className = '';
+                    statusDiv.innerText = 'Proceso cancelado.';
+                    return;
+                }
+                resto.forEach(function (fila) {
+                    fila['TIPO DE LISTADO'] = 14;
+                    fila['FECHA PUBLICACION'] = inputsModal.fechaPub;
+                    fila['HORA PUBLICACION'] = inputsModal.horaPub;
+                    fila['FECHA APERTURA'] = inputsModal.fechaCierre;
+                    fila['HORA APERTURA'] = inputsModal.horaCierre;
+                });
+            }
+
+            var area = areaDesdeFilasResultado(combinadas);
+            var stamp = formatearFechaHoraNombre();
+            var nombreAcum = area + '_ACUMULACION_' + stamp + '.xlsx';
+            var nombreCompletos = area + '_TURNOS_COMPLETOS_PARA_INGRESO_' + stamp + '.xlsx';
+            var resumenReglas = [
+                'Vacantes a traslado leídas: ' + leidoVac.filas.length + '.',
+                'Eliminadas por designación: ' + filtrado.elimDesignacion + '.',
+                'Eliminadas por no estar en Resultado de Traslado: ' + filtrado.elimAusente + '.',
+                'Vacantes sin Id. POF (descartadas): ' + filtrado.sinId + '.',
+                'Sumadas desde ControlV2: ' + control.filas.length +
+                    (control.excluidas ? (' (excluidas omitidas: ' + control.excluidas + ')') : '') + '.',
+                'Turnos completos para ingreso: ' + completos.length + '.',
+                'Resto con tipo de listado 14: ' + resto.length + '.'
+            ];
+
+            if (resto.length) {
+                descargarEleveAcumulacion(resto, nombreAcum, {
+                    id: proc.id,
+                    label: proc.label,
+                    suffix: proc.suffix,
+                    descripcion: proc.descripcion,
+                    reglas: (proc.reglas || []).concat(resumenReglas)
+                });
+            }
+            if (completos.length) {
+                var bajarCompletos = function () {
+                    descargarEleveAcumulacion(completos, nombreCompletos, {
+                        id: 'acumulacion_ingreso',
+                        label: 'Turnos completos para ingreso',
+                        suffix: 'TURNOS_COMPLETOS_PARA_INGRESO',
+                        descripcion: 'Vacantes de turno completo separadas del eleve de acumulación, para ingreso.',
+                        reglas: [
+                            'Salen de Vacantes a Traslado (las que quedan tras el cruce) y de Resultado de ControlV2.',
+                            'Turno Completo, Turno completo, C, D o Doble.',
+                            'No se les cambia el tipo de listado ni las fechas.'
+                        ].concat(resumenReglas)
+                    });
+                };
+                if (resto.length) setTimeout(bajarCompletos, 400);
+                else bajarCompletos();
+            }
+
+            if (window.PortalAuth && typeof PortalAuth.logProcessRun === 'function') {
+                PortalAuth.logProcessRun({
+                    module: 'eleves_concursos',
+                    moduleLabel: 'Eleves Concursos',
+                    procesador: proc.id,
+                    procesadorLabel: proc.label,
+                    archivoOrigen: (fileVacantes.files[0].name || '') + ' + ' +
+                        (fileResultado.files[0].name || '') + ' + ' +
+                        (fileControl.files[0].name || ''),
+                    archivoSalida: [resto.length ? nombreAcum : '', completos.length ? nombreCompletos : ''].filter(Boolean).join(' + '),
+                    filas: resto.length + completos.length,
+                    area: area,
+                    detalle: 'Designación: ' + filtrado.elimDesignacion +
+                        ' · Fuera de resultado: ' + filtrado.elimAusente +
+                        ' · ControlV2: ' + control.filas.length +
+                        ' · Turno completo: ' + completos.length +
+                        ' · Tipo 14: ' + resto.length,
+                    extras: {
+                        tipoListado: 14,
+                        elimDesignacion: filtrado.elimDesignacion,
+                        elimAusente: filtrado.elimAusente,
+                        sinId: filtrado.sinId,
+                        controlv2: control.filas.length,
+                        controlv2Excluidas: control.excluidas,
+                        turnosCompletos: completos.length,
+                        acumulacion: resto.length,
+                        hojas: ['Resultado', 'Informe']
+                    }
+                });
+            }
+
+            statusDiv.className = '';
+            statusDiv.innerText =
+                '¡Proceso Acumulación completado!\n' +
+                (resto.length ? ('Acumulación (tipo 14): "' + nombreAcum + '" · ' + resto.length + ' filas\n') : 'Sin vacantes para acumulación.\n') +
+                (completos.length ? ('Turnos completos para ingreso: "' + nombreCompletos + '" · ' + completos.length + ' filas\n') : 'Sin turnos completos.\n') +
+                'Eliminadas por designación: ' + filtrado.elimDesignacion +
+                ' · Eliminadas por no estar en el resultado: ' + filtrado.elimAusente +
+                (filtrado.sinId ? (' · Sin Id. POF: ' + filtrado.sinId) : '') + '\n' +
+                'Sumadas de ControlV2: ' + control.filas.length +
+                (control.excluidas ? (' · Excluidas omitidas: ' + control.excluidas) : '');
+        } catch (error) {
+            console.error(error);
+            statusDiv.className = 'error';
+            statusDiv.innerText = error.message || 'Hubo un error al procesar Acumulación.';
+        }
+    }
+
     async function iniciarProceso() {
         const proc = getProcesadorActivo();
         const fileInput = document.getElementById('fileInput');
@@ -2288,6 +2706,9 @@
         }
         if (proc.id === 'controlv2') {
             return procesarControlV2(proc);
+        }
+        if (proc.id === 'acumulacion') {
+            return procesarAcumulacion(proc);
         }
         
         if (!fileInput.files.length) {
