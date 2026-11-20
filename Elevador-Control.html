@@ -137,6 +137,8 @@
         <input type="file" id="fileAcumResultadoTraslado" accept=".csv, .xls, .xlsx" />
         <label class="label-text" for="fileAcumControlv2">Resultado de ControlV2</label>
         <input type="file" id="fileAcumControlv2" accept=".csv, .xls, .xlsx" />
+        <label class="label-text" for="fileAcumEleveControlv2">Eleve de ControlV2</label>
+        <input type="file" id="fileAcumEleveControlv2" accept=".csv, .xls, .xlsx" />
     </div>
 
     <button class="btn-primary" id="btnProcesar" onclick="iniciarProceso()">Procesar y Descargar</button>
@@ -305,16 +307,18 @@
             label: 'Acumulación',
             suffix: 'ACUMULACION',
             enabled: true,
-            descripcion: 'Cruzá vacantes a traslado con el resultado de traslado y sumá el resultado de CONTROLv2. Los turnos completos salen aparte para ingreso; el resto queda con tipo de listado 14.',
+            descripcion: 'Cruzá vacantes a traslado con el resultado de traslado, sumá el resultado de CONTROLv2 y completá los nombres vacíos con el eleve de CONTROLv2. Los turnos completos salen aparte para ingreso; el resto queda con tipo de listado 14.',
             pending: false,
             reglas: [
                 '<strong>Archivo 1 — Vacantes a Traslado:</strong> listado de vacantes (eleve de traslado o equivalente) con <em>Id. POF</em> y turno.',
                 '<strong>Archivo 2 — Resultado de Traslado:</strong> resultado del acto. Se usa para saber qué Id. POF participó y cuáles tienen designación.',
                 '<strong>Archivo 3 — Resultado de ControlV2:</strong> vacantes a sumar después del cruce. Si trae columna <em>Excluida/Confirmada</em>, entran solo las Confirmadas.',
+                '<strong>Archivo 4 — Eleve de ControlV2:</strong> eleve generado por CONTROLv2. Al final se cruza por <em>Id. POF</em> y completa los nombres que quedaron vacíos.',
                 '<strong>Cruce por Id. POF:</strong> se aceptan Id. POF, IDPOF, Número de propuesta y Form Número POF.',
                 '<strong>Con designación:</strong> se eliminan de Vacantes a Traslado los Id. POF que en el resultado tengan designación (columna de designación con valor, estado “designado” o Docente con nombre).',
                 '<strong>Sin coincidencia:</strong> si un Id. POF de las vacantes no figura en Resultado de Traslado, también se elimina.',
                 '<strong>Suma:</strong> a las vacantes que quedan se les agregan las de Resultado de ControlV2.',
+                '<strong>Nombres vacíos:</strong> con el eleve de CONTROLv2 se completan, solo si están vacíos, Área, nombre de la escuela, dirección y las descripciones de cargo, asignatura y especialidad. No se pisan valores ya cargados ni el docente.',
                 '<strong>Turno completo:</strong> Completo, Turno completo, C, D o Doble se separan en un archivo <strong>TURNOS_COMPLETOS_PARA_INGRESO</strong>. Esas filas no cambian el tipo de listado.',
                 '<strong>Resto:</strong> TIPO DE LISTADO = <strong>14</strong>.',
                 '<strong>Horarios:</strong> popup de publicación y cierre, igual que Traslado. La publicación se graba en FECHA/HORA PUBLICACION y el cierre en FECHA/HORA APERTURA.',
@@ -2483,6 +2487,47 @@
         return ordenada;
     }
 
+    var CAMPOS_NOMBRE_ACUM = [
+        'AREA',
+        'Nombre de la escuela',
+        'Direccion',
+        'DESCRIPCION CARGO',
+        'DESCRIPCION ASIGNATURA',
+        'DESCRIPCION ESPECIALIDAD'
+    ];
+
+    function completarNombresDesdeEleveAcumulacion(filas, filasEleve) {
+        var mapa = Object.create(null);
+        (filasEleve || []).forEach(function (fila) {
+            var id = claveIdPofAcumulacion(obtenerValorColumna(fila, COL_IDPOF_ACUM));
+            if (!id || mapa[id]) return;
+            mapa[id] = normalizarFilaFormatoResultado(fila);
+        });
+        var stats = { completados: 0, filas: 0, sinMatch: 0, sinId: 0, eleve: Object.keys(mapa).length };
+        (filas || []).forEach(function (fila) {
+            var id = claveIdPofAcumulacion(fila['Id. POF']);
+            if (!id) {
+                stats.sinId += 1;
+                return;
+            }
+            var eleve = mapa[id];
+            if (!eleve) {
+                stats.sinMatch += 1;
+                return;
+            }
+            var toco = false;
+            CAMPOS_NOMBRE_ACUM.forEach(function (col) {
+                if (!esCeldaVacia(fila[col])) return;
+                if (esCeldaVacia(eleve[col])) return;
+                fila[col] = eleve[col];
+                stats.completados += 1;
+                toco = true;
+            });
+            if (toco) stats.filas += 1;
+        });
+        return stats;
+    }
+
     function areaDesdeFilasResultado(filas) {
         for (var i = 0; i < (filas || []).length; i++) {
             var area = filas[i]['AREA'];
@@ -2519,6 +2564,7 @@
         var fileVacantes = document.getElementById('fileAcumVacantes');
         var fileResultado = document.getElementById('fileAcumResultadoTraslado');
         var fileControl = document.getElementById('fileAcumControlv2');
+        var fileEleve = document.getElementById('fileAcumEleveControlv2');
 
         if (!fileVacantes || !fileVacantes.files.length) {
             statusDiv.className = 'error';
@@ -2535,6 +2581,11 @@
             statusDiv.innerText = 'Por favor, carga el Resultado de ControlV2.';
             return;
         }
+        if (!fileEleve || !fileEleve.files.length) {
+            statusDiv.className = 'error';
+            statusDiv.innerText = 'Por favor, carga el Eleve de ControlV2.';
+            return;
+        }
 
         statusDiv.className = '';
         statusDiv.innerText = 'Leyendo archivos de Acumulación...';
@@ -2543,17 +2594,21 @@
             var bufVac = await leerArchivoComoArrayBuffer(fileVacantes.files[0]);
             var bufRes = await leerArchivoComoArrayBuffer(fileResultado.files[0]);
             var bufCtrl = await leerArchivoComoArrayBuffer(fileControl.files[0]);
+            var bufEleve = await leerArchivoComoArrayBuffer(fileEleve.files[0]);
             var wbVac = XLSX.read(bufVac, { type: 'array' });
             var wbRes = XLSX.read(bufRes, { type: 'array' });
             var wbCtrl = XLSX.read(bufCtrl, { type: 'array' });
+            var wbEleve = XLSX.read(bufEleve, { type: 'array' });
 
             var leidoVac = leerFilasWorkbookAcumulacion(wbVac, { preferirResultado: true });
             var leidoRes = leerFilasWorkbookAcumulacion(wbRes, { preferirResultado: false });
             var leidoCtrl = leerFilasWorkbookAcumulacion(wbCtrl, { preferirResultado: true });
+            var leidoEleve = leerFilasWorkbookAcumulacion(wbEleve, { preferirResultado: true });
 
             if (!leidoVac.filas.length) throw new Error('Vacantes a Traslado no tiene filas legibles.');
             if (!leidoRes.filas.length) throw new Error('Resultado de Traslado no tiene filas legibles.');
             if (!leidoCtrl.filas.length) throw new Error('Resultado de ControlV2 no tiene filas legibles.');
+            if (!leidoEleve.filas.length) throw new Error('El Eleve de ControlV2 no tiene filas legibles.');
 
             var indice = indexarResultadoTrasladoAcumulacion(leidoRes.filas);
             if (!Object.keys(indice.presentes).length) {
@@ -2564,6 +2619,7 @@
             var control = filtrarConfirmadasSiHayEstado(leidoCtrl.filas);
             var combinadas = filtrado.mantenidas.map(normalizarFilaFormatoResultado)
                 .concat(control.filas.map(normalizarFilaFormatoResultado));
+            var nombres = completarNombresDesdeEleveAcumulacion(combinadas, leidoEleve.filas);
 
             var completos = [];
             var resto = [];
@@ -2609,7 +2665,10 @@
                 'Sumadas desde ControlV2: ' + control.filas.length +
                     (control.excluidas ? (' (excluidas omitidas: ' + control.excluidas + ')') : '') + '.',
                 'Turnos completos para ingreso: ' + completos.length + '.',
-                'Resto con tipo de listado 14: ' + resto.length + '.'
+                'Resto con tipo de listado 14: ' + resto.length + '.',
+                'Nombres completados desde el eleve de ControlV2: ' + nombres.completados +
+                    ' (en ' + nombres.filas + ' vacantes).',
+                'Vacantes finales sin Id. POF en el eleve: ' + nombres.sinMatch + '.'
             ];
 
             if (resto.length) {
@@ -2647,7 +2706,8 @@
                     procesadorLabel: proc.label,
                     archivoOrigen: (fileVacantes.files[0].name || '') + ' + ' +
                         (fileResultado.files[0].name || '') + ' + ' +
-                        (fileControl.files[0].name || ''),
+                        (fileControl.files[0].name || '') + ' + ' +
+                        (fileEleve.files[0].name || ''),
                     archivoSalida: [resto.length ? nombreAcum : '', completos.length ? nombreCompletos : ''].filter(Boolean).join(' + '),
                     filas: resto.length + completos.length,
                     area: area,
@@ -2655,7 +2715,8 @@
                         ' · Fuera de resultado: ' + filtrado.elimAusente +
                         ' · ControlV2: ' + control.filas.length +
                         ' · Turno completo: ' + completos.length +
-                        ' · Tipo 14: ' + resto.length,
+                        ' · Tipo 14: ' + resto.length +
+                        ' · Nombres completados: ' + nombres.completados,
                     extras: {
                         tipoListado: 14,
                         elimDesignacion: filtrado.elimDesignacion,
@@ -2665,6 +2726,8 @@
                         controlv2Excluidas: control.excluidas,
                         turnosCompletos: completos.length,
                         acumulacion: resto.length,
+                        nombresCompletados: nombres.completados,
+                        nombresSinMatch: nombres.sinMatch,
                         hojas: ['Resultado', 'Informe']
                     }
                 });
@@ -2679,7 +2742,9 @@
                 ' · Eliminadas por no estar en el resultado: ' + filtrado.elimAusente +
                 (filtrado.sinId ? (' · Sin Id. POF: ' + filtrado.sinId) : '') + '\n' +
                 'Sumadas de ControlV2: ' + control.filas.length +
-                (control.excluidas ? (' · Excluidas omitidas: ' + control.excluidas) : '');
+                (control.excluidas ? (' · Excluidas omitidas: ' + control.excluidas) : '') + '\n' +
+                'Nombres completados desde el eleve: ' + nombres.completados +
+                ' · Sin coincidencia en el eleve: ' + nombres.sinMatch;
         } catch (error) {
             console.error(error);
             statusDiv.className = 'error';
